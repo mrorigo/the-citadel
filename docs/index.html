@@ -390,23 +390,23 @@
         <div class="terminal-body">
           <div class="terminal-line">
             <span class="prompt">$</span>
-            <span>bd ready</span>
+            <span>bd create "Run migration.toml target=Auth"</span>
           </div>
           <div class="terminal-line">
-            <span>→ 4 beads unblocked</span>
+            <span>→ Molecule: bd-215 (Epic)</span>
           </div>
           <div class="terminal-line">
-            <span class="prompt">$</span>
-            <span>citadel run convoy --strict</span>
-          </div>
-          <div class="terminal-line">
-            <span>Router ✓</span>
-            <span>Worker × 12</span>
-            <span>Gatekeeper ✓</span>
+            <span>→ [Audit] blocked by [Impl]</span>
           </div>
           <div class="terminal-line">
             <span class="prompt">$</span>
-            <span>tests passed · merge serialized · deploy green</span>
+            <span>citadel start</span>
+          </div>
+          <div class="terminal-line">
+            <span>Router: Cooking formula...</span>
+          </div>
+          <div class="terminal-line">
+            <span>Worker: Delegating subtasks...</span>
           </div>
         </div>
       </div>
@@ -447,34 +447,33 @@
     </section>
 
     <section id="architecture" class="section reveal">
-      <h2 class="section-title">A compute plane built like a factory</h2>
+      <h2 class="section-title">The Foundry Architecture</h2>
       <div class="grid">
+        <div class="card">
+          <h3>The Workflow Engine</h3>
+          <p>
+            Compiles static TOML <strong>Formulas</strong> into dynamic <strong>Molecules</strong> (task graphs),
+            ensuring strictly reproducible processes.
+          </p>
+        </div>
         <div class="card">
           <h3>The Router</h3>
           <p>
-            Translates human intent into atomic beads and queues, controlling
-            the task DAG.
+            Orchestrates the "Foundry". Analyzes Formulas, instantiates Beads, and manages the dependency graph (DAG).
           </p>
         </div>
         <div class="card">
-          <h3>The Worker</h3>
+          <h3>The Worker (Dynamic)</h3>
           <p>
-            Stateless executors consume exactly one bead, producing a diff and
-            exiting cleanly.
+            Stateless executors that can recursively delegate (<strong>Dynamic Bonding</strong>) when tasks exceed
+            single-agent complexity.
           </p>
         </div>
         <div class="card">
-          <h3>The Supervisor</h3>
+          <h3>Project Awareness</h3>
           <p>
-            Enforces heartbeats, retries, and cost limits. Workers are cattle,
-            not pets.
-          </p>
-        </div>
-        <div class="card">
-          <h3>The Gatekeeper</h3>
-          <p>
-            Serializes merges, enforces stacked diffs, and keeps the refinery
-            green.
+            Agents automatically discover and adhere to <strong>AGENTS.md</strong> rules, adapting to your specific repo
+            constraints.
           </p>
         </div>
       </div>
@@ -507,23 +506,23 @@
       <div class="pipeline">
         <div class="pipeline-step">
           <strong>1. Intake</strong>
-          <span>Spec compiled into beads with tests</span>
+          <span>Requests or Formulas submitted to Router</span>
         </div>
         <div class="pipeline-step">
-          <strong>2. Orchestration</strong>
-          <span>Router assigns queues and dependencies</span>
+          <strong>2. Cooking</strong>
+          <span>Workflow Engine compiles Formulas to Molecules</span>
         </div>
         <div class="pipeline-step">
           <strong>3. Execution</strong>
-          <span>Workers generate diffs from durable state</span>
+          <span>Workers resolve Beads and delegate sub-tasks</span>
         </div>
         <div class="pipeline-step">
-          <strong>4. Refinery</strong>
-          <span>Gatekeeper enforces stacked diff merges</span>
+          <strong>4. Verification</strong>
+          <span>Gatekeepers validate against acceptance criteria</span>
         </div>
         <div class="pipeline-step">
-          <strong>5. Verification</strong>
-          <span>CI gates ensure deterministic delivery</span>
+          <strong>5. Delivery</strong>
+          <span>Verified Molecules merged to Convoy</span>
         </div>
       </div>
     </section>
