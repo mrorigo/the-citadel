@@ -2,7 +2,37 @@
 
 This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
 
-## Quick Reference
+## Setup Commands
+
+Run these to get started:
+- `bun install`
+
+## Test Commands
+
+Run these to verify correctness:
+- `bun test tests/`
+
+## Lint Commands
+
+Run these to verify checks:
+- `bunx biome lint .`
+
+## Build Commands
+
+Run these to verify types:
+- `bun run tsc --noEmit`
+
+## Development Rules
+
+### Critical Rules
+- **STRICT TYPING**: 
+    - NEVER use `any`
+    - NEVER use `// biome-ignore` to hide type errors
+    - Always define proper interfaces
+    - If you are stuck on a type error, FIX IT by understanding the type data, do not bypass it.
+- Work is NOT complete until all checks pass.
+
+### Quick Reference (Beads)
 
 ```bash
 bd ready              # Find available work
@@ -12,7 +42,7 @@ bd close <id>         # Complete work
 bd sync               # Sync with git
 ```
 
-## Landing the Plane (Session Completion)
+### Landing the Plane (Session Completion)
 
 **When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
 
@@ -31,15 +61,3 @@ bd sync               # Sync with git
 5. **Clean up** - Clear stashes, prune remote branches
 6. **Verify** - All changes committed AND pushed
 7. **Hand off** - Provide context for next session
-
-**CRITICAL RULES:**
-- Work is NOT complete until `bun test` and `bunx biome lint .` pass
-- **STRICT TYPING**: 
-    - NEVER use `any`
-    - NEVER use `// biome-ignore` to hide type errors
-    - Always define proper interfaces
-    - If you are stuck on a type error, FIX IT by understanding the type data, do not bypass it.
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing - that leaves work stranded locally
-- NEVER say "ready to push when you are" - YOU must push
-- If push fails, resolve and retry until it succeeds

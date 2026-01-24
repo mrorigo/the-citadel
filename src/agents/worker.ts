@@ -6,6 +6,7 @@ import { readFile, writeFile, readdir, mkdir } from 'node:fs/promises';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { dirname } from 'node:path';
+import { getProjectContext } from '../services/project-context.js';
 
 const execAsync = promisify(exec);
 
@@ -140,6 +141,29 @@ export class WorkerAgent extends CoreAgent {
     override async run(prompt: string, context?: Record<string, unknown>): Promise<string> {
         console.log(`[${this.role}] Running (Unified Loop)...`);
 
+        // Load Project Awareness (AGENTS.md)
+        const projectContext = await getProjectContext().resolveContext(process.cwd(), process.cwd());
+
+        let projectRules = '';
+        if (projectContext) {
+            console.log(`[Worker] Loaded AGENTS.md from ${projectContext.sourcePath}`);
+            projectRules = `
+            # PROJECT RULES (AGENTS.md)
+            You must follow these rules from the project configuration:
+            
+            ${projectContext.config.rules.length > 0 ? '## Rules\n' + projectContext.config.rules.map(r => '- ' + r).join('\n') : ''}
+            
+            ${projectContext.config.commands.setup.length > 0 ? '## Setup Commands\n' + projectContext.config.commands.setup.map(c => '- ' + c).join('\n') : ''}
+            ${projectContext.config.commands.test.length > 0 ? '## Test Commands\n' + projectContext.config.commands.test.map(c => '- ' + c).join('\n') : ''}
+            ${projectContext.config.commands.lint.length > 0 ? '## Lint Commands\n' + projectContext.config.commands.lint.map(c => '- ' + c).join('\n') : ''}
+            ${projectContext.config.commands.build.length > 0 ? '## Build Commands\n' + projectContext.config.commands.build.map(c => '- ' + c).join('\n') : ''}
+            
+            Always prioritize these project-specific instructions over general knowledge.
+            `;
+        } else {
+            console.log(`[Worker] No AGENTS.md found in ${process.cwd()}`);
+        }
+
         const system = `
         You are the Worker Agent. Your goal is to IMPLEMENT requested changes in the codebase.
         
@@ -148,6 +172,8 @@ export class WorkerAgent extends CoreAgent {
         - Command: run_command
         - Reporting: report_progress, submit_work
         
+        ${projectRules}
+
         # Instructions
         - Analyze the request and explore the codebase if needed (list_dir, read_file).
         - Formulate a plan and EXECUTE it.
