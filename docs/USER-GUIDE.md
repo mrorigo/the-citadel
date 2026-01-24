@@ -12,6 +12,8 @@ Welcome to **The Citadel**, a deterministic orchestration engine for AI agents. 
 
 👉 **reference: [steveyegge/beads](https://github.com/steveyegge/beads)**
 
+> **Note:** A list of community-built UIs, extensions, and tools for interacting with Beads can be found here: [Community Tools](https://github.com/steveyegge/beads/blob/main/docs/COMMUNITY_TOOLS.md).
+
 ### 2. The Foundry (Workflow Engine)
 The Citadel goes beyond simple task lists by implementing a **Workflow Engine** that compiles static templates into dynamic graphs of work.
 

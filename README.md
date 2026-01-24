@@ -19,7 +19,7 @@ The system adheres to a strict state machine: `Open` -> `In Progress` -> `Verify
 
 - **[Bun](https://bun.sh)** (Runtime)
 - **[Ollama](https://ollama.com)** (For local inference)
-- **[Beads](https://github.com/steveyegge/beads)** (CLI tool `bd` must be in PATH)
+- **[Beads](https://github.com/steveyegge/beads)** (CLI tool `bd` must be in PATH). See [Community Tools](https://github.com/steveyegge/beads/blob/main/docs/COMMUNITY_TOOLS.md) for UIs and extensions.
 
 # Link the binary
 bun link
