@@ -30,6 +30,7 @@ export async function loadConfig(): Promise<CitadelConfig> {
     // Merge with Env Vars (Env takes precedence over file default, config file takes precedence over code default)
     // Actually, typical pattern: Env > Config File > Default
     const rawConfig = {
+        ...userConfig,
         env: process.env.CITADEL_ENV || userConfig.env,
         providers: {
             // Start simple
