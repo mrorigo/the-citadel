@@ -1,0 +1,3 @@
+{"id":"the-foundry-3rf","title":"Update Test","status":"in_progress","priority":2,"issue_type":"task","owner":"mrorigo@gmail.com","created_at":"2026-01-24T12:47:49.75347+01:00","created_by":"mrorigo","updated_at":"2026-01-24T12:47:55.034777+01:00"}
+{"id":"the-foundry-6eg","title":"Status Test","status":"in_progress","priority":2,"issue_type":"task","owner":"mrorigo@gmail.com","created_at":"2026-01-24T12:49:01.39289+01:00","created_by":"mrorigo","updated_at":"2026-01-24T12:50:08.015899+01:00","labels":["verify"]}
+{"id":"the-foundry-t3l","title":"Test","status":"open","priority":0,"issue_type":"task","owner":"mrorigo@gmail.com","created_at":"2026-01-24T12:46:12.660766+01:00","created_by":"mrorigo","updated_at":"2026-01-24T12:46:12.660766+01:00"}
