@@ -4,7 +4,7 @@ import type { Bead } from '../../src/core/beads';
 
 // Mock dependencies
 const mockBeads = {
-    list: mock(async () => []),
+    list: mock(async (): Promise<Bead[]> => []),
     get: mock(async () => ({ id: 'mock-id', title: 'mock', content: 'mock' })),
 };
 

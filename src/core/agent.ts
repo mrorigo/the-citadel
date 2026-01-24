@@ -47,7 +47,7 @@ export abstract class CoreAgent {
      * Does NOT have access to tools, forcing pure reasoning.
      */
     protected async think(prompt: string, context?: AgentContext): Promise<string> {
-        const defaultSystem = `You are a ${this.role}. Your job is to ANALYZE the request and PLAN the execution. 
+        const defaultSystem = `You are a ${this.role}. Your job is to ANALYZE the request and PLAN the execution.
             Do NOT execute actions yet. Output your reasoning and plan.`;
 
         const { text } = await generateText({
@@ -66,7 +66,7 @@ export abstract class CoreAgent {
             Context: ${JSON.stringify(context || {})}`;
 
         // Vercel AI SDK generateText with tools and maxSteps handles the loop
-        const { text } = await generateText({
+        const { text, toolCalls, finishReason } = await generateText({
             model: this.model,
             tools: this.tools,
             system: this.getSystemPrompt('act', defaultSystem),
@@ -75,6 +75,11 @@ export abstract class CoreAgent {
             toolChoice: this.getToolChoice(),
             // biome-ignore lint/suspicious/noExplicitAny: Cast to any to avoid maxSteps type error if strict
         } as any);
+
+        console.log(`[CoreAgent] Act finished. Reason: ${finishReason}. Tools called: ${toolCalls?.length || 0}`);
+        if (toolCalls?.length) {
+            console.log('[CoreAgent] Tools:', JSON.stringify(toolCalls, null, 2));
+        }
 
         return text;
     }

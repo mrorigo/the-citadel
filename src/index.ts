@@ -42,16 +42,29 @@ program
     });
 
 program
-    .command('reset-queue')
-    .description('Reset the Work Queue (Deletes persistence file)')
-    .action(async () => {
+    .command('reset-queue [beadId]')
+    .description('Reset the Work Queue (Deletes persistence file or specific bead tickets)')
+    .action(async (beadId) => {
         try {
-            const dbPath = resolve(process.cwd(), '.citadel', 'queue.sqlite');
-            console.log(`Resetting queue at ${dbPath}...`);
-            await unlink(dbPath);
-            console.log('Queue reset successfully.');
+            if (beadId) {
+                await loadConfig();
+                const queue = getQueue();
+                // Accessing private db via any for quick fix, or add method to Queue
+                // Better: Add `reset(beadId)` to WorkQueue class. 
+                // For now, let's use the raw DB access pattern since we are in CLI
+                // biome-ignore lint/suspicious/noExplicitAny: Accessing private db for reset
+                const db = (queue as any).db;
+                console.log(`Resetting tickets for bead: ${beadId}...`);
+                db.run("DELETE FROM tickets WHERE bead_id = ?", [beadId]);
+                console.log(`Tickets for ${beadId} have been cleared.`);
+            } else {
+                const dbPath = resolve(process.cwd(), '.citadel', 'queue.sqlite');
+                console.log(`Resetting entire queue at ${dbPath}...`);
+                await unlink(dbPath);
+                console.log('Queue reset successfully.');
+            }
         } catch (error) {
-            if ((error as { code?: string }).code === 'ENOENT') {
+            if (!beadId && (error as { code?: string }).code === 'ENOENT') {
                 console.log('Queue file not found. Nothing to reset.');
             } else {
                 console.error('Failed to reset queue:', error);

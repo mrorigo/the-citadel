@@ -34,8 +34,12 @@ bd sync               # Sync with git
 
 **CRITICAL RULES:**
 - Work is NOT complete until `bun test` and `bunx biome lint .` pass
+- **STRICT TYPING**: 
+    - NEVER use `any`
+    - NEVER use `// biome-ignore` to hide type errors
+    - Always define proper interfaces
+    - If you are stuck on a type error, FIX IT by understanding the type data, do not bypass it.
 - Work is NOT complete until `git push` succeeds
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
-

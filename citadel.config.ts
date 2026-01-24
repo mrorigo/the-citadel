@@ -15,15 +15,15 @@ export default defineConfig({
     agents: {
         router: {
             provider: 'ollama',
-            model: 'gpt-oss:120b-cloud',
+            model: 'gpt-oss:20b-cloud',
         },
         worker: {
             provider: 'ollama',
-            model: 'qwen3:14b', // Using qwen3:14b as requested by user's ollama ls
+            model: 'gpt-oss:20b-cloud', // Using 20b as it is proven to work for Router
         },
         supervisor: {
             provider: 'ollama',
-            model: 'llama3.2:3b',
+            model: 'gpt-oss:120b-cloud',
         },
         gatekeeper: {
             provider: 'ollama',
