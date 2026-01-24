@@ -13,6 +13,121 @@ program
     .description('The Citadel: A deterministic agent orchestration system')
     .version('1.0.0');
 
+// --- Init Command ---
+import { mkdir, writeFile, access } from 'node:fs/promises';
+import { join } from 'node:path';
+import { getBeads } from './core/beads';
+
+program
+    .command('init')
+    .description('Initialize a new Citadel project (Foundry Mode)')
+    .action(async () => {
+        try {
+            console.log('🏗️  Initializing The Citadel...');
+
+            const cwd = process.cwd();
+            const citadelDir = join(cwd, '.citadel');
+            const formulasDir = join(citadelDir, 'formulas');
+
+            // 1. Create Directory Structure
+            await mkdir(formulasDir, { recursive: true });
+            console.log('✅ Created .citadel/ structure');
+
+            // 2. Scaffold Config
+            const configPath = join(cwd, 'citadel.config.ts');
+            try {
+                await access(configPath);
+                console.log('ℹ️  citadel.config.ts already exists');
+            } catch {
+                const configTemplate = `
+import { defineConfig } from './src/config/schema'; // Adjust import if using as package
+// In a real install, you might import from 'the-citadel/config'
+
+export default defineConfig({
+    env: 'development',
+    providers: {
+        ollama: {
+            baseURL: 'http://localhost:11434/v1',
+            model: 'llama3:8b', // Default local model
+        },
+    },
+    agents: {
+        router: { provider: 'ollama', model: 'llama3:8b' },
+        worker: { provider: 'ollama', model: 'llama3:8b' },
+        gatekeeper: { provider: 'ollama', model: 'llama3:8b' },
+        supervisor: { provider: 'ollama', model: 'llama3:8b' },
+    }
+});
+`;
+                await writeFile(configPath, configTemplate.trim());
+                console.log('✅ Created citadel.config.ts (Ollama default)');
+            }
+
+            // 3. Scaffold AGENTS.md
+            const agentsPath = join(cwd, 'AGENTS.md');
+            try {
+                await access(agentsPath);
+                console.log('ℹ️  AGENTS.md already exists');
+            } catch {
+                const agentsTemplate = `
+# Project Rules
+
+## Setup
+- Command: \`echo "No setup defined"\`
+
+## Test
+- Command: \`echo "No tests defined"\`
+
+## Lint
+- Command: \`echo "No lint defined"\`
+
+## Behavior
+- Always write a plan before coding.
+`;
+                await writeFile(agentsPath, agentsTemplate.trim());
+                console.log('✅ Created AGENTS.md');
+            }
+
+            // 4. Scaffold Sample Formula
+            const formulaPath = join(formulasDir, 'hello_world.toml');
+            try {
+                await access(formulaPath);
+            } catch {
+                const formulaTemplate = `
+formula = "hello_world"
+description = "A friendly greeting workflow"
+
+[vars.name]
+description = "Who to greet"
+required = true
+default = "World"
+
+[[steps]]
+id = "greet"
+title = "Say Hello to {{name}}"
+description = "Create a file named hello_{{name}}.txt with a greeting."
+`;
+                await writeFile(formulaPath, formulaTemplate.trim());
+                console.log('✅ Created .citadel/formulas/hello_world.toml');
+            }
+
+            // 5. Initialize Beads
+            console.log('🔄 Initializing Beads DB...');
+            const beads = getBeads(join(cwd, '.beads'));
+            await beads.init();
+            console.log('✅ Beads initialized');
+
+            console.log('\n🚀 Citadel initialized successfully!');
+            console.log('Try running:');
+            console.log('  bd create "Run hello_world name=Developer"');
+            console.log('  citadel start');
+
+        } catch (error) {
+            console.error('❌ Init failed:', error);
+            process.exit(1);
+        }
+    });
+
 program
     .command('start')
     .description('Start the Citadel Conductor service')
