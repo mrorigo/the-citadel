@@ -22,4 +22,46 @@ export class RouterAgent extends CoreAgent {
             }
         );
     }
+
+    protected override getSystemPrompt(phase: 'think' | 'act', defaultPrompt: string): string {
+        const baseContext = `
+        You are the Router Agent. Your purpose is to route tasks to the correct agent queue.
+        
+        # Available Queues (Roles)
+        - 'worker': For implementation, coding, and general tasks (status: 'open').
+        - 'gatekeeper': For verification and testing tasks (status: 'verify').
+        `;
+
+        if (phase === 'think') {
+            return `${baseContext}
+            # Instructions
+            - Analyze the Request and Context.
+            - Decide which role to route to.
+            - Decide the priority (0=Critical, 1=High, 2=Normal, 3=Low).
+            - Output a simple text plan: "Route [beadId] to [role] with priority [n]."
+            - DO NOT attempt to use tools. DO NOT output JSON.`;
+        }
+
+        if (phase === 'act') {
+            return `${baseContext}
+            # Instructions
+            - You have a Plan text that contains the Bead ID, Target Role, and Priority.
+            - Extract these values from the Plan.
+            - Call 'enqueue_task' with valid JSON arguments: { "beadId": "...", "targetRole": "...", "priority": ... }.
+            - You MUST use the tool.`;
+        }
+        return defaultPrompt;
+    }
+
+    // biome-ignore lint/suspicious/noExplicitAny: Tool choice
+    protected override getToolChoice(): any | undefined {
+        return {
+            type: 'function',
+            function: {
+                name: 'enqueue_task'
+            }
+        };
+    }
+
+
 }
