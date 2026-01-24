@@ -27,7 +27,7 @@ const RawBeadSchema = z.object({
     assignee: z.string().optional(),
     labels: z.array(z.string()).optional(), // New field from CLI
     blockers: z.array(z.string()).optional(),
-    acceptance_test: z.string().optional(),
+    acceptance_criteria: z.string().optional(), // Maps to acceptance_test in domain
     created_at: z.string(),
     updated_at: z.string(),
 });
@@ -140,9 +140,11 @@ export class BeadsClient {
             status = 'open'; // Default fallback, or map correctly if other statuses exist
         }
 
+        console.log(`[BeadsClient] MapToDomain ${raw.id}: criteria=${raw.acceptance_criteria}`);
         return {
             ...raw,
-            status
+            status,
+            acceptance_test: raw.acceptance_criteria
         };
     }
 
@@ -189,19 +191,24 @@ export class BeadsClient {
         if (options.type) args += ` --type ${options.type}`;
 
         // Note: bd CLI might not support setting everything at create time yet,
-        // so we might need to update immediately after.
-        // Checking README: bd create "Title" -p 0
 
         const output = await this.runCommand(args);
         const bead = this.parseRaw(output);
 
-        // Apply extra fields if needed
-        if (options.acceptance_test || options.blockers?.length) {
-            // TODO: distinct update call if create doesn't support these flags
-            // For now assuming we might need to implement update
+        // Apply extra fields if needed via update for robustness
+        if (options.acceptance_test) {
+            await this.update(bead.id, { acceptance_test: options.acceptance_test });
         }
 
-        return bead;
+        if (options.blockers?.length) {
+            for (const blockerId of options.blockers) {
+                // Dependency: bead depends on blocker (bead is child/blocked, blocker is parent/blocker)
+                await this.addDependency(bead.id, blockerId);
+            }
+        }
+
+        // Return fresh
+        return this.get(bead.id);
     }
 
     async update(id: string, changes: Partial<Bead>): Promise<Bead> {
@@ -229,6 +236,10 @@ export class BeadsClient {
             } else if (changes.status === 'open') {
                 args += ` --status open --remove-label verify`;
             }
+        }
+
+        if (changes.acceptance_test) {
+            args += ` --acceptance "${changes.acceptance_test}"`;
         }
         // ... other fields
         args += ` --json`;

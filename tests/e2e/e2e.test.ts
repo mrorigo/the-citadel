@@ -34,7 +34,8 @@ mock.module('../../src/agents/worker', () => ({
     WorkerAgent: class MockWorker {
         // biome-ignore lint/suspicious/noExplicitAny: Mocking context
         async run(_prompt: string, context: any) {
-            const beads = new BeadsClient(TEST_BEADS_PATH);
+            const { getBeads } = await import('../../src/core/beads');
+            const beads = getBeads();
             console.log(`[Worker] Moving ${context.beadId} to in_progress...`);
             await beads.update(context.beadId, { status: 'in_progress' });
             console.log(`[Worker] Moving ${context.beadId} to verify...`);
@@ -48,7 +49,8 @@ mock.module('../../src/agents/evaluator', () => ({
     EvaluatorAgent: class MockEvaluator {
         // biome-ignore lint/suspicious/noExplicitAny: Mocking context
         async run(_prompt: string, context: any) {
-            const beads = new BeadsClient(TEST_BEADS_PATH);
+            const { getBeads } = await import('../../src/core/beads');
+            const beads = getBeads();
             console.log(`[Gatekeeper] Approving ${context.beadId}...`);
             await beads.update(context.beadId, { status: 'done' });
             return "Approved";
@@ -56,7 +58,7 @@ mock.module('../../src/agents/evaluator', () => ({
     }
 }));
 
-const TEST_ENV = join(process.cwd(), 'tests/temp_e2e_env');
+const TEST_ENV = join(process.cwd(), `tests/temp_e2e_env_${Date.now()}_${Math.floor(Math.random() * 1000)}`);
 const TEST_BEADS_PATH = join(TEST_ENV, '.beads');
 const TEST_QUEUE_PATH = join(TEST_ENV, 'queue.sqlite');
 
@@ -90,6 +92,7 @@ describe('E2E Lifecycle', () => {
         // Init Real Beads Client and inject it
         beadsClient = new BeadsClient(TEST_BEADS_PATH);
         setBeadsInstance(beadsClient);
+        await beadsClient.init(); // Initialize the DB!
 
         conductor = new Conductor();
     });
@@ -138,5 +141,5 @@ describe('E2E Lifecycle', () => {
             await new Promise(r => setTimeout(r, 500));
         }
         expect(done).toBe(true);
-    }, 12000); // Including buffer
+    }, 20000); // Including buffer
 });

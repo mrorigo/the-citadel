@@ -86,6 +86,12 @@ export class Conductor {
         // Strategy: 
         // A. Get OPEN beads -> Send to Worker
         const openBeads = await beadsClient.list('open');
+
+        if (!openBeads) {
+            console.error('[Conductor] openBeads is undefined!');
+            return;
+        }
+
         for (const bead of openBeads) {
             const active = queue.getActiveTicket(bead.id);
             if (!active) {
