@@ -96,8 +96,8 @@ needs = ["prep"]
 
         engine = new WorkflowEngine(registry);
 
-        // Run
-        await engine.instantiateFormula('compilation', { target: 'MyApp' });
+        // Run with Convoy Parent
+        await engine.instantiateFormula('compilation', { target: 'MyApp' }, 'bd-convoy1');
 
         // Verify Beads Created
         // 1. Root Epic
@@ -110,10 +110,13 @@ needs = ["prep"]
         const rootCall = createCalls.find((c: any[]) => c[1]?.type === 'epic');
         expect(rootCall).toBeDefined();
         expect(rootCall[0]).toContain('Compile MyApp app'); // resolved var
+        expect(rootCall[1].parent).toBe('bd-convoy1'); // Verify parenting to convoy
 
         // 2. Steps
         const prepCall = createCalls.find((c: any[]) => c[0] === 'Prepare MyApp');
         expect(prepCall).toBeDefined();
+        // Check description passed via options
+        expect(prepCall[1].description).toBe('Cleaning build dir');
 
         const buildCall = createCalls.find((c: any[]) => c[0] === 'Build MyApp');
         expect(buildCall).toBeDefined();

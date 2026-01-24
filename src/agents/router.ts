@@ -29,10 +29,11 @@ export class RouterAgent extends CoreAgent {
             z.object({
                 formulaName: z.string().describe('The name of the formula to run'),
                 variables: z.record(z.string()).describe('Variables to inject into the formula (e.g., { target_system: "Auth" })'),
+                parentConvoyId: z.string().optional().describe('ID of the Convoy to assign this molecule to (optional)'),
             }),
-            async ({ formulaName, variables }) => {
+            async ({ formulaName, variables, parentConvoyId }) => {
                 try {
-                    const moleculeId = await getWorkflowEngine().instantiateFormula(formulaName, variables as Record<string, string>);
+                    const moleculeId = await getWorkflowEngine().instantiateFormula(formulaName, variables as Record<string, string>, parentConvoyId);
                     return { success: true, moleculeId, status: 'created' };
                 } catch (error: unknown) {
                     const err = error as Error;

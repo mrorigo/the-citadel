@@ -55,6 +55,7 @@ export interface CreateOptions {
     assignee?: string;
     blockers?: string[];
     acceptance_test?: string;
+    description?: string;
     parent?: string; // Parent ID for molecules
     type?: string; // bead type (epic, story, task, convoy, etc)
 }
@@ -183,6 +184,7 @@ export class BeadsClient {
     async create(title: string, options: CreateOptions = {}): Promise<Bead> {
         let args = `create "${title}" --json`;
         if (options.priority !== undefined) args += ` -p ${options.priority}`;
+        if (options.description) args += ` --description "${options.description}"`;
         if (options.parent) args += ` --parent ${options.parent}`;
         if (options.type) args += ` --type ${options.type}`;
 
