@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { WorkQueue, getQueue } from '../../src/core/queue';
-import { rm } from 'fs/promises';
-import { join } from 'path';
+import { WorkQueue } from '../../src/core/queue';
+import { rm } from 'node:fs/promises';
+import { join } from 'node:path';
 
 const TEST_DB = join(process.cwd(), 'tests/temp_queue.sqlite');
 
@@ -62,8 +62,10 @@ describe('WorkQueue Integration', () => {
 
     it('should update heartbeat', () => {
         queue.enqueue('bead-hb', 0, 'worker');
+        // biome-ignore lint/style/noNonNullAssertion: Test assertion
         const ticket = queue.claim('worker-1', 'worker')!;
 
+        // biome-ignore lint/style/noNonNullAssertion: Test assertion
         const initialHeartbeat = ticket.heartbeat_at!;
         expect(initialHeartbeat).toBeGreaterThan(0);
 
@@ -82,16 +84,19 @@ describe('WorkQueue Integration', () => {
         // I can assume the class works if I can't access DB.
         // But since I have `queue['db']` access in JS/TS if I cast to any...
 
+        // biome-ignore lint/suspicious/noExplicitAny: Access private db
         const updated = (queue as any).db.query('SELECT * FROM tickets WHERE id = ?').get(ticket.id);
         expect(updated.heartbeat_at).toBeGreaterThan(initialHeartbeat);
     });
 
     it('should release stalled tickets', () => {
         queue.enqueue('bead-stalled', 0, 'worker');
+        // biome-ignore lint/style/noNonNullAssertion: Test assertion
         const ticket = queue.claim('worker-1', 'worker')!;
 
         // Manually set heartbeat to past
         const past = Date.now() - 10000;
+        // biome-ignore lint/suspicious/noExplicitAny: Access private db
         (queue as any).db.run('UPDATE tickets SET heartbeat_at = ? WHERE id = ?', [past, ticket.id]);
 
         // Release if older than 5000ms
@@ -107,6 +112,7 @@ describe('WorkQueue Integration', () => {
 
     it('should retry failed tickets', () => {
         queue.enqueue('bead-fail', 0, 'worker');
+        // biome-ignore lint/style/noNonNullAssertion: Test assertion
         const ticket = queue.claim('worker-1', 'worker')!;
 
         queue.fail(ticket.id, false); // Retryable
@@ -118,6 +124,7 @@ describe('WorkQueue Integration', () => {
 
     it('should not retry permanent failures', () => {
         queue.enqueue('bead-perm-fail', 0, 'worker');
+        // biome-ignore lint/style/noNonNullAssertion: Test assertion
         const ticket = queue.claim('worker-1', 'worker')!;
 
         queue.fail(ticket.id, true); // Permanent
@@ -137,6 +144,7 @@ describe('WorkQueue Integration', () => {
         const processing = queue.getActiveTicket('bead-active');
         expect(processing?.status).toBe('processing');
 
+        // biome-ignore lint/suspicious/noExplicitAny: Access private db
         (queue as any).db.run("UPDATE tickets SET status = 'completed' WHERE bead_id = 'bead-active'");
         const completed = queue.getActiveTicket('bead-active');
         expect(completed).toBeNull();

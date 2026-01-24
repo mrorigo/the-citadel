@@ -24,10 +24,12 @@ describe('LLM Provider Factory', () => {
     it('should return a LanguageModel for the router agent', () => {
         const model = getAgentModel('router');
         expect(model).toBeDefined();
-        expect(model.provider).toContain('openai'); // Ollama uses OpenAI compatible provider
+        // biome-ignore lint/suspicious/noExplicitAny: Accessing internal property
+        expect((model as any).provider).toContain('openai'); // Ollama uses OpenAI compatible provider
     });
 
     it('should throw error for invalid role', () => {
+        // biome-ignore lint/suspicious/noExplicitAny: Testing invalid input
         expect(() => getAgentModel('invalid' as any)).toThrow();
     });
 });

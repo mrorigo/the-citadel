@@ -1,8 +1,8 @@
-import { existsSync } from 'fs';
-import { resolve } from 'path';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { ConfigSchema, type CitadelConfig } from './schema';
 import dotenv from 'dotenv';
-import { z } from 'zod';
+
 
 // Load .env immediately
 dotenv.config();

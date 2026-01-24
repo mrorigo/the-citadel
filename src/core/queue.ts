@@ -1,8 +1,8 @@
 import { Database } from 'bun:sqlite';
 import { z } from 'zod';
-import { resolve, dirname } from 'path';
-import { mkdirSync } from 'fs';
-import { getConfig } from '../config';
+import { resolve, dirname } from 'node:path';
+import { mkdirSync } from 'node:fs';
+
 
 // --- Schema ---
 

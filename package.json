@@ -1,8 +1,11 @@
 {
-  "name": "the-citadel",
+  "name": "citadel",
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "bin": {
+    "citadel": "src/index.ts"
+  },
   "scripts": {
     "test": "bun test tests/"
   },

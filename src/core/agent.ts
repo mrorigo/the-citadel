@@ -1,10 +1,11 @@
 import { generateText, tool, type Tool, type LanguageModel } from 'ai';
 import { getAgentModel } from './llm';
-import { type AgentRole } from '../config/schema';
-import { z } from 'zod';
+import type { AgentRole } from '../config/schema';
+import type { z } from 'zod';
 
 export interface AgentContext {
     beadId?: string;
+    // biome-ignore lint/suspicious/noExplicitAny: Context bag is flexible
     [key: string]: any;
 }
 
@@ -18,10 +19,13 @@ export abstract class CoreAgent {
         this.model = getAgentModel(role);
     }
 
-    protected registerTool<T extends z.ZodType<any>>(name: string, description: string, schema: T, execute: (args: z.infer<T>) => Promise<any>) {
+    // biome-ignore lint/suspicious/noExplicitAny: Generic tool schema
+    protected registerTool<T extends z.ZodType<any>>(name: string, description: string, _schema: T, execute: (args: z.infer<T>) => Promise<any>) {
         this.tools[name] = tool({
             description,
+            // biome-ignore lint/suspicious/noExplicitAny: Casting for tool compatibility
             execute: execute as any,
+            // biome-ignore lint/suspicious/noExplicitAny: Casting for tool compatibility
         } as any);
     }
 
@@ -51,7 +55,8 @@ export abstract class CoreAgent {
             Context: ${JSON.stringify(context || {})}`,
             prompt: `Plan: ${plan}`,
             maxSteps: 5, // Allow multi-step tool use
-        } as any); // Cast to any to avoid maxSteps type error if strict
+            // biome-ignore lint/suspicious/noExplicitAny: Cast to any to avoid maxSteps type error if strict
+        } as any);
         return text;
     }
 

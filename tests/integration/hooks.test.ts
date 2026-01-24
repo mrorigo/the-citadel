@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { Hook } from '../../src/core/hooks';
 import { WorkQueue } from '../../src/core/queue';
-import { rm } from 'fs/promises';
-import { join } from 'path';
+import { rm } from 'node:fs/promises';
+import { join } from 'node:path';
 
 const TEST_DB_HOOKS = join(process.cwd(), 'tests/temp_hooks.sqlite');
 
@@ -30,6 +30,7 @@ describe('Hook Mechanism Integration', () => {
         }, queue);
 
         // Reduce polling interval for test speed
+        // biome-ignore lint/suspicious/noExplicitAny: Access private property
         (hook as any).pollingInterval = 50;
 
         hook.start();
@@ -46,6 +47,7 @@ describe('Hook Mechanism Integration', () => {
         // We need to wait a moment for the hook to finish calling complete() after handler returns
         await new Promise(r => setTimeout(r, 100)); // Give it time to finalize
 
+        // biome-ignore lint/suspicious/noExplicitAny: Access private property
         const db = (queue as any).db;
         const ticket = db.query('SELECT * FROM tickets WHERE bead_id = ?').get('bead-hook-1');
         expect(ticket.status).toBe('completed');

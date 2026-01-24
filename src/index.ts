@@ -3,8 +3,8 @@ import { Command } from 'commander';
 import { loadConfig } from './config';
 import { Conductor } from './services/conductor';
 import { getQueue } from './core/queue';
-import { resolve } from 'path';
-import { unlink } from 'fs/promises';
+import { resolve } from 'node:path';
+import { unlink } from 'node:fs/promises';
 
 const program = new Command();
 
@@ -50,8 +50,8 @@ program
             console.log(`Resetting queue at ${dbPath}...`);
             await unlink(dbPath);
             console.log('Queue reset successfully.');
-        } catch (error: any) {
-            if (error.code === 'ENOENT') {
+        } catch (error) {
+            if ((error as { code?: string }).code === 'ENOENT') {
                 console.log('Queue file not found. Nothing to reset.');
             } else {
                 console.error('Failed to reset queue:', error);

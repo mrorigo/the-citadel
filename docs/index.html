@@ -562,7 +562,7 @@
       { threshold: 0.2 }
     );
 
-    revealElements.forEach((el) => revealObserver.observe(el));
+    revealElements.forEach((el) => { revealObserver.observe(el); });
 
     const countObserver = new IntersectionObserver(
       (entries, observer) => {
@@ -586,7 +586,7 @@
       { threshold: 0.6 }
     );
 
-    counters.forEach((counter) => countObserver.observe(counter));
+    counters.forEach((counter) => { countObserver.observe(counter); });
   </script>
 </body>
 

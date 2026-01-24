@@ -1,7 +1,7 @@
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
 import { z } from 'zod';
-import { resolve } from 'path';
+import { resolve } from 'node:path';
 import { getConfig } from '../config';
 
 const execAsync = promisify(exec);
@@ -80,6 +80,7 @@ export class BeadsClient {
                 // Assuming strict JSON output on stdout for --json commands
             }
             return stdout.trim();
+            // biome-ignore lint/suspicious/noExplicitAny: Child process error
         } catch (error: any) {
             throw new Error(`Beads command failed: ${command}\n${error.message}`);
         }
@@ -106,7 +107,7 @@ export class BeadsClient {
             if (Array.isArray(json)) {
                 return json.map(item => this.mapToDomain(RawBeadSchema.parse(item)));
             }
-        } catch (e) {
+        } catch (_e) {
             // Fallback to line delimited
         }
 
@@ -115,7 +116,8 @@ export class BeadsClient {
             .map(line => {
                 try {
                     return this.mapToDomain(RawBeadSchema.parse(JSON.parse(line)));
-                } catch (e) { return null as any; } // Filter out invalid lines
+                    // biome-ignore lint/suspicious/noExplicitAny: JSON parse or Zod error
+                } catch (_e) { return null as any; } // Filter out invalid lines
             })
             .filter(b => !!b);
     }
@@ -250,7 +252,6 @@ export class BeadsClient {
     }
 }
 
-// Singleton accessor
 // Singleton accessor
 let _beads: BeadsClient | null = null;
 export function getBeads(basePath?: string): BeadsClient {

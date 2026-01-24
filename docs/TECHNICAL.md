@@ -20,7 +20,7 @@
 - **SQLite native:** Built-in SQLite support (useful for Beads local cache)
 
 ---
-
+****
 ## 2. LLM Integration
 
 | Requirement   | Specification                                          |

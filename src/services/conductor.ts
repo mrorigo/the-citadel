@@ -4,7 +4,6 @@ import { EvaluatorAgent } from '../agents/evaluator';
 import { Hook } from '../core/hooks';
 import { getQueue } from '../core/queue';
 import { getBeads } from '../core/beads';
-import { getConfig } from '../config';
 
 export class Conductor {
     private isRunning = false;

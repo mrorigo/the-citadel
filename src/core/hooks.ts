@@ -1,5 +1,5 @@
 import { getQueue, type Ticket, type WorkQueue } from './queue';
-import { getConfig } from '../config';
+
 
 export type TicketHandler = (ticket: Ticket) => Promise<void>;
 
@@ -9,7 +9,7 @@ export class Hook {
     private handler: TicketHandler;
     private pollingInterval: number = 1000;
     private isRunning: boolean = false;
-    private currentTicketId: string | null = null;
+    // private currentTicketId: string | null = null;
     private heartbeatTimer: Timer | null = null;
 
     private role: string;
@@ -72,7 +72,7 @@ export class Hook {
         const ticket = this.queue.claim(this.agentId, this.role);
         if (!ticket) return; // No work
 
-        this.currentTicketId = ticket.id;
+
 
         // 2. Start heartbeat
         this.startHeartbeat(ticket.id);
@@ -92,7 +92,7 @@ export class Hook {
             this.queue.fail(ticket.id, false);
         } finally {
             this.stopHeartbeat();
-            this.currentTicketId = null;
+
         }
     }
 

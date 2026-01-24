@@ -2,12 +2,13 @@ import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
 import { Conductor } from '../../src/services/conductor';
 import { WorkQueue, setQueueInstance } from '../../src/core/queue';
 import { BeadsClient, setBeadsInstance } from '../../src/core/beads';
-import { rm, mkdir } from 'fs/promises';
-import { join } from 'path';
+import { rm, mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
 
 // Mock Agents to force deterministic behavior without LLM costs
 mock.module('../../src/agents/router', () => ({
     RouterAgent: class MockRouter {
+        // biome-ignore lint/suspicious/noExplicitAny: Mocking context
         async run(_prompt: string, context: any) {
             const { beadId, status } = context || {};
             console.log(`[MockRouter] Analyze ${beadId} (${status})`);
@@ -31,6 +32,7 @@ mock.module('../../src/agents/router', () => ({
 
 mock.module('../../src/agents/worker', () => ({
     WorkerAgent: class MockWorker {
+        // biome-ignore lint/suspicious/noExplicitAny: Mocking context
         async run(_prompt: string, context: any) {
             const beads = new BeadsClient(TEST_BEADS_PATH);
             console.log(`[Worker] Moving ${context.beadId} to in_progress...`);
@@ -44,6 +46,7 @@ mock.module('../../src/agents/worker', () => ({
 
 mock.module('../../src/agents/evaluator', () => ({
     EvaluatorAgent: class MockEvaluator {
+        // biome-ignore lint/suspicious/noExplicitAny: Mocking context
         async run(_prompt: string, context: any) {
             const beads = new BeadsClient(TEST_BEADS_PATH);
             console.log(`[Gatekeeper] Approving ${context.beadId}...`);

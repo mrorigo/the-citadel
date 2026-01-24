@@ -31,7 +31,7 @@ export class WorkerAgent extends CoreAgent {
                 summary: z.string().describe('Summary of work done'),
                 acceptance_test_result: z.string().describe('Result of running the acceptance test'),
             }),
-            async ({ beadId, summary, acceptance_test_result }) => {
+            async ({ beadId, summary, acceptance_test_result: _acceptance_test_result }) => {
                 // Move to 'verify' state
                 // This will trigger the next stage (Evaluator/Gatekeeper)
                 await getBeads().update(beadId, {

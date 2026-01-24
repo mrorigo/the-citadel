@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { BeadsClient } from '../../src/core/beads';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import { rm, mkdir } from 'fs/promises';
-import { join } from 'path';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
+import { rm, mkdir } from 'node:fs/promises';
+import { join } from 'node:path';
 
 const execAsync = promisify(exec);
 const TEST_DIR = join(process.cwd(), 'tests/temp_beads_env');
