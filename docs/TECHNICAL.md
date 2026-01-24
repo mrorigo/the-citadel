@@ -1,4 +1,4 @@
-# Technical Requirements: The Foundry
+# Technical Requirements: The Citadel
 
 **Version:** 1.0  
 **Last Updated:** 2026-01-24
@@ -106,7 +106,7 @@ import { anthropic } from '@ai-sdk/anthropic';
 
 ## 4. Integration with Beads
 
-The Foundry consumes and produces Beads (tickets) stored in `.beads/issues.jsonl`.
+The Citadel consumes and produces Beads (tickets) stored in `.beads/issues.jsonl`.
 
 ### Beads CLI Interface
 ```bash
@@ -143,7 +143,7 @@ interface Bead {
 ## 5. Project Structure
 
 ```
-the-foundry/
+the-citadel/
 ├── src/
 │   ├── index.ts           # CLI entry point
 │   ├── services/
@@ -177,32 +177,34 @@ the-foundry/
 ### Environment Variables
 ```bash
 # Local Development (Ollama)
-FOUNDRY_OLLAMA_BASE_URL=http://localhost:11434/v1
-FOUNDRY_OLLAMA_API_KEY=ollama
+CITADEL_OLLAMA_BASE_URL=http://localhost:11434/v1
+CITADEL_OLLAMA_API_KEY=ollama
 
 # Production (set one or more)
+CITADEL_OLLAMA_BASE_URL=http://localhost:11434/v1
+CITADEL_OLLAMA_API_KEY=ollama
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
 
 # Global defaults
-FOUNDRY_ENV=development       # development | production
-FOUNDRY_MAX_TOKENS=4096       # Per-request limit
-FOUNDRY_COST_LIMIT=1.00       # USD per ticket
-FOUNDRY_TIMEOUT=300           # Seconds before worker termination
+CITADEL_ENV=development       # development | production
+CITADEL_MAX_TOKENS=4096       # Per-request limit
+CITADEL_COST_LIMIT=1.00       # USD per ticket
+CITADEL_TIMEOUT=300           # Seconds before worker termination
 ```
 
-### Configuration File (`foundry.config.ts`)
+### Configuration File (`citadel.config.ts`)
 ```typescript
 import { defineConfig } from './src/config';
 
 export default defineConfig({
-  env: process.env.FOUNDRY_ENV || 'development',
+  env: process.env.CITADEL_ENV || 'development',
   
   // Provider configurations
   providers: {
     ollama: {
-      baseURL: process.env.FOUNDRY_OLLAMA_BASE_URL || 'http://localhost:11434/v1',
-      apiKey: process.env.FOUNDRY_OLLAMA_API_KEY || 'ollama',
+      baseURL: process.env.CITADEL_OLLAMA_BASE_URL || 'http://localhost:11434/v1',
+      apiKey: process.env.CITADEL_OLLAMA_API_KEY || 'ollama',
     },
     openai: { apiKey: process.env.OPENAI_API_KEY },
     anthropic: { apiKey: process.env.ANTHROPIC_API_KEY },

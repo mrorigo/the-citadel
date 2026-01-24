@@ -1,4 +1,4 @@
-# The Foundry - Implementation Plan
+# The Citadel - Implementation Plan
 
 **Version:** 1.0  
 **Last Updated:** 2026-01-24
@@ -7,7 +7,7 @@
 
 ## Overview
 
-This document outlines the phased implementation plan for The Foundry, a deterministic agent orchestration system built on:
+This document outlines the phased implementation plan for The Citadel, a deterministic agent orchestration system built on:
 - **TypeScript + Bun** runtime
 - **Vercel AI SDK** for LLM integration
 - **Beads** for Git-backed state management
@@ -39,7 +39,7 @@ bun add -d typescript @types/bun @biomejs/biome
 - [ ] Support environment variable loading
 - [ ] Add per-agent model configuration support
 
-**Deliverable:** `foundry.config.ts` loads and validates configuration.
+**Deliverable:** `citadel.config.ts` loads and validates configuration.
 
 ### 1.3 LLM Provider Abstraction
 
@@ -80,7 +80,7 @@ interface BeadsClient {
 - [ ] Add acceptance test field enforcement
 - [ ] Write integration tests against real `.beads/` directory
 
-**Deliverable:** Beads client that enforces Foundry's strict state machine rules.
+**Deliverable:** Beads client that enforces Citadel's strict state machine rules.
 
 ---
 
@@ -220,11 +220,11 @@ depends_on = ["implement"]
 ### 6.1 Core Commands
 
 - [ ] Create `src/index.ts` CLI entry point
-- [ ] `foundry init` — Initialize in current repo
-- [ ] `foundry spec <file>` — Submit specification
-- [ ] `foundry status` — Show DAG/queue status
-- [ ] `foundry run` — Start execution loop
-- [ ] `foundry stop` — Graceful shutdown
+- [ ] `citadel init` — Initialize in current repo
+- [ ] `citadel spec <file>` — Submit specification
+- [ ] `citadel status` — Show DAG/queue status
+- [ ] `citadel run` — Start execution loop
+- [ ] `citadel stop` — Graceful shutdown
 
 ### 6.2 TUI Dashboard (Stretch)
 

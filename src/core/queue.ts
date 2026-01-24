@@ -31,7 +31,7 @@ export class WorkQueue {
     private db: Database;
 
     constructor(dbPath?: string) {
-        const finalPath = dbPath || resolve(process.cwd(), '.foundry', 'queue.sqlite');
+        const finalPath = dbPath || resolve(process.cwd(), '.citadel', 'queue.sqlite');
 
         // Ensure directory exists
         mkdirSync(dirname(finalPath), { recursive: true });
@@ -185,9 +185,13 @@ export class WorkQueue {
     }
 }
 
-// Singleton accessor (defaulting to .foundry/queue.sqlite)
+// Singleton accessor (defaulting to .citadel/queue.sqlite)
 let _queue: WorkQueue | null = null;
 export function getQueue(): WorkQueue {
     if (!_queue) _queue = new WorkQueue();
     return _queue;
+}
+
+export function setQueueInstance(queue: WorkQueue) {
+    _queue = queue;
 }

@@ -1,13 +1,13 @@
-Based on the chaos of Gas Town and the architectural principles derived in our conversation, here is an extensive Product Requirements Document (PRD) for **The Foundry**—a principled, deterministic agent orchestration system.
+Based on the chaos of Gas Town and the architectural principles derived in our conversation, here is an extensive Product Requirements Document (PRD) for **The Citadel**—a principled, deterministic agent orchestration system.
 
 ***
 
-# Product Requirements Document: The Foundry
+# Product Requirements Document: The Citadel
 **Version:** 1.0 (The "Clean" Stack)
 **Objective:** To transition agentic development from "vibe-coded" chaos to a deterministic, observable, and engineered manufacturing pipeline.
 
 ## 1. Executive Summary
-The Foundry is an orchestration engine that decouples **State** (What needs to be done) from **Compute** (Who does it). Unlike "Gas Town," which relies on anthropomorphic role-playing and "random guessing," The Foundry treats agents as ephemeral, interchangeable compute units operating on a rigorous Directed Acyclic Graph (DAG) of tasks. The goal is to maximize throughput while minimizing the "slop" of hallucinations and merge conflicts.
+The Citadel is an orchestration engine that decouples **State** (What needs to be done) from **Compute** (Who does it). Unlike "Gas Town," which relies on anthropomorphic role-playing and "random guessing," The Citadel treats agents as ephemeral, interchangeable compute units operating on a rigorous Directed Acyclic Graph (DAG) of tasks. The goal is to maximize throughput while minimizing the "slop" of hallucinations and merge conflicts.
 
 ## 2. Core Architectural Principles
 *   **State > Compute:** Agent memory is volatile; the system of record must be durable. All context is hydrated from a persistent log, not "seances" with dead sessions.
@@ -48,7 +48,7 @@ Agents are specialized micro-services, not generalist chat assistants. They are 
 ## 5. Functional Requirements
 
 ### 5.1. The Queue System (Propulsion)
-Instead of "nudging" agents to wake up (The Gas Town "GUPP" method), The Foundry uses active queue consumption.
+Instead of "nudging" agents to wake up (The Gas Town "GUPP" method), The Citadel uses active queue consumption.
 *   **Requirement:** Implement a "Hook" system where every agent instance is tied to a specific work queue.
 *   **Mechanism:** When a ticket is placed on a Hook, a Worker container is automatically instantiated.
 *   **Fail-Safe:** If a Worker does not report a "Heartbeat" (via the Supervisor/Deacon), the container is killed and the ticket is returned to the queue.
@@ -92,4 +92,4 @@ The human interface must shift from "Chat" to "Specification."
 *   Deploy the Supervisor (Witness) to monitor "GUPP" (Propulsion) and ensure queues never stall.
 *   Implement strict CI gates: Agents cannot merge without passing tests.
 
-By adhering to this PRD, we move from the "Mad Max" simulation of Gas Town—where agents are erratic characters—to a **Foundry** where agents are deterministic processors of a durable state.
+By adhering to this PRD, we move from the "Mad Max" simulation of Gas Town—where agents are erratic characters—to a **Citadel** where agents are deterministic processors of a durable state.

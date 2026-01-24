@@ -1,4 +1,4 @@
-# the-foundry
+# The Citadel
 
 To install dependencies:
 

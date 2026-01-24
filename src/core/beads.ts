@@ -1,6 +1,7 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { z } from 'zod';
+import { resolve } from 'path';
 import { getConfig } from '../config';
 
 const execAsync = promisify(exec);
@@ -68,10 +69,14 @@ export class BeadsClient {
     private async runCommand(args: string): Promise<string> {
         // Use system bd binary
         const command = `bd ${args}`;
+
+        // Determine CWD: The parent of .beads folder
+        const cwd = resolve(this.basePath, '..');
+
         try {
-            const { stdout, stderr } = await execAsync(command);
+            const { stdout, stderr } = await execAsync(command, { cwd });
             if (stderr && !stdout) {
-                // Some tools print info to stderr? 
+                // Some tools print info to stderr?
                 // Assuming strict JSON output on stdout for --json commands
             }
             return stdout.trim();
@@ -246,9 +251,18 @@ export class BeadsClient {
 }
 
 // Singleton accessor
+// Singleton accessor
 let _beads: BeadsClient | null = null;
-export function getBeads(): BeadsClient {
-    if (!_beads) _beads = new BeadsClient();
+export function getBeads(basePath?: string): BeadsClient {
+    if (!_beads) {
+        const config = getConfig();
+        const path = basePath || config.beads.path;
+        _beads = new BeadsClient(path);
+    }
     return _beads;
+}
+
+export function setBeadsInstance(beads: BeadsClient) {
+    _beads = beads;
 }
 

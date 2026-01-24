@@ -47,9 +47,9 @@ export const ConfigSchema = z.object({
   }),
 });
 
-export type FoundryConfig = z.infer<typeof ConfigSchema>;
-export type AgentRole = keyof FoundryConfig['agents'];
+export type CitadelConfig = z.infer<typeof ConfigSchema>;
+export type AgentRole = keyof CitadelConfig['agents'];
 
-export function defineConfig(config: Partial<FoundryConfig>): Partial<FoundryConfig> {
+export function defineConfig(config: Partial<CitadelConfig>): Partial<CitadelConfig> {
   return config;
 }

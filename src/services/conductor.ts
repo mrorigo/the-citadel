@@ -23,7 +23,7 @@ export class Conductor {
             const agent = new WorkerAgent();
             // Provide context
             const bead = await getBeads().get(ticket.bead_id);
-            await agent.run(`Process this task: ${bead.title}\nDescription: ${bead.content}`, { beadId: ticket.bead_id, bead });
+            await agent.run(`Process this task: ${bead.title}`, { beadId: ticket.bead_id, bead });
         });
 
         // Gatekeepers process 'gatekeeper' tasks using EvaluatorAgent
@@ -86,7 +86,7 @@ export class Conductor {
 
         // Strategy: 
         // A. Get OPEN beads -> Send to Worker
-        const openBeads = await beadsClient.list({ status: 'open' });
+        const openBeads = await beadsClient.list('open');
         for (const bead of openBeads) {
             const active = queue.getActiveTicket(bead.id);
             if (!active) {
@@ -104,7 +104,7 @@ export class Conductor {
         // Note: 'verify' is mapped to in_progress + label 'verify' in our beads client logic?
         // Let's check beads.ts. 
         // Yes, mapToDomain maps in_progress+verify -> 'verify'.
-        const verifyBeads = await beadsClient.list({ status: 'verify' });
+        const verifyBeads = await beadsClient.list('verify');
         for (const bead of verifyBeads) {
             const active = queue.getActiveTicket(bead.id);
             if (!active) {
