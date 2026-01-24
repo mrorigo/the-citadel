@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const ConfigSchema = z.object({
   env: z.enum(['development', 'production']).default('development'),
-  
+
   providers: z.object({
     openai: z.object({
       apiKey: z.string().optional(),
@@ -48,6 +48,7 @@ export const ConfigSchema = z.object({
 });
 
 export type FoundryConfig = z.infer<typeof ConfigSchema>;
+export type AgentRole = keyof FoundryConfig['agents'];
 
 export function defineConfig(config: Partial<FoundryConfig>): Partial<FoundryConfig> {
   return config;
