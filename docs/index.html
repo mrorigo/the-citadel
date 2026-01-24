@@ -15,18 +15,23 @@
   <style>
     :root {
       color-scheme: dark;
-      --bg: #0b0d12;
-      --panel: #121621;
-      --panel-strong: #1a2030;
-      --text: #e9edf4;
-      --muted: #9aa3b2;
-      --accent: #67f0c6;
-      --accent-strong: #39c1ff;
-      --danger: #f86b6b;
-      --glow: 0 0 30px rgba(103, 240, 198, 0.3);
-      --radius: 18px;
-      --grid: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      --bg: #030610;
+      /* Deep midnight */
+      --panel: #0d121f;
+      --panel-strong: #161e32;
+      --text: #edf2f7;
+      --muted: #94a3b8;
+      --accent: #00f0ff;
+      /* Cyberpunk Cyan */
+      --accent-strong: #bd00ff;
+      /* Neon Purple */
+      --accent-warm: #ff5e00;
+      /* Neon Orange */
+      --danger: #ff4455;
+      --glow: 0 0 40px rgba(0, 240, 255, 0.25);
+      --radius: 16px;
+      --grid: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
     }
 
     * {
@@ -135,8 +140,8 @@
 
     .button.primary {
       background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-      color: #021017;
-      box-shadow: var(--glow);
+      color: #000;
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.4);
     }
 
     .button.secondary {
@@ -280,12 +285,12 @@
     }
 
     .cta {
-      background: linear-gradient(135deg, rgba(103, 240, 198, 0.15), rgba(57, 193, 255, 0.15));
+      background: linear-gradient(135deg, rgba(0, 240, 255, 0.1), rgba(189, 0, 255, 0.05));
       border-radius: 24px;
       padding: 3rem;
       text-align: center;
-      border: 1px solid rgba(103, 240, 198, 0.4);
-      box-shadow: 0 0 40px rgba(103, 240, 198, 0.15);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      box-shadow: 0 0 50px rgba(0, 240, 255, 0.1);
     }
 
     footer {
@@ -475,28 +480,6 @@
             Agents automatically discover and adhere to <strong>AGENTS.md</strong> rules, adapting to your specific repo
             constraints.
           </p>
-        </div>
-      </div>
-    </section>
-
-    <section class="section reveal">
-      <h2 class="section-title">Real-time production telemetry</h2>
-      <div class="metrics">
-        <div class="metric">
-          <span data-count="98">0</span>
-          <p>Queue health score</p>
-        </div>
-        <div class="metric">
-          <span data-count="42">0</span>
-          <p>Minutes average to merge</p>
-        </div>
-        <div class="metric">
-          <span data-count="100">0</span>
-          <p>Percent tasks with tests</p>
-        </div>
-        <div class="metric">
-          <span data-count="12">0</span>
-          <p>Active workers per convoy</p>
         </div>
       </div>
     </section>
