@@ -1,80 +1,117 @@
 # The Citadel User Guide
 
-Welcome to **The Citadel**, a multi-agent coding environment designed to automate software development tasks. This system leverages specialized AI agents to plan, execute, and verify code changes while adhering to project-specific constraints.
+Welcome to **The Citadel**, a deterministic orchestration engine for AI agents. This system transforms chaotic agent interactions into a rigorous, verifiable software factory using the **MEOW Stack** (Molecular Expression of Work).
 
 ## Core Concepts
 
-### 1. Beads
-**Beads** are the fundamental unit of work and state in The Citadel. Think of them as "issues" or "tickets" but designed for AI consumption. A Bead captures:
+### 1. Beads (The Atoms)
+**Beads** are the fundamental unit of work and state. Every task, issue, or decision is captured as a Bead in a Git-backed SQLite database.
 - **Intent**: What needs to be done.
-- **Context**: Relevant files, code snippets, or logs.
-- **State**: Current status (`open`, `in_progress`, `verify`, `done`).
-- **History**: A log of actions taken by agents on this specific unit of work.
+- **State**: Strictly tracked (`open` -> `in_progress` -> `verify` -> `done`).
+- **History**: An immutable log of all agent actions.
 
-For a deep dive into the Beads data structure and philosophy, please refer to the official documentation:
-👉 **[steveyegge/beads](https://github.com/steveyegge/beads)**
+👉 **reference: [steveyegge/beads](https://github.com/steveyegge/beads)**
 
-### 2. Agents
-The Citadel operates with a team of specialized agents:
-- **RouterAgent**: The entry point. breaks down high-level requests into manageable Beads and assigns them.
-- **WorkerAgent**: The builder. Picks up a Bead, explores the codebase, plans the implementation, and writes the code. It is project-aware (see below).
-- **EvaluatorAgent**: The QA. Reviews the work submitted by the Worker, runs tests, and approves or rejects the changes.
+### 2. The Foundry (Workflow Engine)
+The Citadel goes beyond simple task lists by implementing a **Workflow Engine** that compiles static templates into dynamic graphs of work.
 
-## Project Awareness (AGENTS.md)
+#### Formulas (The Recipes)
+Formulas are deterministic TOML templates stored in `.citadel/formulas/`. They define standard operating procedures (SOPs).
 
-One of The Citadel's most powerful features is its ability to automatically discover and follow project-specific rules defined in `AGENTS.md` files. This allows you to "teach" the agents how to behave in your specific repository.
+```toml
+# .citadel/formulas/feature_release.toml
+formula = "feature"
+description = "Implement feature {{name}}"
 
-### How it Works
-When a Worker Agent starts a task, it scans the file system from the target directory up to the root to find `AGENTS.md` files.
-- **Discovery**: It looks for `AGENTS.md` in the current directory and parent directories.
-- **Merging**: It merges instructions from the closest `AGENTS.md` (most specific) with the root `AGENTS.md` (global policies), ensuring that local overrides work while maintaining global standards.
-- **Parsing**: It extracts commands (setup, test, lint, build) and behavioral rules ("Always do X") to guide its actions.
+[vars.name]
+description = "Feature name"
+required = true
 
-### Examples
+[[steps]]
+id = "impl"
+title = "Implement {{name}}"
+description = "Write code and tests"
 
-#### Basic Example
-Place this in the root of your repository (`/AGENTS.md`) to define global standards.
-
-```markdown
-# Intro
-This is a TypeScript project using Bun.
-
-# Rules
-- Always use strict types.
-- Always include a JSDoc comment for exported functions.
-- Never use `any`.
-
-# Commands
-- Setup: `bun install`
-- Test: `bun test`
-- Lint: `bunx biome lint .`
-- Build: `bun build src/index.ts`
+[[steps]]
+id = "docs"
+title = "Document {{name}}"
+description = "Update user guide"
+needs = ["impl"] # Dependency: 'docs' is blocked by 'impl'
 ```
 
-#### Monorepo / Nested Example
-In a monorepo, you might have specific instructions for a frontend package (`packages/web/AGENTS.md`) that inherit from or override the root.
+#### Molecules (The Instances)
+When a Formula is instantiated (e.g., "Run feature release for Dark Mode"), The Citadel "cooks" it into a **Molecule**.
+- A Molecule is a Root Epic containing all the steps defined in the formula.
+- Dependencies are automatically wired using `bd dep add`.
 
-**File: `packages/web/AGENTS.md`**
+#### Convoys (The Shipments)
+A **Convoy** is a long-lived context (Meta-Epic) used to group unrelated Molecules together, such as "Q1 Deliverables" or "Release v1.2". Agents can assign new Molecules directly to a specific Convoy.
 
-```markdown
-# Frontend Rules
-- Use React functional components.
-- Prefer Tailwind CSS for styling.
+### 3. Agents (The Workforce)
+- **RouterAgent**: The foreman. Analyzes requests, instantiates Formulas, and assigns tasks.
+- **WorkerAgent**: The builder. Picks up `open` Beads, writes code, and can **recursively breakdown work** (Dynamic Bonding).
+- **EvaluatorAgent**: The QA. Verifies `verify` Beads against acceptance criteria before closing them.
 
-# Commands
-- Setup: `bun install`
-- Test: `bun test --filter web`
-- Start: `bun run dev`
+---
 
-# Specific Constraints
-- Ensure all components have a recognized "data-testid" for E2E testing.
-```
+## Usage Guide
 
-The agent working in `packages/web` will see **both** the global rules (e.g., "Never use `any`") and these frontend-specific rules.
+### 1. Starting the System
+The **Conductor** manages the agent loop.
 
 ```bash
-bun link
-
-# Start the system
-citadel
+citadel start
 ```
+
+### 2. Running Workflows
+You don't talk to agents directly; you assign them work via Beads. To trigger a workflow, simply create a request that the Router understands.
+
+**Natural Language Trigger:**
+```bash
+bd create "Run the system migration formula for the Auth module"
+```
+
+**What happens next?**
+1.  The **Router** picks up this request.
+2.  It identifies the `system_migration` formula.
+3.  It extracts the variable `target_system=Auth`.
+4.  It compiles the Formula into a **Molecule** (a graph of Beads).
+5.  **Workers** immediately start claiming the `open` steps.
+
+### 3. Dynamic Bonding
+Workers are not limited to single tasks. If a Worker picks up a large task (e.g., "Refactor API"), it can:
+1.  Explore the codebase.
+2.  Realize the task is too big.
+3.  **Delegate** sub-tasks (create new child beads) to other workers.
+4.  Block the parent task until children are complete.
+
+### 4. Project Awareness (AGENTS.md)
+You can "teach" agents about your specific project by placing `AGENTS.md` files in your repository.
+
+**Example `.citadel/AGENTS.md`:**
+```markdown
+# Project Rules
+- Framework: Next.js 14 (App Router)
+- Styling: TailwindCSS
+- Testing: Playwright
+
+# Commands
+- Test: `npm test`
+- Lint: `npm run lint`
+
+# Behavior
+- Always write a test plan before implementing.
+```
+
+When a Worker enters a directory, it automatically merges the instructions from the nearest `AGENTS.md`.
+
+---
+
+## Advanced: Creating a New Formula
+
+1.  Create a file in `.citadel/formulas/my_workflow.toml`.
+2.  Define `vars` for any inputs you need.
+3.  Define `steps` for the tasks.
+4.  Use `needs = ["step_id"]` to define execution order.
+
+The Router will automatically discover the new formula on its next cycle.
