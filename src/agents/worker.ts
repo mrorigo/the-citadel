@@ -34,27 +34,15 @@ export class WorkerAgent extends CoreAgent {
             'submit_work',
             'Submit the completed work for verification',
             z.object({
-                beadId: z.string(),
+                beadId: z.string().describe('The ID of the bead being worked on (from context)'),
                 summary: z.string().describe('Summary of work done'),
-                acceptance_test_result: z.string().describe('Result of running the acceptance test'),
+                acceptance_test_result: z.optional(z.string().describe('Result of running the acceptance test')),
             }),
             async ({ beadId, summary, acceptance_test_result: _acceptance_test_result }) => {
                 await getBeads().update(beadId, {
                     status: 'verify',
                 });
                 return { success: true, status: 'verify', summary };
-            }
-        );
-
-        // Finish Task (Alias for user preference)
-        this.registerTool(
-            'finish',
-            'Signal that the task is completely finished',
-            z.object({
-                summary: z.string().describe('Summary of work done'),
-            }),
-            async ({ summary }) => {
-                return { success: true, summary, message: "Task finished." };
             }
         );
 
@@ -147,38 +135,29 @@ export class WorkerAgent extends CoreAgent {
         );
     }
 
-    protected override getSystemPrompt(phase: 'think' | 'act', defaultPrompt: string): string {
-        const base = `
+    // Override run to skip the separate 'think' phase which strictly blocks tools.
+    // We want the Worker to be able to 'think' by exploring (running tools).
+    override async run(prompt: string, context?: Record<string, unknown>): Promise<string> {
+        console.log(`[${this.role}] Running (Unified Loop)...`);
+
+        const system = `
         You are the Worker Agent. Your goal is to IMPLEMENT requested changes in the codebase.
         
         # Tools available
         - Filesystem: read_file, write_file, list_dir
         - Command: run_command
         - Reporting: report_progress, submit_work
+        
+        # Instructions
+        - Analyze the request and explore the codebase if needed (list_dir, read_file).
+        - Formulate a plan and EXECUTE it.
+        - Do not just describe the code; WRITE the files.
+        - Use report_progress to indicate status.
+        - When finished, use 'submit_work' (with the beadId from context).
+        - If you do not call any tools, the system will assume you are done.
+        - YOU MUST USE TOOLS to make changes.
         `;
 
-        if (phase === 'act') {
-            return `${base}
-            # Instructions
-            - Analyze the request and explore the codebase if needed (list_dir, read_file).
-            - Formulate a plan and EXECUTE it.
-            - Do not just describe the code; WRITE the files.
-            - Use report_progress to indicate status.
-            - When finished, use 'finish' or 'submit_work'.
-            - If you do not call any tools, the system will assume you are done.
-            - YOU MUST USE TOOLS to make changes.
-            `;
-        }
-
-        return defaultPrompt;
-    }
-
-    // Override run to skip the separate 'think' phase which strictly blocks tools.
-    // We want the Worker to be able to 'think' by exploring (running tools).
-    override async run(prompt: string, context?: Record<string, unknown>): Promise<string> {
-        console.log(`[${this.role}] Running (Unified Loop)...`);
-
-        const system = this.getSystemPrompt('act', '');
         const messages: ModelMessage[] = [
             { role: 'system', content: system },
             { role: 'user', content: `Context: ${JSON.stringify(context || {})}\n\nRequest: ${prompt}` }
@@ -186,7 +165,7 @@ export class WorkerAgent extends CoreAgent {
 
         let finalResult = '';
 
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 100; i++) {
             const result = await generateText({
                 model: this.model,
                 tools: this.tools,
@@ -235,7 +214,7 @@ export class WorkerAgent extends CoreAgent {
             for (const tc of toolCalls) {
                 console.log(`[Worker] Executing tool: ${tc.toolName}`);
 
-                if (tc.toolName === 'submit_work' || tc.toolName === 'finish') {
+                if (tc.toolName === 'submit_work') {
                     finished = true;
                 }
 
@@ -283,19 +262,6 @@ export class WorkerAgent extends CoreAgent {
                 }
             }
 
-            // Append tool results to history
-            // CoreMessage tool messages must be purely ToolResultPart? 
-            // The type definition says: type ToolModelMessage = { role: 'tool', content: Array<ToolResultPart | ToolErrorPart (maybe?)> }
-            // Wait, looking at CoreMessage definition (or ToolModelMessage).
-            // Usually 'tool' role content allows tool errors?
-            // If not, I will wrap error in output.
-            // But I saw `type: 'tool-error'` in imports/exports.
-            // Let's assume it works.
-
-            // Actually, to be safe and strictly typed without `any`, I should check if `ToolModelMessage` accepts `ToolErrorPart`.
-            // If `messages` is `ModelMessage[]`, and `ModelMessage` includes `ToolModelMessage`.
-
-            // I'll try without cast first.
             messages.push({ role: 'tool', content: toolResults });
 
 
