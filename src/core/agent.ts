@@ -20,12 +20,12 @@ export abstract class CoreAgent {
     }
 
     // biome-ignore lint/suspicious/noExplicitAny: Generic tool schema
-    protected registerTool<T extends z.ZodType<any>>(name: string, description: string, _schema: T, execute: (args: z.infer<T>) => Promise<any>) {
+    protected registerTool<T extends z.ZodType<any>>(name: string, description: string, schema: T, execute: (args: z.infer<T>) => Promise<any>) {
         this.tools[name] = tool({
             description,
+            parameters: schema,
             // biome-ignore lint/suspicious/noExplicitAny: Casting for tool compatibility
             execute: execute as any,
-            // biome-ignore lint/suspicious/noExplicitAny: Casting for tool compatibility
         } as any);
     }
 

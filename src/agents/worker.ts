@@ -245,8 +245,8 @@ export class WorkerAgent extends CoreAgent {
                         type: 'tool-result',
                         toolCallId: tc.toolCallId,
                         toolName: tc.toolName,
-                        output: { error: `Tool ${tc.toolName} not found` },
-                    } as unknown as ToolResultPart);
+                        output: { type: 'error-text', value: `Tool ${tc.toolName} not found` },
+                    } as ToolResultPart);
                     continue;
                 }
 
@@ -255,27 +255,31 @@ export class WorkerAgent extends CoreAgent {
                         type: 'tool-result',
                         toolCallId: tc.toolCallId,
                         toolName: tc.toolName,
-                        output: { error: `Tool ${tc.toolName} has no execute method` },
-                    } as unknown as ToolResultPart);
+                        output: { type: 'error-text', value: `Tool ${tc.toolName} has no execute method` },
+                    } as ToolResultPart);
                     continue;
                 }
 
                 try {
                     const output = await tool.execute(tc.input || {}, { toolCallId: tc.toolCallId, messages });
+                    // Convert output to proper ToolResultOutput format
+                    const toolOutput = typeof output === 'string'
+                        ? { type: 'text' as const, value: output }
+                        : { type: 'json' as const, value: output };
                     toolResults.push({
                         type: 'tool-result',
                         toolCallId: tc.toolCallId,
                         toolName: tc.toolName,
-                        output: output,
-                    } as unknown as ToolResultPart);
+                        output: toolOutput,
+                    } as ToolResultPart);
                 } catch (error: unknown) {
                     const errorMessage = error instanceof Error ? error.message : String(error);
                     toolResults.push({
                         type: 'tool-result',
                         toolCallId: tc.toolCallId,
                         toolName: tc.toolName,
-                        output: { error: errorMessage },
-                    } as unknown as ToolResultPart);
+                        output: { type: 'error-text', value: errorMessage },
+                    } as ToolResultPart);
                 }
             }
 
