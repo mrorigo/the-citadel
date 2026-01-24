@@ -56,7 +56,20 @@ A **Convoy** is a long-lived context (Meta-Epic) used to group unrelated Molecul
 
 ## Usage Guide
 
-### 1. Starting the System
+### 1. Initialize a Project
+Turn any directory into a Citadel-managed project (The Foundry).
+
+```bash
+citadel init
+```
+
+This creates:
+- `.citadel/formulas/`: Where you store workflow templates.
+- `citadel.config.ts`: Configuration file.
+- `AGENTS.md`: Project-specific rules.
+- `.beads/`: Local database.
+
+### 2. Starting the System
 The **Conductor** manages the agent loop.
 
 ```bash

@@ -21,18 +21,13 @@ The system adheres to a strict state machine: `Open` -> `In Progress` -> `Verify
 - **[Ollama](https://ollama.com)** (For local inference)
 - **[Beads](https://github.com/steveyegge/beads)** (CLI tool `bd` must be in PATH)
 
-## Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/your-org/the-citadel.git
-cd the-citadel
-
-# Install dependencies
-bun install
-
 # Link the binary
 bun link
+
+# Initialize a new project
+mkdir my-new-project
+cd my-new-project
+citadel init
 ```
 
 ## Configuration
