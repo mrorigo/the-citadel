@@ -12,6 +12,7 @@ The system adheres to a strict state machine: `Open` -> `In Progress` -> `Verify
 - **Role-Based Queuing**: specialized queues for Workers (Execution) and Gatekeepers (Verification).
 - **Durable State**: All context is stored in **Beads** (Git-backed JSON issues), ensuring restartability and auditability.
 - **Provider Agnostic**: integrated with Vercel AI SDK to support Ollama, OpenAI, Anthropic, and more.
+- **Project Awareness**: Automatically discovers and adheres to [**AGENTS.md**](https://agents.md) files for project-specific configuration.
 
 ## Prerequisites
 
@@ -77,7 +78,11 @@ You can also use Environment Variables (prefixed with `CITADEL_`) to override se
 The Conductor is the heart of the system. It runs the Router loop and manages worker queues.
 
 ```bash
-bun run src/index.ts start
+# First time setup
+bun link
+
+# Start the system
+citadel start
 ```
 
 ### 2. Create Tasks (Beads)

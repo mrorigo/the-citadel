@@ -25,39 +25,40 @@ export class ProjectContextService {
 
     /**
      * Resolve the most relevant AGENTS.md context for a given target path.
-     * Follows the "closest-file-wins" rule, bubbling up to the repo root.
+     * Follows the "closest-file-wins" rule but falls back to root-level AGENTS.md for global policies.
      */
     async resolveContext(targetPath: string, rootDir: string): Promise<AgentsMdContext> {
         let currentDir = resolve(targetPath);
-        // If target is file, start at dirname
-        // (Is file check: simple heuristic, if it has extension or we can check stat, 
-        // but robustly we assume usually we are given a dir or we climb out of file)
-        // Simplest: just assume it might be a file, if so dirname it? 
-        // Or just walk up. `dirname` of a dir is its parent.
-
         const rootPath = resolve(rootDir);
 
-        // Safety break
-        let steps = 0;
+        // 1. Find the closest AGENTS.md
+        let closestConfig: AgentsMdConfig | null = null;
+        let closestPath: string | null = null;
+
         const maxSteps = 20;
+        let steps = 0;
 
         while (currentDir.startsWith(rootPath) && steps < maxSteps) {
             steps++;
-            const agentsMdPath = join(currentDir, 'AGENTS.md');
+            const candidatePath = join(currentDir, 'AGENTS.md');
 
-            if (this.cache.has(agentsMdPath)) {
-                return this.cache.get(agentsMdPath) || null;
-            }
-
-            if (existsSync(agentsMdPath)) {
+            if (this.cache.has(candidatePath)) {
+                const cached = this.cache.get(candidatePath);
+                if (cached) {
+                    closestConfig = cached.config;
+                    closestPath = cached.sourcePath;
+                    break;
+                }
+            } else if (existsSync(candidatePath)) {
                 try {
-                    const content = await readFile(agentsMdPath, 'utf-8');
-                    const config = this.parseAgentsMd(content);
-                    const context = { sourcePath: agentsMdPath, config };
-                    this.cache.set(agentsMdPath, context);
-                    return context;
+                    const content = await readFile(candidatePath, 'utf-8');
+                    closestConfig = this.parseAgentsMd(content);
+                    closestPath = candidatePath;
+                    // Cache indiv file
+                    this.cache.set(candidatePath, { sourcePath: candidatePath, config: closestConfig });
+                    break;
                 } catch (e) {
-                    console.error(`[ProjectContext] Failed to read ${agentsMdPath}`, e);
+                    console.error(`[ProjectContext] Failed to read ${candidatePath}`, e);
                 }
             }
 
@@ -65,7 +66,55 @@ export class ProjectContextService {
             currentDir = dirname(currentDir);
         }
 
-        return null; // No AGENTS.md found
+        // 2. If we found nothing, return null
+        if (!closestConfig || !closestPath) {
+            return null;
+        }
+
+        // 3. If the closest is the root, return it
+        if (dirname(closestPath) === rootPath) {
+            return { sourcePath: closestPath, config: closestConfig };
+        }
+
+        // 4. Otherwise, check for root AGENTS.md to merge as fallback
+        const rootAgentPath = join(rootPath, 'AGENTS.md');
+        let rootConfig: AgentsMdConfig | null = null;
+
+        if (this.cache.has(rootAgentPath)) {
+            rootConfig = this.cache.get(rootAgentPath)!.config;
+        } else if (existsSync(rootAgentPath)) {
+            try {
+                const content = await readFile(rootAgentPath, 'utf-8');
+                rootConfig = this.parseAgentsMd(content);
+                this.cache.set(rootAgentPath, { sourcePath: rootAgentPath, config: rootConfig });
+            } catch (e) {
+                console.error(`[ProjectContext] Failed to read root ${rootAgentPath}`, e);
+            }
+        }
+
+        if (rootConfig) {
+            return {
+                sourcePath: closestPath, // Primary source is still the closest one
+                config: this.mergeConfigs(closestConfig, rootConfig)
+            };
+        }
+
+        return { sourcePath: closestPath, config: closestConfig };
+    }
+
+    private mergeConfigs(child: AgentsMdConfig, parent: AgentsMdConfig): AgentsMdConfig {
+        return {
+            raw: child.raw + '\n\n' + parent.raw, // Keep full context
+            sections: { ...parent.sections, ...child.sections }, // Child overrides parent sections
+            commands: {
+                setup: [...child.commands.setup, ...parent.commands.setup],
+                test: [...child.commands.test, ...parent.commands.test],
+                lint: [...child.commands.lint, ...parent.commands.lint],
+                build: [...child.commands.build, ...parent.commands.build],
+                other: [...child.commands.other, ...parent.commands.other],
+            },
+            rules: [...child.rules, ...parent.rules] // Accumulate rules
+        };
     }
 
     /**
@@ -103,18 +152,37 @@ export class ProjectContextService {
             // "Run `npm test`" -> extract `npm test`
         }
 
-        // Simpler approach: Regex extraction over full content
-        // Look for backticked commands starting with common package managers
+        // Regex extraction over full content
+        // 1. Backticked commands
         const commandRegex = /`(?:npm|pnpm|yarn|bun|make|cargo|gradle|\.\/)([^`]+)`/g;
         let match: RegExpExecArray | null;
 
-        while ((match = commandRegex.exec(content)) !== null) {
-            const cmd = match[0].replace(/`/g, '');
+        const processCommand = (cmd: string) => {
+            cmd = cmd.trim();
+            if (!cmd) return;
             if (cmd.includes('test')) commands.test.push(cmd);
             else if (cmd.includes('lint')) commands.lint.push(cmd);
             else if (cmd.includes('build')) commands.build.push(cmd);
             else if (cmd.includes('install') || cmd.includes('setup')) commands.setup.push(cmd);
             else commands.other.push(cmd);
+        };
+
+        while ((match = commandRegex.exec(content)) !== null) {
+            processCommand(match[0].replace(/`/g, ''));
+        }
+
+        // 2. Fenced code blocks (bash/sh/zsh/shell)
+        const codeBlockRegex = /```(?:bash|sh|zsh|shell|cmd|powershell)\s*([\s\S]*?)```/g;
+        while ((match = codeBlockRegex.exec(content)) !== null) {
+            const blockContent = match[1] || '';
+            const lines = blockContent.split('\n');
+            for (const line of lines) {
+                // Heuristic: ignore comments and empty lines, take anything that looks like a command start
+                const trimmed = line.trim();
+                if (trimmed && !trimmed.startsWith('#')) {
+                    processCommand(trimmed);
+                }
+            }
         }
 
         // Rule extraction (imperative keywords)

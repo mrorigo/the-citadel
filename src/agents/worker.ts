@@ -151,12 +151,16 @@ export class WorkerAgent extends CoreAgent {
             # PROJECT RULES (AGENTS.md)
             You must follow these rules from the project configuration:
             
-            ${projectContext.config.rules.length > 0 ? '## Rules\n' + projectContext.config.rules.map(r => '- ' + r).join('\n') : ''}
+            ## Raw Configuration
+            ${projectContext.config.raw}
+
+            ## Parsed Commands & Rules (Reference)
+            ${projectContext.config.rules.length > 0 ? '### Extracted Rules\n' + projectContext.config.rules.map(r => '- ' + r).join('\n') : ''}
             
-            ${projectContext.config.commands.setup.length > 0 ? '## Setup Commands\n' + projectContext.config.commands.setup.map(c => '- ' + c).join('\n') : ''}
-            ${projectContext.config.commands.test.length > 0 ? '## Test Commands\n' + projectContext.config.commands.test.map(c => '- ' + c).join('\n') : ''}
-            ${projectContext.config.commands.lint.length > 0 ? '## Lint Commands\n' + projectContext.config.commands.lint.map(c => '- ' + c).join('\n') : ''}
-            ${projectContext.config.commands.build.length > 0 ? '## Build Commands\n' + projectContext.config.commands.build.map(c => '- ' + c).join('\n') : ''}
+            ${projectContext.config.commands.setup.length > 0 ? '### Setup Commands\n' + projectContext.config.commands.setup.map(c => '- ' + c).join('\n') : ''}
+            ${projectContext.config.commands.test.length > 0 ? '### Test Commands\n' + projectContext.config.commands.test.map(c => '- ' + c).join('\n') : ''}
+            ${projectContext.config.commands.lint.length > 0 ? '### Lint Commands\n' + projectContext.config.commands.lint.map(c => '- ' + c).join('\n') : ''}
+            ${projectContext.config.commands.build.length > 0 ? '### Build Commands\n' + projectContext.config.commands.build.map(c => '- ' + c).join('\n') : ''}
             
             Always prioritize these project-specific instructions over general knowledge.
             `;

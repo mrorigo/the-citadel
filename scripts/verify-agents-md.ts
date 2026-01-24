@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 
 async function testProjectContext() {
+    console.log('Starting ProjectContext Verification...');
     const testRoot = join(process.cwd(), '.test_agents_md');
     const subDir = join(testRoot, 'subdir');
 
@@ -16,33 +17,55 @@ async function testProjectContext() {
     const rootAgentsMd = `
 # Rule
 Always start commit with "root:"
+
+# Commands
+\`npm run root-test\`
 `;
     await writeFile(join(testRoot, 'AGENTS.md'), rootAgentsMd);
 
     const subAgentsMd = `
 # Rule
 Always start commit with "sub:"
+
+# Commands
+\`\`\`bash
+npm run sub-test
+\`\`\`
 `;
     await writeFile(join(subDir, 'AGENTS.md'), subAgentsMd);
 
     const svc = getProjectContext();
 
-    // Test 1: Resolve in subdir (should find subAgentsMd)
-    console.log('Test 1: Resolving in subdir...');
+    // Test 1: Resolve in subdir (should find sub AND root rules/commands)
+    console.log('\nTest 1: Resolving in subdir (Merge Logic)...');
     const ctxSub = await svc.resolveContext(subDir, testRoot);
-    if (ctxSub?.config.rules.includes('Always start commit with "sub:"')) {
-        console.log('PASS: Found sub AGENTS.md rule');
+
+    // Check Rules (Merge)
+    const hasSubRule = ctxSub?.config.rules.includes('Always start commit with "sub:"');
+    const hasRootRule = ctxSub?.config.rules.includes('Always start commit with "root:"');
+
+    if (hasSubRule && hasRootRule) {
+        console.log('PASS: Found merged rules (sub + root)');
     } else {
-        console.error('FAIL: Did not find sub AGENTS.md rule', ctxSub);
+        console.error('FAIL: Missing rules in merged context', { hasSubRule, hasRootRule, rules: ctxSub?.config.rules });
     }
 
-    // Test 2: Resolve in root (should find rootAgentsMd)
-    console.log('Test 2: Resolving in root...');
-    const ctxRoot = await svc.resolveContext(testRoot, testRoot);
-    if (ctxRoot?.config.rules.includes('Always start commit with "root:"')) {
-        console.log('PASS: Found root AGENTS.md rule');
+    // Check Commands (Fenced Code Block & Merge)
+    // sub-test comes from fenced block in sub
+    // root-test comes from backtick in root
+    const hasSubCmd = ctxSub?.config.commands.test.some(c => c.includes('sub-test'));
+    const hasRootCmd = ctxSub?.config.commands.test.some(c => c.includes('root-test'));
+
+    if (hasSubCmd) {
+        console.log('PASS: Found fenced code block command (sub-test)');
     } else {
-        console.error('FAIL: Did not find root AGENTS.md rule', ctxRoot);
+        console.error('FAIL: Did not find fenced code block command', ctxSub?.config.commands);
+    }
+
+    if (hasRootCmd) {
+        console.log('PASS: Found root command (root-test) in merged context');
+    } else {
+        console.error('FAIL: Did not find root command', ctxSub?.config.commands);
     }
 
     // Cleanup
