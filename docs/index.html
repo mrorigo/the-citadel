@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Foundry — Deterministic Agent Orchestration</title>
+    <meta
+      name="description"
+      content="The Foundry is a principled, deterministic orchestration system for agentic development."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0d12;
+        --panel: #121621;
+        --panel-strong: #1a2030;
+        --text: #e9edf4;
+        --muted: #9aa3b2;
+        --accent: #67f0c6;
+        --accent-strong: #39c1ff;
+        --danger: #f86b6b;
+        --glow: 0 0 30px rgba(103, 240, 198, 0.3);
+        --radius: 18px;
+        --grid: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "Space Grotesk", system-ui, -apple-system, sans-serif;
+        background: radial-gradient(circle at top, #1b2332, #0b0d12 40%);
+        color: var(--text);
+        line-height: 1.6;
+        overflow-x: hidden;
+      }
+
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        backdrop-filter: blur(20px);
+        background: rgba(11, 13, 18, 0.75);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+
+      .nav {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1.2rem 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 2rem;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+
+      .brand-badge {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+        box-shadow: var(--glow);
+        display: grid;
+        place-items: center;
+        color: #04151b;
+        font-weight: 700;
+      }
+
+      nav a {
+        color: var(--muted);
+        text-decoration: none;
+        font-weight: 500;
+        margin-left: 1.5rem;
+        transition: color 0.2s ease;
+      }
+
+      nav a:hover {
+        color: var(--text);
+      }
+
+      .hero {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 6rem 2rem 4rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 3rem;
+        align-items: center;
+      }
+
+      .hero p {
+        color: var(--muted);
+        margin-top: 1rem;
+        max-width: 520px;
+      }
+
+      .hero-title {
+        font-size: clamp(2.5rem, 4vw, 4rem);
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+      }
+
+      .hero-actions {
+        margin-top: 2rem;
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+
+      .button {
+        padding: 0.9rem 1.6rem;
+        border-radius: 999px;
+        border: 1px solid transparent;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        text-decoration: none;
+      }
+
+      .button.primary {
+        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+        color: #021017;
+        box-shadow: var(--glow);
+      }
+
+      .button.secondary {
+        border-color: rgba(255, 255, 255, 0.2);
+        color: var(--text);
+      }
+
+      .button:hover {
+        transform: translateY(-2px);
+      }
+
+      .terminal-card {
+        background: var(--panel);
+        border-radius: var(--radius);
+        padding: 1.8rem;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+      }
+
+      .terminal-header {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.2rem;
+      }
+
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: #2a3244;
+      }
+
+      .dot:nth-child(1) {
+        background: #f66;
+      }
+      .dot:nth-child(2) {
+        background: #f6c56f;
+      }
+      .dot:nth-child(3) {
+        background: #6ff6a2;
+      }
+
+      .terminal-body {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.9rem;
+        color: #c6d1e1;
+      }
+
+      .terminal-line {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 0.6rem;
+      }
+
+      .prompt {
+        color: var(--accent);
+      }
+
+      .section {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 3.5rem 2rem;
+      }
+
+      .section-title {
+        font-size: clamp(1.8rem, 3vw, 2.6rem);
+        margin-bottom: 1.5rem;
+      }
+
+      .grid {
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      }
+
+      .card {
+        background: var(--panel);
+        border-radius: var(--radius);
+        padding: 1.5rem;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: var(--grid);
+        opacity: 0.08;
+        pointer-events: none;
+      }
+
+      .card h3 {
+        margin-bottom: 0.6rem;
+      }
+
+      .card p {
+        color: var(--muted);
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+      }
+
+      .metric {
+        background: var(--panel-strong);
+        border-radius: 16px;
+        padding: 1.2rem;
+        text-align: left;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .metric span {
+        font-size: 2rem;
+        font-weight: 700;
+        display: block;
+      }
+
+      .pipeline {
+        display: grid;
+        gap: 1rem;
+      }
+
+      .pipeline-step {
+        padding: 1.2rem 1.5rem;
+        border-radius: 14px;
+        background: rgba(26, 32, 48, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .pipeline-step span {
+        color: var(--muted);
+      }
+
+      .cta {
+        background: linear-gradient(135deg, rgba(103, 240, 198, 0.15), rgba(57, 193, 255, 0.15));
+        border-radius: 24px;
+        padding: 3rem;
+        text-align: center;
+        border: 1px solid rgba(103, 240, 198, 0.4);
+        box-shadow: 0 0 40px rgba(103, 240, 198, 0.15);
+      }
+
+      footer {
+        padding: 3rem 2rem 4rem;
+        color: var(--muted);
+        text-align: center;
+        font-size: 0.9rem;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.3rem 0.8rem;
+        border-radius: 999px;
+        border: 1px solid rgba(103, 240, 198, 0.5);
+        color: var(--accent);
+        font-size: 0.8rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      .glow-orb {
+        position: absolute;
+        width: 320px;
+        height: 320px;
+        border-radius: 50%;
+        filter: blur(80px);
+        background: rgba(57, 193, 255, 0.2);
+        top: -100px;
+        right: -120px;
+        z-index: -1;
+      }
+
+      .reveal {
+        opacity: 0;
+        transform: translateY(20px);
+        transition: all 0.6s ease;
+      }
+
+      .reveal.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      @media (max-width: 720px) {
+        nav {
+          display: none;
+        }
+        .hero {
+          padding-top: 4rem;
+        }
+        .cta {
+          padding: 2rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="nav">
+        <div class="brand">
+          <div class="brand-badge">F</div>
+          <span>The Foundry</span>
+        </div>
+        <nav>
+          <a href="#principles">Principles</a>
+          <a href="#architecture">Architecture</a>
+          <a href="#pipeline">Pipeline</a>
+          <a href="#cta">Launch</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div>
+          <div class="tag">Deterministic orchestration</div>
+          <h1 class="hero-title">
+            Manufacture reliable software with an agent assembly line.
+          </h1>
+          <p>
+            The Foundry turns chaotic agent swarms into a deterministic factory.
+            Spec-driven workflows, durable state, and strict gates ensure every
+            ticket ships with a testable artifact — every time.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#cta">Start a convoy</a>
+            <a class="button secondary" href="#architecture">See the system</a>
+          </div>
+        </div>
+        <div class="terminal-card">
+          <div class="glow-orb"></div>
+          <div class="terminal-header">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
+          <div class="terminal-body">
+            <div class="terminal-line">
+              <span class="prompt">$</span>
+              <span>bd ready</span>
+            </div>
+            <div class="terminal-line">
+              <span>→ 4 beads unblocked</span>
+            </div>
+            <div class="terminal-line">
+              <span class="prompt">$</span>
+              <span>foundry run convoy --strict</span>
+            </div>
+            <div class="terminal-line">
+              <span>Router ✓</span>
+              <span>Worker × 12</span>
+              <span>Gatekeeper ✓</span>
+            </div>
+            <div class="terminal-line">
+              <span class="prompt">$</span>
+              <span>tests passed · merge serialized · deploy green</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="principles" class="section reveal">
+        <h2 class="section-title">Principles that turn chaos into craft</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>State &gt; Compute</h3>
+            <p>
+              Durable beads outlive any worker. Every decision is anchored in
+              the ledger, not in ephemeral memory.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Spec-driven output</h3>
+            <p>
+              Humans define the schema. Agents deliver only implementation — no
+              architecture drift, no surprises.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Nondeterministic, idempotent</h3>
+            <p>
+              Each attempt can differ, but the artifact converges to the same
+              verified result.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Continuous integration as law</h3>
+            <p>
+              No merge without passing gates. The refinery rejects anything that
+              fails tests, lint, or spec.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="architecture" class="section reveal">
+        <h2 class="section-title">A compute plane built like a factory</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>The Router</h3>
+            <p>
+              Translates human intent into atomic beads and queues, controlling
+              the task DAG.
+            </p>
+          </div>
+          <div class="card">
+            <h3>The Worker</h3>
+            <p>
+              Stateless executors consume exactly one bead, producing a diff and
+              exiting cleanly.
+            </p>
+          </div>
+          <div class="card">
+            <h3>The Supervisor</h3>
+            <p>
+              Enforces heartbeats, retries, and cost limits. Workers are cattle,
+              not pets.
+            </p>
+          </div>
+          <div class="card">
+            <h3>The Gatekeeper</h3>
+            <p>
+              Serializes merges, enforces stacked diffs, and keeps the refinery
+              green.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section reveal">
+        <h2 class="section-title">Operational clarity in real-time</h2>
+        <div class="metrics">
+          <div class="metric">
+            <span data-count="98">0</span>
+            <p>Queue health score</p>
+          </div>
+          <div class="metric">
+            <span data-count="42">0</span>
+            <p>Minutes average to merge</p>
+          </div>
+          <div class="metric">
+            <span data-count="100">0</span>
+            <p>Percent tasks with tests</p>
+          </div>
+          <div class="metric">
+            <span data-count="12">0</span>
+            <p>Active workers per convoy</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="pipeline" class="section reveal">
+        <h2 class="section-title">The Foundry pipeline</h2>
+        <div class="pipeline">
+          <div class="pipeline-step">
+            <strong>1. Intake</strong>
+            <span>Spec compiled into beads with tests</span>
+          </div>
+          <div class="pipeline-step">
+            <strong>2. Orchestration</strong>
+            <span>Router assigns queues and dependencies</span>
+          </div>
+          <div class="pipeline-step">
+            <strong>3. Execution</strong>
+            <span>Workers generate diffs from durable state</span>
+          </div>
+          <div class="pipeline-step">
+            <strong>4. Refinery</strong>
+            <span>Gatekeeper enforces stacked diff merges</span>
+          </div>
+          <div class="pipeline-step">
+            <strong>5. Verification</strong>
+            <span>CI gates ensure deterministic delivery</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="cta" class="section reveal">
+        <div class="cta">
+          <h2 class="section-title">Forge your next release</h2>
+          <p>
+            Replace ad-hoc agent swarms with an engineered pipeline. The Foundry
+            delivers audited state, serialized merges, and reproducible outputs.
+          </p>
+          <div class="hero-actions" style="justify-content: center">
+            <a class="button primary" href="../README.md">Read the README</a>
+            <a class="button secondary" href="PRD.md">View the PRD</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Built for deterministic agentic development · The Foundry</p>
+    </footer>
+
+    <script>
+      const revealElements = document.querySelectorAll(".reveal");
+      const counters = document.querySelectorAll("[data-count]");
+
+      const revealObserver = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("visible");
+            }
+          });
+        },
+        { threshold: 0.2 }
+      );
+
+      revealElements.forEach((el) => revealObserver.observe(el));
+
+      const countObserver = new IntersectionObserver(
+        (entries, observer) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            const target = entry.target;
+            const end = Number(target.dataset.count);
+            let current = 0;
+            const step = Math.max(1, Math.round(end / 40));
+            const timer = setInterval(() => {
+              current += step;
+              if (current >= end) {
+                current = end;
+                clearInterval(timer);
+              }
+              target.textContent = current;
+            }, 24);
+            observer.unobserve(target);
+          });
+        },
+        { threshold: 0.6 }
+      );
+
+      counters.forEach((counter) => countObserver.observe(counter));
+    </script>
+  </body>
+</html>

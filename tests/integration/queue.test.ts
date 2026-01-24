@@ -19,33 +19,50 @@ describe('WorkQueue Integration', () => {
 
     it('should enqueue and claim tickets in priority order', () => {
         // Enqueue P1 then P0
-        queue.enqueue('bead-1', 1);
-        queue.enqueue('bead-0', 0);
-        queue.enqueue('bead-2', 2);
+        queue.enqueue('bead-1', 1, 'worker');
+        queue.enqueue('bead-0', 0, 'worker');
+        queue.enqueue('bead-2', 2, 'worker');
 
         // Should claim P0 first
-        const t0 = queue.claim('worker-1');
+        const t0 = queue.claim('worker-1', 'worker');
         expect(t0).not.toBeNull();
         expect(t0?.bead_id).toBe('bead-0');
         expect(t0?.status).toBe('processing');
         expect(t0?.assignee_id).toBe('worker-1');
 
         // Then P1
-        const t1 = queue.claim('worker-2');
+        const t1 = queue.claim('worker-2', 'worker');
         expect(t1?.bead_id).toBe('bead-1');
 
         // Then P2
-        const t2 = queue.claim('worker-3');
+        const t2 = queue.claim('worker-3', 'worker');
         expect(t2?.bead_id).toBe('bead-2');
 
         // Then null
-        const tNull = queue.claim('worker-4');
+        const tNull = queue.claim('worker-4', 'worker');
         expect(tNull).toBeNull();
     });
 
+    it('should filter by role', () => {
+        queue.enqueue('bead-worker', 0, 'worker');
+        queue.enqueue('bead-gatekeeper', 0, 'gatekeeper');
+
+        // Worker trying to claim worker task -> Success
+        const tWorker = queue.claim('worker-1', 'worker');
+        expect(tWorker?.bead_id).toBe('bead-worker');
+
+        // Worker trying to claim gatekeeper task -> Fail
+        const tFail = queue.claim('worker-2', 'worker');
+        expect(tFail).toBeNull();
+
+        // Gatekeeper claiming gatekeeper task -> Success
+        const tGatekeeper = queue.claim('gatekeeper-1', 'gatekeeper');
+        expect(tGatekeeper?.bead_id).toBe('bead-gatekeeper');
+    });
+
     it('should update heartbeat', () => {
-        queue.enqueue('bead-hb', 0);
-        const ticket = queue.claim('worker-1')!;
+        queue.enqueue('bead-hb', 0, 'worker');
+        const ticket = queue.claim('worker-1', 'worker')!;
 
         const initialHeartbeat = ticket.heartbeat_at!;
         expect(initialHeartbeat).toBeGreaterThan(0);
@@ -70,8 +87,8 @@ describe('WorkQueue Integration', () => {
     });
 
     it('should release stalled tickets', () => {
-        queue.enqueue('bead-stalled', 0);
-        const ticket = queue.claim('worker-1')!;
+        queue.enqueue('bead-stalled', 0, 'worker');
+        const ticket = queue.claim('worker-1', 'worker')!;
 
         // Manually set heartbeat to past
         const past = Date.now() - 10000;
@@ -82,30 +99,46 @@ describe('WorkQueue Integration', () => {
         expect(releasedCount).toBe(1);
 
         // Should be available to claim again
-        const reclaimed = queue.claim('worker-2');
+        const reclaimed = queue.claim('worker-2', 'worker');
         expect(reclaimed?.id).toBe(ticket.id);
         expect(reclaimed?.retry_count).toBe(1);
         expect(reclaimed?.assignee_id).toBe('worker-2');
     });
 
     it('should retry failed tickets', () => {
-        queue.enqueue('bead-fail', 0);
-        const ticket = queue.claim('worker-1')!;
+        queue.enqueue('bead-fail', 0, 'worker');
+        const ticket = queue.claim('worker-1', 'worker')!;
 
         queue.fail(ticket.id, false); // Retryable
 
-        const retried = queue.claim('worker-2');
+        const retried = queue.claim('worker-2', 'worker');
         expect(retried?.id).toBe(ticket.id);
         expect(retried?.retry_count).toBe(1);
     });
 
     it('should not retry permanent failures', () => {
-        queue.enqueue('bead-perm-fail', 0);
-        const ticket = queue.claim('worker-1')!;
+        queue.enqueue('bead-perm-fail', 0, 'worker');
+        const ticket = queue.claim('worker-1', 'worker')!;
 
         queue.fail(ticket.id, true); // Permanent
 
-        const retried = queue.claim('worker-2');
+        const retried = queue.claim('worker-2', 'worker');
         expect(retried).toBeNull();
+    });
+
+    it('should identify active tickets', () => {
+        queue.enqueue('bead-active', 0, 'worker');
+
+        const active = queue.getActiveTicket('bead-active');
+        expect(active).not.toBeNull();
+        expect(active?.status).toBe('queued');
+
+        queue.claim('worker-1', 'worker');
+        const processing = queue.getActiveTicket('bead-active');
+        expect(processing?.status).toBe('processing');
+
+        (queue as any).db.run("UPDATE tickets SET status = 'completed' WHERE bead_id = 'bead-active'");
+        const completed = queue.getActiveTicket('bead-active');
+        expect(completed).toBeNull();
     });
 });

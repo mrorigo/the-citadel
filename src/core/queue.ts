@@ -14,6 +14,7 @@ export const TicketSchema = z.object({
     bead_id: z.string(),
     status: TicketStatusSchema,
     priority: z.number().min(0).max(3),
+    target_role: z.enum(['router', 'worker', 'supervisor', 'gatekeeper']),
     assignee_id: z.string().nullable(),
     created_at: z.number(),
     started_at: z.number().nullable(),
@@ -46,6 +47,7 @@ export class WorkQueue {
         bead_id TEXT NOT NULL,
         status TEXT NOT NULL,
         priority INTEGER NOT NULL,
+        target_role TEXT NOT NULL,
         assignee_id TEXT,
         created_at INTEGER NOT NULL,
         started_at INTEGER,
@@ -60,20 +62,20 @@ export class WorkQueue {
         this.db.run(`CREATE INDEX IF NOT EXISTS idx_bead_id ON tickets(bead_id)`);
     }
 
-    enqueue(beadId: string, priority: number): void {
+    enqueue(beadId: string, priority: number, targetRole: string): void {
         const id = crypto.randomUUID();
         const now = Date.now();
 
         this.db.run(`
-      INSERT INTO tickets (id, bead_id, status, priority, created_at, retry_count)
-      VALUES (?, ?, 'queued', ?, ?, 0)
-    `, [id, beadId, priority, now]);
+      INSERT INTO tickets (id, bead_id, status, priority, target_role, created_at, retry_count)
+      VALUES (?, ?, 'queued', ?, ?, ?, 0)
+    `, [id, beadId, priority, targetRole, now]);
     }
 
     /**
      * Claim a ticket for processing (The Hook)
      */
-    claim(assigneeId: string): Ticket | null {
+    claim(assigneeId: string, role: string): Ticket | null {
         // Atomic update to claim the highest priority, oldest ticket
         // Bun SQLite is synchronous, so we can do this in a transaction
 
@@ -81,10 +83,10 @@ export class WorkQueue {
             // Find candidate
             const candidate = this.db.query(`
             SELECT * FROM tickets 
-            WHERE status = 'queued' 
+            WHERE status = 'queued' AND target_role = ?
             ORDER BY priority ASC, created_at ASC 
             LIMIT 1
-        `).get() as Ticket | null;
+        `).get(role) as Ticket | null;
 
             if (!candidate) return null;
 
@@ -170,6 +172,16 @@ export class WorkQueue {
 
         transaction();
         return stalled.length;
+    }
+
+    /**
+     * Check if a bead has an active ticket (queued or processing)
+     */
+    getActiveTicket(beadId: string): Ticket | null {
+        return this.db.query(`
+            SELECT * FROM tickets 
+            WHERE bead_id = ? AND status IN ('queued', 'processing')
+        `).get(beadId) as Ticket | null;
     }
 }
 

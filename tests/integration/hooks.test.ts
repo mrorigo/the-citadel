@@ -21,11 +21,11 @@ describe('Hook Mechanism Integration', () => {
     });
 
     it('should poll and execute tasks', async () => {
-        queue.enqueue('bead-hook-1', 0);
+        queue.enqueue('bead-hook-1', 0, 'worker');
 
         let executedBeadId: string | null = null;
 
-        hook = new Hook('agent-tester', async (ticket) => {
+        hook = new Hook('agent-tester', 'worker', async (ticket) => {
             executedBeadId = ticket.bead_id;
         }, queue);
 

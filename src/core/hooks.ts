@@ -12,8 +12,11 @@ export class Hook {
     private currentTicketId: string | null = null;
     private heartbeatTimer: Timer | null = null;
 
-    constructor(agentId: string, handler: TicketHandler, queue?: WorkQueue) {
+    private role: string;
+
+    constructor(agentId: string, role: string, handler: TicketHandler, queue?: WorkQueue) {
         this.agentId = agentId;
+        this.role = role;
         this.handler = handler;
         this.queue = queue || getQueue();
     }
@@ -50,7 +53,23 @@ export class Hook {
 
     private async cycle() {
         // 1. Claim ticket
-        const ticket = this.queue.claim(this.agentId);
+        // AgentId is currently used as the 'assigneeId'.
+        // We need to know WHICH role this hook is acting as to claim the right ticket.
+        // The current implementation assumes agentId implies role or is generic.
+        // We should explicitly pass role to Hook constructor.
+        // For now, let's assume agentId is like 'worker-1' and we need 'worker' role.
+        // OR we update hook constructor as planned.
+
+        // I will use a simple heuristic or update constructor.
+        // Let's update constructor to take `role` parameter.
+        // Wait, changing constructor breaks existing usage code (tests).
+        // I'll update the constructor in a separate call then.
+        // For this call, I'll temporarily infer role or break.
+        // Actually, let's rely on constructor update.
+
+        // Let's defer this edit until I update the constructor definition.
+        // I will skip this file edit for now and combine it.
+        const ticket = this.queue.claim(this.agentId, this.role);
         if (!ticket) return; // No work
 
         this.currentTicketId = ticket.id;
