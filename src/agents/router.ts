@@ -1,6 +1,7 @@
 import { CoreAgent } from '../core/agent';
 import { getQueue } from '../core/queue';
 import { z } from 'zod';
+import { getWorkflowEngine } from '../services/workflow-engine';
 
 export class RouterAgent extends CoreAgent {
     constructor() {
@@ -21,6 +22,24 @@ export class RouterAgent extends CoreAgent {
                 return { success: true, beadId, status: 'queued', priority, targetRole };
             }
         );
+
+        this.registerTool(
+            'instantiate_formula',
+            'Instantiate a named workflow formula (e.g., system_migration)',
+            z.object({
+                formulaName: z.string().describe('The name of the formula to run'),
+                variables: z.record(z.string()).describe('Variables to inject into the formula (e.g., { target_system: "Auth" })'),
+            }),
+            async ({ formulaName, variables }) => {
+                try {
+                    const moleculeId = await getWorkflowEngine().instantiateFormula(formulaName, variables as Record<string, string>);
+                    return { success: true, moleculeId, status: 'created' };
+                } catch (error: unknown) {
+                    const err = error as Error;
+                    return { success: false, error: err.message };
+                }
+            }
+        );
     }
 
     protected override getSystemPrompt(phase: 'think' | 'act', defaultPrompt: string): string {
@@ -30,6 +49,7 @@ export class RouterAgent extends CoreAgent {
         # Available Queues (Roles)
         - 'worker': For implementation, coding, and general tasks (status: 'open').
         - 'gatekeeper': For verification and testing tasks (status: 'verify').
+        - 'formula': specialized workflows defined in .citadel/formulas/ (e.g., system_migration).
         `;
 
         if (phase === 'think') {

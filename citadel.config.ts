@@ -19,7 +19,7 @@ export default defineConfig({
         },
         worker: {
             provider: 'ollama',
-            model: 'gpt-oss:20b-cloud', // Using 20b as it is proven to work for Router
+            model: 'gpt-oss:20b-cloud',
         },
         supervisor: {
             provider: 'ollama',

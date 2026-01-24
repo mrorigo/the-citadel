@@ -47,6 +47,36 @@ export class WorkerAgent extends CoreAgent {
             }
         );
 
+        // Delegate / Subdivide Task
+        this.registerTool(
+            'delegate_task',
+            'Create a subtask (child bead) to split up work',
+            z.object({
+                parentBeadId: z.string().describe('The ID of the current bead (becoming the parent)'),
+                title: z.string().describe('Title of the subtask'),
+                priority: z.number().optional().describe('Priority (0-3)'),
+            }),
+            async ({ parentBeadId, title, priority }) => {
+                try {
+                    const bead = await getBeads().create(title, {
+                        parent: parentBeadId,
+                        priority: (priority as 0 | 1 | 2 | 3) ?? 2
+                    });
+                    // Auto-dependency: Parent depends on Child?
+                    // Usually parent remains open until children done.
+                    // bd dep add <child> <parent> (child blocked by parent)?
+                    // No, "Parent Needs Child". So Parent is blocked by Child.
+                    // addDependency(BlockED, BlockER).
+                    // Parent is Blocked. Child is Blocker.
+                    await getBeads().addDependency(parentBeadId, bead.id);
+                    return { success: true, beadId: bead.id, message: `Created subtask ${bead.id} blocking ${parentBeadId}` };
+                } catch (error: unknown) {
+                    const err = error as Error;
+                    return { success: false, error: err.message };
+                }
+            }
+        );
+
         // --- File System Tools ---
 
         this.registerTool(

@@ -55,6 +55,8 @@ export interface CreateOptions {
     assignee?: string;
     blockers?: string[];
     acceptance_test?: string;
+    parent?: string; // Parent ID for molecules
+    type?: string; // bead type (epic, story, task, convoy, etc)
 }
 
 // --- Client ---
@@ -181,6 +183,8 @@ export class BeadsClient {
     async create(title: string, options: CreateOptions = {}): Promise<Bead> {
         let args = `create "${title}" --json`;
         if (options.priority !== undefined) args += ` -p ${options.priority}`;
+        if (options.parent) args += ` --parent ${options.parent}`;
+        if (options.type) args += ` --type ${options.type}`;
 
         // Note: bd CLI might not support setting everything at create time yet,
         // so we might need to update immediately after.
@@ -249,6 +253,11 @@ export class BeadsClient {
         if (!allowed.includes(next)) {
             throw new Error(`Invalid state transition for ${current.id}: ${current.status} -> ${next}`);
         }
+    }
+
+    async addDependency(childId: string, parentId: string): Promise<void> {
+        // bd dep add <child> <parent>
+        await this.runCommand(`dep add ${childId} ${parentId}`);
     }
 }
 
