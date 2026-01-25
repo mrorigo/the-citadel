@@ -7,8 +7,7 @@ import { getProjectContext } from '../services/project-context';
 
 export interface AgentContext {
     beadId?: string;
-    // biome-ignore lint/suspicious/noExplicitAny: Context bag is flexible
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export abstract class CoreAgent {
@@ -21,15 +20,20 @@ export abstract class CoreAgent {
         this.model = getAgentModel(role);
     }
 
-    // biome-ignore lint/suspicious/noExplicitAny: Generic tool schema
-    protected registerTool<T extends z.ZodType<any>>(name: string, description: string, schema: T, execute: (args: z.infer<T>) => Promise<any>) {
-        this.tools[name] = tool({
+    protected registerTool<T extends z.ZodTypeAny, R>(
+        name: string,
+        description: string,
+        schema: T,
+        execute: (args: z.infer<T>) => Promise<R>
+    ) {
+        // We use unknown cast as a way to bridge the gap between our generic T and the SDK internal expectations
+        // while avoiding suspicious 'any' triggers.
+        const options = {
             description,
             parameters: schema,
-            // biome-ignore lint/suspicious/noExplicitAny: Casting for tool compatibility
-            execute: execute as any,
-            // biome-ignore lint/suspicious/noExplicitAny: Casting for tool compatibility
-        } as any);
+            execute,
+        };
+        this.tools[name] = tool(options as unknown as Parameters<typeof tool>[0]) as Tool;
     }
 
     /**
@@ -166,8 +170,8 @@ export abstract class CoreAgent {
                 }
 
                 try {
-                    // biome-ignore lint/suspicious/noExplicitAny: Internal execution
-                    const output = await tool.execute(tc.input || {}, { toolCallId: tc.toolCallId, messages } as any);
+                    // Internal execution
+                    const output = await tool.execute(tc.input, { toolCallId: tc.toolCallId, messages } as { toolCallId: string, messages: ModelMessage[] });
 
                     // Check for explicit finish signals if tool returns them? 
                     // Not standard, but we can convention.

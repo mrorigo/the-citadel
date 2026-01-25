@@ -183,6 +183,20 @@ export class WorkQueue {
             WHERE bead_id = ? AND status IN ('queued', 'processing')
         `).get(beadId) as Ticket | null;
     }
+
+    /**
+     * Reset tickets for a specific bead
+     */
+    resetBead(beadId: string): void {
+        this.db.run("DELETE FROM tickets WHERE bead_id = ?", [beadId]);
+    }
+
+    /**
+     * Get tickets by status
+     */
+    getTicketsByStatus(status: TicketStatus): Ticket[] {
+        return this.db.query("SELECT * FROM tickets WHERE status = ?").all(status) as Ticket[];
+    }
 }
 
 // Singleton accessor (defaulting to .citadel/queue.sqlite)

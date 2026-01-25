@@ -163,13 +163,8 @@ program
             if (beadId) {
                 await loadConfig();
                 const queue = getQueue();
-                // Accessing private db via any for quick fix, or add method to Queue
-                // Better: Add `reset(beadId)` to WorkQueue class. 
-                // For now, let's use the raw DB access pattern since we are in CLI
-                // biome-ignore lint/suspicious/noExplicitAny: Accessing private db for reset
-                const db = (queue as any).db;
                 console.log(`Resetting tickets for bead: ${beadId}...`);
-                db.run("DELETE FROM tickets WHERE bead_id = ?", [beadId]);
+                queue.resetBead(beadId);
                 console.log(`Tickets for ${beadId} have been cleared.`);
             } else {
                 const { resolve } = await import('node:path');
@@ -236,9 +231,9 @@ program
         try {
             const moleculeId = await engine.instantiateFormula(options.formula, variables);
             console.log(`Successfully created molecule: ${moleculeId}`);
-            // biome-ignore lint/suspicious/noExplicitAny: CLI Error
-        } catch (error: any) {
-            console.error('Failed to instantiate formula:', error.message);
+        } catch (error: unknown) {
+            const err = error as Error;
+            console.error('Failed to instantiate formula:', err.message);
             process.exit(1);
         }
     });

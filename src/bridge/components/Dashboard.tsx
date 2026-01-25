@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { logger, type LogEntry } from '../../core/logger';
-import { getQueue } from '../../core/queue';
+import { getQueue, type Ticket } from '../../core/queue';
 import { MoleculeTree } from './MoleculeTree';
 import { getConfig } from '../../config';
 
@@ -83,19 +83,16 @@ const AgentMatrix = () => {
     // In a real app, we'd listen to 'agent-state' events.
     // For now, we'll just mock it or read from DB polling? 
     // Polling is easier for mvp.
-    // biome-ignore lint/suspicious/noExplicitAny: Quick hack
-    const [activeTickets, setActiveTickets] = useState<any[]>([]);
+    const [activeTickets, setActiveTickets] = useState<Ticket[]>([]);
 
     useEffect(() => {
         const timer = setInterval(() => {
             // This is a hacky way to get state. Ideally Conductor emits state.
             // But let's just peek at queue for now.
-            // biome-ignore lint/suspicious/noExplicitAny: Quick hack
-            const db = (getQueue() as any).db;
-            const rows = db.query("SELECT * FROM tickets WHERE status = 'processing'").all();
+            const queue = getQueue();
+            const rows = queue.getTicketsByStatus('processing');
 
-            // biome-ignore lint/suspicious/noExplicitAny: Quick hack
-            if (rows) setActiveTickets(rows as any[]);
+            if (rows) setActiveTickets(rows);
         }, 1000);
         return () => clearInterval(timer);
     }, []);
@@ -106,7 +103,7 @@ const AgentMatrix = () => {
             {activeTickets.length === 0 ? <Text color="gray">No active agents</Text> : null}
             {activeTickets.map(t => (
                 <Box key={t.id} flexDirection="row">
-                    <Text color="cyan">{t.worker_id}</Text>
+                    <Text color="cyan">{t.target_role}</Text>
                     <Text> -&gt; </Text>
                     <Text>{t.bead_id}</Text>
                     <Text color="yellow"> ({t.status})</Text>

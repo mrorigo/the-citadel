@@ -85,9 +85,9 @@ export class BeadsClient {
                 // Assuming strict JSON output on stdout for --json commands
             }
             return stdout.trim();
-            // biome-ignore lint/suspicious/noExplicitAny: Child process error
-        } catch (error: any) {
-            throw new Error(`Beads command failed: ${command}\n${error.message}`);
+        } catch (error: unknown) {
+            const err = error as Error;
+            throw new Error(`Beads command failed: ${command}\n${err.message}`);
         }
     }
 
@@ -121,8 +121,7 @@ export class BeadsClient {
             .map(line => {
                 try {
                     return this.mapToDomain(RawBeadSchema.parse(JSON.parse(line)));
-                    // biome-ignore lint/suspicious/noExplicitAny: JSON parse or Zod error
-                } catch (_e) { return null as any; } // Filter out invalid lines
+                } catch (_e) { return null; } // Filter out invalid lines
             })
             .filter(b => !!b);
     }
