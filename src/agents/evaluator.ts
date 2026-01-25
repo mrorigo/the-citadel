@@ -33,5 +33,37 @@ export class EvaluatorAgent extends CoreAgent {
                 return { success: true, status: 'in_progress', reason };
             }
         );
+
+        // Filesystem Tools for Verification
+        this.registerTool(
+            'read_file',
+            'Read the contents of a file',
+            z.object({ path: z.string() }),
+            async ({ path }) => {
+                const fs = await import('node:fs/promises');
+                try {
+                    const content = await fs.readFile(path, 'utf-8');
+                    return { success: true, content };
+                } catch (error: any) {
+                    return { success: false, error: error.message };
+                }
+            }
+        );
+
+        this.registerTool(
+            'run_command',
+            'Execute a shell command (e.g. to run tests)',
+            z.object({ command: z.string() }),
+            async ({ command }) => {
+                const { exec } = await import('node:child_process');
+                const { promisify } = await import('node:util');
+                try {
+                    const { stdout, stderr } = await promisify(exec)(command);
+                    return { success: true, stdout, stderr };
+                } catch (error: any) {
+                    return { success: false, error: error.message };
+                }
+            }
+        );
     }
 }

@@ -7,6 +7,7 @@ import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { dirname } from 'node:path';
 import { getProjectContext } from '../services/project-context.js';
+import { logger } from '../core/logger';
 
 const execAsync = promisify(exec);
 
@@ -86,7 +87,7 @@ export class WorkerAgent extends CoreAgent {
                 path: z.string().describe('Absolute path to file'),
             }),
             async ({ path }) => {
-                console.log(`[Worker] Reading file: ${path}`);
+                logger.debug(`[Worker] Reading file: ${path}`);
                 try {
                     const content = await readFile(path, 'utf-8');
                     return { success: true, content };
@@ -105,7 +106,7 @@ export class WorkerAgent extends CoreAgent {
                 content: z.string().describe('The content to write'),
             }),
             async ({ path, content }) => {
-                console.log(`[Worker] Writing file: ${path} (${content.length} bytes)`);
+                logger.debug(`[Worker] Writing file: ${path} (${content.length} bytes)`);
                 try {
                     await mkdir(dirname(path), { recursive: true });
                     await writeFile(path, content, 'utf-8');
@@ -125,7 +126,7 @@ export class WorkerAgent extends CoreAgent {
             }),
             async ({ path }) => {
                 const searchPath = path || '.';
-                console.log(`[Worker] Listing directory: ${searchPath}`);
+                logger.debug(`[Worker] Listing directory: ${searchPath}`);
                 try {
                     const items = await readdir(searchPath, { withFileTypes: true });
                     const listing = items.map(d => ({
@@ -149,7 +150,7 @@ export class WorkerAgent extends CoreAgent {
                 command: z.string().describe('The command to execute (e.g., "ls -la", "npm test")'),
             }),
             async ({ command }) => {
-                console.log(`[Worker] Running command: ${command}`);
+                logger.debug(`[Worker] Running command: ${command}`);
                 try {
                     const { stdout, stderr } = await execAsync(command);
                     return { success: true, stdout: stdout.trim(), stderr: stderr.trim() };
@@ -169,14 +170,14 @@ export class WorkerAgent extends CoreAgent {
     // Override run to skip the separate 'think' phase which strictly blocks tools.
     // We want the Worker to be able to 'think' by exploring (running tools).
     override async run(prompt: string, context?: Record<string, unknown>): Promise<string> {
-        console.log(`[${this.role}] Running (Unified Loop)...`);
+        logger.info(`[${this.role}] Running (Unified Loop)...`, { role: this.role });
 
         // Load Project Awareness (AGENTS.md)
         const projectContext = await getProjectContext().resolveContext(process.cwd(), process.cwd());
 
         let projectRules = '';
         if (projectContext) {
-            console.log(`[Worker] Loaded AGENTS.md from ${projectContext.sourcePath}`);
+            logger.info(`[Worker] Loaded AGENTS.md from ${projectContext.sourcePath}`);
             projectRules = `
             # PROJECT RULES (AGENTS.md)
             You must follow these rules from the project configuration:
@@ -195,7 +196,7 @@ export class WorkerAgent extends CoreAgent {
             Always prioritize these project-specific instructions over general knowledge.
             `;
         } else {
-            console.log(`[Worker] No AGENTS.md found in ${process.cwd()}`);
+            logger.warn(`[Worker] No AGENTS.md found in ${process.cwd()}`);
         }
 
         const system = `
@@ -256,7 +257,7 @@ export class WorkerAgent extends CoreAgent {
 
             // Log output
             if (result.text) {
-                console.log(`[Worker] Output: ${result.text}`);
+                logger.info(`[Worker] Output`, { text: result.text });
             }
 
             const toolCalls = result.toolCalls;
@@ -272,11 +273,9 @@ export class WorkerAgent extends CoreAgent {
             let finished = false;
 
             for (const tc of toolCalls) {
-                console.log(`[Worker] Executing tool: ${tc.toolName}`);
+                logger.info(`[Worker] Executing tool: ${tc.toolName}`, { tool: tc.toolName, params: tc.input });
 
-                if (tc.toolName === 'submit_work') {
-                    finished = true;
-                }
+
 
                 const tool = this.tools[tc.toolName];
                 if (!tool) {
@@ -301,6 +300,11 @@ export class WorkerAgent extends CoreAgent {
 
                 try {
                     const output = await tool.execute(tc.input || {}, { toolCallId: tc.toolCallId, messages });
+
+                    if (tc.toolName === 'submit_work') {
+                        finished = true;
+                    }
+
                     // Convert output to proper ToolResultOutput format
                     const toolOutput = typeof output === 'string'
                         ? { type: 'text' as const, value: output }
@@ -326,7 +330,7 @@ export class WorkerAgent extends CoreAgent {
 
 
             if (finished) {
-                console.log('[Worker] Task finished explicitly.');
+                logger.info('[Worker] Task finished explicitly.');
                 break;
             }
         }

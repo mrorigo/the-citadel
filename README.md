@@ -1,87 +1,98 @@
 # The Citadel
 
-**Deterministic Agent Orchestration System**
+**Deterministic Agent Orchestration System** – a lightweight engine that turns chaotic agent swarms into an auditable, deterministic pipeline.
 
-The Citadel is an orchestration engine that turns chaotic agent swarms into a deterministic factory. It decouples **State** (What needs to be done) from **Compute** (Who does it) using a rigorous Directed Acyclic Graph (DAG) of tasks.
-
-The system adheres to a strict state machine: `Open` -> `In Progress` -> `Verify` -> `Done`.
+---
 
 ## Features
 
-- **The Foundry (Workflow Engine)**: compile deterministic TOML **Formulas** into dynamic **Molecules** (task graphs).
-- **Strict State Machine**: Agents cannot hallucinate progress. Every transition is verified.
-- **Dynamic Bonding**: Workers can recursively break down large tasks into parallel sub-tasks.
-- **Durable State**: All context is stored in **Beads** (Git-backed SQLite), ensuring restartability and auditability.
-- **Provider Agnostic**: Integrated with Vercel AI SDK to support Ollama, OpenAI, Anthropic, and more.
-- **Project Awareness**: Automatically discovers and adheres to `AGENTS.md` files for project-specific rules.
+- **Foundry (Workflow Engine)** – Compile deterministic TOML `Formulas` into dynamic **Molecules** (task DAGs).
+- **Stateful Agents** – The *state machine* guarantees `Open → In Progress → Verify → Done` transitions.
+- **Dynamic Bonding** – Workers spawn sub‑tasks in parallel.
+- **Durable State** – All context is stored in Git‑backed SQLite **Beads** (audit‑ready, restartable).
+- **Provider‑agnostic** – Works with Ollama, OpenAI, Anthropic, and more.
+- **Project Aware** – Finds `AGENTS.md` rules automatically.
 
-## Prerequisites
+---
 
-- **[Bun](https://bun.sh)** (Runtime)
-- **[Ollama](https://ollama.com)** (For local inference)
-- **[Beads](https://github.com/steveyegge/beads)** (CLI tool `bd` must be in PATH). See [Community Tools](https://github.com/steveyegge/beads/blob/main/docs/COMMUNITY_TOOLS.md) for UIs and extensions.
-
-# Link the binary
-bun link
-
-# Initialize a new project
-mkdir my-new-project
-cd my-new-project
-citadel init
-```
-
-## Configuration
-
-The Citadel looks for a `citadel.config.ts` file in the project root. See `src/config/schema.ts` for full options.
-
-```typescript
-export default defineConfig({
-    env: 'development',
-    providers: {
-        ollama: { baseURL: 'http://localhost:11434/v1' }
-    },
-    agents: {
-        router: { provider: 'ollama', model: 'gpt-oss:120b-cloud' },
-        worker: { provider: 'ollama', model: 'qwen3:14b' },
-    }
-});
-```
-
-## Usage
-
-### Start the System
-The **Conductor** manages the orchestration loop.
+## Quick Start
 
 ```bash
+# 1️⃣ Install deps (Bun is required)
+bun install
+
+# 2️⃣ Bootstrap a new project
+citadel init   # creates .citadel/ + config + sample formula
+
+# 3️⃣ Run a workload
+bd create "Hello world"
 citadel start
 ```
 
-### Interact with Agents
-You drive the system by creating **Beads** (tickets).
+⚙️ The **Conductor** will orchestrate agents automatically. Log output is written to `log.txt` courtesy of the shared `CitadelLogger`.
 
-**1. Create a simple task:**
+---
+
+## Bridge TUI
+
+The **Bridge** is the lightweight terminal dashboard built with **Ink** that shows the orchestration in real time.
+
 ```bash
-bd create "Fix the login page typo"
+# Launch the Bridge (Conductor + UI)
+citadel bridge   # or
+bun run script:bridge
 ```
 
-**2. Trigger a Workflow (Formula):**
-Assuming you have a `migration.toml` formula:
-```bash
-bd create "Run migration formula for Auth service"
+The dashboard remains open until you hit **Ctrl+C**.
+
+---
+
+## Project Structure
+
+```
+├─ src/                      # Source code
+│   ├─ bridge/               # Terminal UI (Ink)
+│   │  ├─ index.tsx          # Entry point
+│   │  └─ components/         # Dashboard panes
+│   ├─ core/                 # Core engine (queue, logger, beads)
+│   ├─ config/               # Config handling
+│   ├─ services/              # Conductor & agent services
+│   └─ types/                # Shared TS types
+├─ docs/                     # Documentation (this file included)
+├─ tests/                     # Unit tests
+└─ README.md                  # This file
 ```
 
-The **Router** will analyze the request, instantiate the workflow, and dispatch workers.
+---
 
-## Documentation
+## Extending & Customising
 
-- [**User Guide**](./docs/USER-GUIDE.md): Full manual on Formulas, Molecules, and Agent behaviors.
-- [**The Foundry Spec**](./docs/WORKFLOW_ENGINE.md): Technical specification of the Workflow Engine.
+- **New panels** – Add a component under `src/bridge/components` and import it into `Dashboard.tsx`.
+- **Event‑driven UI** – Replace polling in `AgentMatrix` / `MoleculeTree` with Conductor events.
+- **Custom loggers** – Hook into the global `CitadelLogger` to emit richer data.
 
-## Architecture
+---
 
-1.  **Beads (Data Plane)**: A folder of JSONL files representing the state.
-2.  **Conductor (Control Plane)**: A TypeScript service that runs the **Router** and manages **Hooks**.
-3.  **Agents (Compute Plane)**:
-    - **Router**: Compiles Formulas and assigns tasks.
-    - **Worker**: Executes tasks and delegates sub-work.
-    - **Gatekeeper**: Verifies completion.
+## Build / Test / Lint
+
+```bash
+# TypeScript type-check
+bun run tsc --noEmit
+
+# Lint
+bunx biome lint .
+
+# Tests
+bun test tests/
+```
+
+---
+
+## Contribution
+
+1. `bd ready` → Find a work item.
+2. `bd update <id> --status in_progress` → Claim it.
+3. code & tests → Pass all checks.
+4. `bd close <id>` → Ship it.
+
+Love to see you play around!

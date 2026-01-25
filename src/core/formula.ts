@@ -3,6 +3,7 @@ import { readFile, readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 import toml from '@iarna/toml';
+import { logger } from './logger';
 
 // --- Schemas ---
 
@@ -59,9 +60,9 @@ export class FormulaRegistry {
             const raw = JSON.parse(JSON.stringify(toml.parse(content)));
             const formula = FormulaSchema.parse(raw);
             this.formulas.set(formula.formula, formula);
-            console.log(`[FormulaRegistry] Loaded formula: ${formula.formula}`);
+            logger.debug(`[FormulaRegistry] Loaded formula: ${formula.formula}`);
         } catch (error) {
-            console.error(`[FormulaRegistry] Failed to load formula from ${path}:`, error);
+            logger.error(`[FormulaRegistry] Failed to load formula from ${path}:`, error);
         }
     }
 

@@ -4,6 +4,7 @@ import { EvaluatorAgent } from '../agents/evaluator';
 import { Hook } from '../core/hooks';
 import { getQueue } from '../core/queue';
 import { getBeads } from '../core/beads';
+import { logger } from '../core/logger';
 
 export class Conductor {
     private isRunning = false;
@@ -18,7 +19,7 @@ export class Conductor {
         // Initialize Hooks
         // Workers process 'worker' tasks using WorkerAgent
         this.workerHook = new Hook('worker-1', 'worker', async (ticket) => {
-            console.log(`[Worker] Processing ${ticket.bead_id}`);
+            logger.info(`[Worker] Processing ${ticket.bead_id}`, { beadId: ticket.bead_id });
             const agent = new WorkerAgent();
             // Provide context
             const bead = await getBeads().get(ticket.bead_id);
@@ -27,7 +28,7 @@ export class Conductor {
 
         // Gatekeepers process 'gatekeeper' tasks using EvaluatorAgent
         this.gatekeeperHook = new Hook('gatekeeper-1', 'gatekeeper', async (ticket) => {
-            console.log(`[Gatekeeper] Verifying ${ticket.bead_id}`);
+            logger.info(`[Gatekeeper] Verifying ${ticket.bead_id}`, { beadId: ticket.bead_id });
             const agent = new EvaluatorAgent();
             const bead = await getBeads().get(ticket.bead_id);
             await agent.run(`Verify this work: ${bead.title}`, { beadId: ticket.bead_id, bead });
@@ -37,7 +38,7 @@ export class Conductor {
     start() {
         if (this.isRunning) return;
         this.isRunning = true;
-        console.log('[Conductor] Starting...');
+        logger.info('[Conductor] Starting...');
 
         // Start Hooks
         this.workerHook.start();
@@ -49,7 +50,7 @@ export class Conductor {
 
     stop() {
         this.isRunning = false;
-        console.log('[Conductor] Stopping...');
+        logger.info('[Conductor] Stopping...');
 
         this.workerHook.stop();
         this.gatekeeperHook.stop();
@@ -66,7 +67,7 @@ export class Conductor {
         try {
             await this.cycleRouter();
         } catch (error) {
-            console.error('[Conductor] Router cycle failed:', error);
+            logger.error('[Conductor] Router cycle failed:', error);
         }
 
         if (this.isRunning) {
@@ -88,16 +89,24 @@ export class Conductor {
         const openBeads = await beadsClient.list('open');
 
         if (!openBeads) {
-            console.error('[Conductor] openBeads is undefined!');
+            logger.error('[Conductor] openBeads is undefined!');
             return;
         }
 
         for (const bead of openBeads) {
             const active = queue.getActiveTicket(bead.id);
             if (!active) {
-                console.log(`[Router] Found unassigned open bead: ${bead.id}`);
+                // Double-check: ensure bead is STILL open (race condition protect)
+                // If Router fetched list before Worker finished, and Worker finished before Queue check,
+                // we might see Open+Inactive when it's actually Verify+Inactive.
+                const fresh = await beadsClient.get(bead.id);
+                if (fresh.status !== 'open') {
+                    logger.info(`[Router] Skipping ${bead.id} (status changed to ${fresh.status})`, { beadId: bead.id });
+                    continue;
+                }
+
+                logger.info(`[Router] Found unassigned open bead: ${bead.id}`, { beadId: bead.id });
                 // Ask RouterAgent to route it
-                // We could just hardcode enqueue, but let's use the agent's brain for priority
                 await this.routerAgent.run(
                     `New task found: ${bead.title}. Please route it.`,
                     { beadId: bead.id, status: bead.status }
@@ -113,7 +122,12 @@ export class Conductor {
         for (const bead of verifyBeads) {
             const active = queue.getActiveTicket(bead.id);
             if (!active) {
-                console.log(`[Router] Found unassigned verify bead: ${bead.id}`);
+                const fresh = await beadsClient.get(bead.id);
+                if (fresh.status !== 'verify') {
+                    continue;
+                }
+
+                logger.info(`[Router] Found unassigned verify bead: ${bead.id}`, { beadId: bead.id });
                 await this.routerAgent.run(
                     `Task ready for verification: ${bead.title}. Please route to gatekeeper.`,
                     { beadId: bead.id, status: bead.status }

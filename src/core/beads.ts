@@ -3,6 +3,7 @@ import { promisify } from 'node:util';
 import { z } from 'zod';
 import { resolve } from 'node:path';
 import { getConfig } from '../config';
+import { logger } from './logger';
 
 const execAsync = promisify(exec);
 
@@ -26,6 +27,7 @@ const RawBeadSchema = z.object({
     priority: BeadPrioritySchema,
     assignee: z.string().optional(),
     labels: z.array(z.string()).optional(), // New field from CLI
+    parent: z.string().optional(),
     blockers: z.array(z.string()).optional(),
     acceptance_criteria: z.string().optional(), // Maps to acceptance_test in domain
     created_at: z.string(),
@@ -44,6 +46,7 @@ export const BeadSchema = z.object({
     labels: z.array(z.string()).optional(),
     blockers: z.array(z.string()).optional(),
     acceptance_test: z.string().optional(),
+    parent: z.string().optional(),
     created_at: z.string(),
     updated_at: z.string(),
 });
@@ -140,7 +143,7 @@ export class BeadsClient {
             status = 'open'; // Default fallback, or map correctly if other statuses exist
         }
 
-        console.log(`[BeadsClient] MapToDomain ${raw.id}: criteria=${raw.acceptance_criteria}`);
+        // logger.debug(`[BeadsClient] MapToDomain ${raw.id}: criteria=${raw.acceptance_criteria}`);
         return {
             ...raw,
             status,
@@ -175,6 +178,11 @@ export class BeadsClient {
 
     async ready(): Promise<Bead[]> {
         const output = await this.runCommand('ready --json');
+        return this.parseRawList(output);
+    }
+
+    async getAll(): Promise<Bead[]> {
+        const output = await this.runCommand('list --json');
         return this.parseRawList(output);
     }
 

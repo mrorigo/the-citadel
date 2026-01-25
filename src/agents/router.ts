@@ -18,6 +18,14 @@ export class RouterAgent extends CoreAgent {
                 reasoning: z.string().describe('Why this priority was chosen'),
             }),
             async ({ beadId, priority, targetRole }) => {
+                // Defensive: Ensure bead actually exists.
+                // This prevents hallucinations like 'thec-citadel-123' caused by LLM typos.
+                try {
+                    await import('../core/beads').then(m => m.getBeads().get(beadId));
+                } catch {
+                    return { success: false, error: `Bead ${beadId} does not exist.` };
+                }
+
                 getQueue().enqueue(beadId, priority, targetRole);
                 return { success: true, beadId, status: 'queued', priority, targetRole };
             }
@@ -28,7 +36,7 @@ export class RouterAgent extends CoreAgent {
             'Instantiate a named workflow formula (e.g., system_migration)',
             z.object({
                 formulaName: z.string().describe('The name of the formula to run'),
-                variables: z.record(z.string()).describe('Variables to inject into the formula (e.g., { target_system: "Auth" })'),
+                variables: z.record(z.string(), z.string()).describe('Variables to inject into the formula (e.g., { target_system: "Auth" })'),
                 parentConvoyId: z.string().optional().describe('ID of the Convoy to assign this molecule to (optional)'),
             }),
             async ({ formulaName, variables, parentConvoyId }) => {

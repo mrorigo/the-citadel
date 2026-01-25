@@ -200,4 +200,12 @@ program
         }
     });
 
+program
+    .command('bridge')
+    .description('Start The Bridge (TUI Dashboard)')
+    .action(async () => {
+        const { startBridge } = await import('./bridge/index');
+        await startBridge();
+    });
+
 program.parse(process.argv);

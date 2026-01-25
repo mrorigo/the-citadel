@@ -2,6 +2,7 @@ import { generateText, tool, type Tool, type LanguageModel } from 'ai';
 import { getAgentModel } from './llm';
 import type { AgentRole } from '../config/schema';
 import type { z } from 'zod';
+import { logger } from './logger';
 
 export interface AgentContext {
     beadId?: string;
@@ -76,9 +77,9 @@ export abstract class CoreAgent {
             // biome-ignore lint/suspicious/noExplicitAny: Cast to any to avoid maxSteps type error if strict
         } as any);
 
-        console.log(`[CoreAgent] Act finished. Reason: ${finishReason}. Tools called: ${toolCalls?.length || 0}`);
+        logger.info(`[CoreAgent] Act finished. Reason: ${finishReason}. Tools called: ${toolCalls?.length || 0}`);
         if (toolCalls?.length) {
-            console.log('[CoreAgent] Tools:', JSON.stringify(toolCalls, null, 2));
+            logger.debug('[CoreAgent] Tools:', { tools: toolCalls });
         }
 
         return text;
@@ -88,11 +89,11 @@ export abstract class CoreAgent {
      * Main entry point
      */
     async run(prompt: string, context?: AgentContext): Promise<string> {
-        console.log(`[${this.role}] Thinking...`);
+        logger.info(`[${this.role}] Thinking...`);
         const plan = await this.think(prompt, context);
-        console.log(`[${this.role}] Plan:`, plan);
+        logger.info(`[${this.role}] Plan:`, { plan });
 
-        console.log(`[${this.role}] Acting...`);
+        logger.info(`[${this.role}] Acting...`);
         const result = await this.act(plan, context);
         return result;
     }

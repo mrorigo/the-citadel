@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { ConfigSchema, type CitadelConfig } from './schema';
 import dotenv from 'dotenv';
+import { logger } from '../core/logger';
 
 
 // Load .env immediately
@@ -59,18 +60,18 @@ export async function loadConfig(): Promise<CitadelConfig> {
     }
 
     configCache = parsed.data;
-    console.log('[Config] Loaded from file/env');
+    logger.debug('[Config] Loaded from file/env');
     return configCache;
 }
 
 export function setConfig(config: CitadelConfig) {
-    console.log('[Config] Manually set config');
+    logger.debug('[Config] Manually set config');
     configCache = config;
 }
 
 export function getConfig(): CitadelConfig {
     if (!configCache) {
-        console.error('[Config] Error: Config accessed before load');
+        logger.error('[Config] Error: Config accessed before load');
         throw new Error('Config not loaded. Call loadConfig() first.');
     }
     return configCache;
