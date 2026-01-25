@@ -38,6 +38,13 @@ citadel start
 
 ---
 
+## Documentation
+
+For detailed usage instructions, including advanced configuration, formula creation, and troubleshooting, please refer to the **[User Guide](docs/USER-GUIDE.md)**.
+
+---
+
+
 ## Bridge TUI
 
 The **Bridge** is the lightweight terminal dashboard built with **Ink** that shows the orchestration in real time.
