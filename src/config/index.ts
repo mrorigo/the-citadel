@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { ConfigSchema, type CitadelConfig } from './schema';
+import { ConfigSchema, type CitadelConfig, type CitadelConfigInput } from './schema';
 import dotenv from 'dotenv';
 import { logger } from '../core/logger';
 
@@ -64,9 +64,10 @@ export async function loadConfig(): Promise<CitadelConfig> {
     return configCache;
 }
 
-export function setConfig(config: CitadelConfig) {
+export function setConfig(config: CitadelConfigInput) {
+    const parsed = ConfigSchema.parse(config);
     logger.debug('[Config] Manually set config');
-    configCache = config;
+    configCache = parsed;
 }
 
 export function getConfig(): CitadelConfig {

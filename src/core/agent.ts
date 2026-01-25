@@ -26,13 +26,12 @@ export abstract class CoreAgent {
         schema: T,
         execute: (args: z.infer<T>) => Promise<R>
     ) {
-        // We use unknown cast as a way to bridge the gap between our generic T and the SDK internal expectations
-        // while avoiding suspicious 'any' triggers.
         const options = {
             description,
             parameters: schema,
             execute,
         };
+        // We use unknown cast as a way to bridge the gap between our generic T and the SDK internal expectations
         this.tools[name] = tool(options as unknown as Parameters<typeof tool>[0]) as Tool;
     }
 
@@ -190,7 +189,7 @@ export abstract class CoreAgent {
                         toolName: tc.toolName,
                         output: toolOutput,
                     } as ToolResultPart);
-                } catch (error: unknown) { // Using unknown
+                } catch (error: unknown) {
                     const errorMessage = error instanceof Error ? error.message : String(error);
                     toolResults.push({
                         type: 'tool-result',

@@ -15,11 +15,11 @@ export default defineConfig({
     agents: {
         router: {
             provider: 'ollama',
-            model: 'gpt-oss:20b-cloud',
+            model: 'gpt-oss:120b-cloud',
         },
         worker: {
             provider: 'ollama',
-            model: 'gpt-oss:20b-cloud',
+            model: 'gpt-oss:120b-cloud',
         },
         supervisor: {
             provider: 'ollama',
@@ -40,6 +40,7 @@ export default defineConfig({
 
     // Beads integration
     beads: {
+        binary: '/opt/homebrew/bin/bd',
         path: '.beads',
         autoSync: true,
     },

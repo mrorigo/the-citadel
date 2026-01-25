@@ -43,6 +43,7 @@ export const ConfigSchema = z.object({
 
   beads: z.object({
     path: z.string().default('.beads'),
+    binary: z.string().default('bd'),
     autoSync: z.boolean().default(true),
   }),
 
@@ -52,8 +53,9 @@ export const ConfigSchema = z.object({
 });
 
 export type CitadelConfig = z.infer<typeof ConfigSchema>;
+export type CitadelConfigInput = z.input<typeof ConfigSchema>;
 export type AgentRole = keyof CitadelConfig['agents'];
 
-export function defineConfig(config: Partial<CitadelConfig>): Partial<CitadelConfig> {
+export function defineConfig(config: CitadelConfigInput): CitadelConfigInput {
   return config;
 }

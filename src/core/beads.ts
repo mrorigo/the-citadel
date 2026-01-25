@@ -25,7 +25,7 @@ const RawBeadSchema = z.object({
     status: z.string(), // Raw status from CLI, e.g., 'closed'
     priority: BeadPrioritySchema,
     assignee: z.string().optional(),
-    labels: z.array(z.string()).optional(), // New field from CLI
+    labels: z.array(z.string()).optional(),
     parent: z.string().optional(),
     blockers: z.array(z.string()).optional(),
     acceptance_criteria: z.string().optional(), // Maps to acceptance_test in domain
@@ -66,14 +66,17 @@ export interface CreateOptions {
 
 export class BeadsClient {
     private basePath: string;
+    private binary: string;
 
-    constructor(basePath?: string) {
-        this.basePath = basePath || getConfig().beads.path;
+    constructor(basePath?: string, binary?: string) {
+        const config = getConfig();
+        this.basePath = basePath || config.beads.path;
+        this.binary = binary || config.beads.binary;
     }
 
     private async runCommand(args: string): Promise<string> {
-        // Use system bd binary
-        const command = `bd ${args}`;
+        // Use system bd binary or configured override
+        const command = `${this.binary} ${args}`;
 
         // Determine CWD: The parent of .beads folder
         const cwd = resolve(this.basePath, '..');
