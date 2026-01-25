@@ -130,3 +130,15 @@ When a Worker enters a directory, it automatically merges the instructions from 
 4.  Use `needs = ["step_id"]` to define execution order.
 
 The Router will automatically discover the new formula on its next cycle.
+
+### 5. Smart Molecules
+Formulas support advanced logic like **Conditions** and **Loops**.
+
+```toml
+[[steps]]
+id = "prod_check"
+title = "Run safety check"
+if = "{{env}} == 'prod'"  # Only runs if env is prod
+```
+
+For more details on conditionals, loops, and failure handling, see the **[Formula Reference Manual](./FORMULA-REFERENCE.md)**.
