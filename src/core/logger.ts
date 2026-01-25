@@ -1,11 +1,21 @@
 
+import { EventEmitter } from 'events';
+
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-export class CitadelLogger {
-    private static instance: CitadelLogger;
+export interface LogEntry {
+    timestamp: string;
+    level: LogLevel;
+    message: string;
+    meta?: Record<string, unknown>;
+}
 
-    // In the future, this could emit events to the TUI
-    // For now, it wraps console to allow centralized control
+export class CitadelLogger extends EventEmitter {
+    private consoleEnabled = true;
+
+    setConsoleEnabled(enabled: boolean) {
+        this.consoleEnabled = enabled;
+    }
 
     debug(message: string, meta?: Record<string, unknown>) {
         this.log('debug', message, meta);
@@ -26,16 +36,21 @@ export class CitadelLogger {
 
     private log(level: LogLevel, message: string, meta?: Record<string, unknown>) {
         const timestamp = new Date().toISOString();
-        const metaStr = meta ? JSON.stringify(meta) : '';
+        const entry: LogEntry = { timestamp, level, message, meta };
 
-        // Use console methods for proper stdio streams
-        const logFn = console[level] || console.log;
+        // Emit for Bridge/TUI
+        this.emit('log', entry);
 
-        if (level === 'debug' && process.env.NODE_ENV !== 'development' && !process.env.DEBUG) {
-            return;
+        // Print to console if enabled
+        if (this.consoleEnabled) {
+            const metaStr = meta ? JSON.stringify(meta) : '';
+            const logFn = console[level] || console.log;
+
+            if (level === 'debug' && process.env.NODE_ENV !== 'development' && !process.env.DEBUG) {
+                return;
+            }
+            logFn(`[${timestamp}] [${level.toUpperCase()}] ${message} ${metaStr}`);
         }
-
-        logFn(`[${timestamp}] [${level.toUpperCase()}] ${message} ${metaStr}`);
     }
 }
 
