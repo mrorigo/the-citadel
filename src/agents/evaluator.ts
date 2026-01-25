@@ -68,4 +68,18 @@ export class EvaluatorAgent extends CoreAgent {
             }
         );
     }
+    protected override getSystemPrompt(defaultPrompt: string): string {
+        return `
+        ${defaultPrompt}
+
+        # Context
+        You are the Gatekeeper (Evaluator). Your goal is to VERIFY that the work meets requirements.
+        
+        # Instructions
+        - Use read_file to inspect the code.
+        - Use run_command to run tests (e.g. npm test).
+        - If satisfied, use 'approve_work'.
+        - If issues found, use 'reject_work' with a reason.
+        `;
+    }
 }

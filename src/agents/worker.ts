@@ -1,4 +1,3 @@
-import { generateText, type ModelMessage, type ToolCallPart, type ToolResultPart, type TextPart } from 'ai';
 import { CoreAgent } from '../core/agent';
 import { getBeads } from '../core/beads';
 import { z } from 'zod';
@@ -6,7 +5,6 @@ import { readFile, writeFile, readdir, mkdir } from 'node:fs/promises';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { dirname } from 'node:path';
-import { getProjectContext } from '../services/project-context.js';
 import { logger } from '../core/logger';
 
 const execAsync = promisify(exec);
@@ -63,12 +61,6 @@ export class WorkerAgent extends CoreAgent {
                         parent: parentBeadId,
                         priority: (priority as 0 | 1 | 2 | 3) ?? 2
                     });
-                    // Auto-dependency: Parent depends on Child?
-                    // Usually parent remains open until children done.
-                    // bd dep add <child> <parent> (child blocked by parent)?
-                    // No, "Parent Needs Child". So Parent is blocked by Child.
-                    // addDependency(BlockED, BlockER).
-                    // Parent is Blocked. Child is Blocker.
                     await getBeads().addDependency(parentBeadId, bead.id);
                     return { success: true, beadId: bead.id, message: `Created subtask ${bead.id} blocking ${parentBeadId}` };
                 } catch (error: unknown) {
@@ -167,174 +159,19 @@ export class WorkerAgent extends CoreAgent {
         );
     }
 
-    // Override run to skip the separate 'think' phase which strictly blocks tools.
-    // We want the Worker to be able to 'think' by exploring (running tools).
-    override async run(prompt: string, context?: Record<string, unknown>): Promise<string> {
-        logger.info(`[${this.role}] Running (Unified Loop)...`, { role: this.role });
+    protected override getSystemPrompt(defaultPrompt: string): string {
+        return `
+        ${defaultPrompt}
 
-        // Load Project Awareness (AGENTS.md)
-        const projectContext = await getProjectContext().resolveContext(process.cwd(), process.cwd());
-
-        let projectRules = '';
-        if (projectContext) {
-            logger.info(`[Worker] Loaded AGENTS.md from ${projectContext.sourcePath}`);
-            projectRules = `
-            # PROJECT RULES (AGENTS.md)
-            You must follow these rules from the project configuration:
-            
-            ## Raw Configuration
-            ${projectContext.config.raw}
-
-            ## Parsed Commands & Rules (Reference)
-            ${projectContext.config.rules.length > 0 ? '### Extracted Rules\n' + projectContext.config.rules.map(r => '- ' + r).join('\n') : ''}
-            
-            ${projectContext.config.commands.setup.length > 0 ? '### Setup Commands\n' + projectContext.config.commands.setup.map(c => '- ' + c).join('\n') : ''}
-            ${projectContext.config.commands.test.length > 0 ? '### Test Commands\n' + projectContext.config.commands.test.map(c => '- ' + c).join('\n') : ''}
-            ${projectContext.config.commands.lint.length > 0 ? '### Lint Commands\n' + projectContext.config.commands.lint.map(c => '- ' + c).join('\n') : ''}
-            ${projectContext.config.commands.build.length > 0 ? '### Build Commands\n' + projectContext.config.commands.build.map(c => '- ' + c).join('\n') : ''}
-            
-            Always prioritize these project-specific instructions over general knowledge.
-            `;
-        } else {
-            logger.warn(`[Worker] No AGENTS.md found in ${process.cwd()}`);
-        }
-
-        const system = `
-        You are the Worker Agent. Your goal is to IMPLEMENT requested changes in the codebase.
+        # Implementation Mode
+        You are the Worker. Your primary goal is to write code and fix issues.
         
-        # Tools available
-        - Filesystem: read_file, write_file, list_dir
-        - Command: run_command
-        - Reporting: report_progress, submit_work
-        
-        ${projectRules}
-
-        # Instructions
-        - Analyze the request and explore the codebase if needed (list_dir, read_file).
-        - Formulate a plan and EXECUTE it.
-        - Do not just describe the code; WRITE the files.
-        - Use report_progress to indicate status.
-        - When finished, use 'submit_work' (with the beadId from context).
-        - If you do not call any tools, the system will assume you are done.
-        - YOU MUST USE TOOLS to make changes.
+        # Guidelines
+        - Use read_file/list_dir to explore first.
+        - Create complete files with write_file.
+        - Run tests with run_command if available.
+        - Keep the user informed with report_progress.
+        - Submit your work when done with submit_work.
         `;
-
-        const messages: ModelMessage[] = [
-            { role: 'system', content: system },
-            { role: 'user', content: `Context: ${JSON.stringify(context || {})}\n\nRequest: ${prompt}` }
-        ];
-
-        let finalResult = '';
-
-        for (let i = 0; i < 100; i++) {
-            const result = await generateText({
-                model: this.model,
-                tools: this.tools,
-                messages: messages,
-            });
-
-            // Construct Assistant Message from result
-            // We must manually add the assistant's response to history so the subsequent tool-result message is valid.
-            const assistantContent: (TextPart | ToolCallPart)[] = [];
-            if (result.text) {
-                assistantContent.push({ type: 'text', text: result.text });
-            }
-            if (result.toolCalls && result.toolCalls.length > 0) {
-                assistantContent.push(...result.toolCalls.map((tc) => ({
-                    type: 'tool-call' as const,
-                    toolCallId: tc.toolCallId,
-                    toolName: tc.toolName,
-                    input: tc.input
-                })));
-            }
-
-            // Only push if there is content
-            if (assistantContent.length > 0) {
-                messages.push({ role: 'assistant', content: assistantContent });
-            }
-
-            finalResult = result.text;
-
-            // Log output
-            if (result.text) {
-                logger.info(`[Worker] Output`, { text: result.text });
-            }
-
-            const toolCalls = result.toolCalls;
-
-            // If no tools, we might be done or just talking.
-            // But we must eventually call finish. 
-            if (!toolCalls || toolCalls.length === 0) {
-                continue;
-            }
-
-            // Execute tools
-            const toolResults: ToolResultPart[] = [];
-            let finished = false;
-
-            for (const tc of toolCalls) {
-                logger.info(`[Worker] Executing tool: ${tc.toolName}`, { tool: tc.toolName, params: tc.input });
-
-
-
-                const tool = this.tools[tc.toolName];
-                if (!tool) {
-                    toolResults.push({
-                        type: 'tool-result',
-                        toolCallId: tc.toolCallId,
-                        toolName: tc.toolName,
-                        output: { type: 'error-text', value: `Tool ${tc.toolName} not found` },
-                    } as ToolResultPart);
-                    continue;
-                }
-
-                if (!tool.execute) {
-                    toolResults.push({
-                        type: 'tool-result',
-                        toolCallId: tc.toolCallId,
-                        toolName: tc.toolName,
-                        output: { type: 'error-text', value: `Tool ${tc.toolName} has no execute method` },
-                    } as ToolResultPart);
-                    continue;
-                }
-
-                try {
-                    const output = await tool.execute(tc.input || {}, { toolCallId: tc.toolCallId, messages });
-
-                    if (tc.toolName === 'submit_work') {
-                        finished = true;
-                    }
-
-                    // Convert output to proper ToolResultOutput format
-                    const toolOutput = typeof output === 'string'
-                        ? { type: 'text' as const, value: output }
-                        : { type: 'json' as const, value: output };
-                    toolResults.push({
-                        type: 'tool-result',
-                        toolCallId: tc.toolCallId,
-                        toolName: tc.toolName,
-                        output: toolOutput,
-                    } as ToolResultPart);
-                } catch (error: unknown) {
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    toolResults.push({
-                        type: 'tool-result',
-                        toolCallId: tc.toolCallId,
-                        toolName: tc.toolName,
-                        output: { type: 'error-text', value: errorMessage },
-                    } as ToolResultPart);
-                }
-            }
-
-            messages.push({ role: 'tool', content: toolResults });
-
-
-            if (finished) {
-                logger.info('[Worker] Task finished explicitly.');
-                break;
-            }
-        }
-
-        return finalResult;
     }
 }
