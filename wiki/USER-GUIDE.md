@@ -1,6 +1,13 @@
 # The Citadel User Guide
 
-Welcome to **The Citadel**, a deterministic orchestration engine for AI agents. This system transforms chaotic agent interactions into a rigorous, verifiable software factory using the **MEOW Stack** (Molecular Expression of Work).
+Welcome to **The Citadel**, a deterministic orchestration engine for **Knowledge Work**. This system transforms chaotic agent interactions into a rigorous, verifiable process using the **MEOW Stack** (Molecular Expression of Work). It is designed to handle any complex objective—from software engineering and research analysis to content creation and data synthesis.
+
+## What can you build?
+
+The Citadel is agnostic to the domain of work. It shines whenever you need to maintain high quality and consistency across a series of tasks:
+- **Software Engineering**: Plan, Implement, Test, and Document features.
+- **Research & Analysis**: Gather data, summarize findings, and generate reports.
+- **Content Operations**: Draft, Review, Edit, and Publish articles.
 
 ## Core Concepts
 
@@ -41,6 +48,72 @@ description = "Update user guide"
 needs = ["impl"] # Dependency: 'docs' is blocked by 'impl'
 ```
 
+**Example 2: Podcast Production (Content)**
+This formula orchestrates a creative pipeline with parallel tasks.
+
+```toml
+# .citadel/formulas/podcast.toml
+formula = "podcast"
+description = "Produce episode {{episode_num}}"
+
+[vars.guest]
+description = "Guest Name"
+required = true
+
+[[steps]]
+id = "script"
+title = "Draft Questions for {{guest}}"
+description = "Research guest and draft interview outline"
+
+[[steps]]
+id = "scheduling"
+title = "Schedule Recording"
+description = "Coordinate time with {{guest}}"
+
+[[steps]]
+id = "record"
+title = "Record Interview"
+description = "Conduct remote recording session"
+needs = ["script", "scheduling"] # Waits for both script and booking
+
+[[steps]]
+id = "edit"
+title = "Edit Audio"
+description = "Post-production and mastering"
+needs = ["record"]
+```
+
+**Advanced Example: Deep Research Agent**
+This formula demonstrates resilience. If analysis fails (e.g., due to insufficient data), the system automatically triggers a rollback to the gathering phase.
+
+```toml
+# .citadel/formulas/deep_research.toml
+formula = "deep_research"
+description = "Conduct deep research on {{topic}}"
+
+[vars.topic]
+description = "Research topic"
+required = true
+
+[[steps]]
+id = "gather"
+title = "Gather Information"
+description = "Search web and filesystem for {{topic}}"
+
+[[steps]]
+id = "analyze"
+title = "Analyze Findings"
+description = "Synthesize gathered data into a summary"
+needs = ["gather"]
+on_failure = "gather" # <--- If analysis fails, retry gathering with new instructions
+
+[[steps]]
+id = "report"
+title = "Write Report"
+description = "Draft final report based on analysis"
+needs = ["analyze"]
+```
+
 #### Molecules (The Instances)
 When a Formula is instantiated (e.g., "Run feature release for Dark Mode"), The Citadel "cooks" it into a **Molecule**.
 - A Molecule is a Root Epic containing all the steps defined in the formula.
@@ -51,8 +124,8 @@ A **Convoy** is a long-lived context (Meta-Epic) used to group unrelated Molecul
 
 ### 3. Agents (The Workforce)
 - **RouterAgent**: The foreman. Analyzes requests, instantiates Formulas, and assigns tasks.
-- **WorkerAgent**: The builder. Picks up `open` Beads, writes code, and can **recursively breakdown work** (Dynamic Bonding).
-- **EvaluatorAgent**: The QA. Verifies `verify` Beads against acceptance criteria before closing them.
+- **WorkerAgent**: The executor. Picks up `open` Beads, executes tasks (research, writing, coding, analysis) and can **recursively breakdown work** (Dynamic Bonding).
+- **EvaluatorAgent**: The editor/verifier. Verifies `verify` Beads against acceptance criteria (accuracy, style, functionality) before closing them.
 
 ---
 
@@ -86,6 +159,14 @@ You don't talk to agents directly; you assign them work via Beads. To trigger a 
 bd create "Run the system migration formula for the Auth module"
 ```
 
+_or_
+
+**Business Operations Trigger:**
+```bash
+bd create "Prepare Q3 Business Review for Sales Team"
+# Router -> formula: qbr_prep, vars: quarter=Q3, team=Sales
+```
+
 **What happens next?**
 1.  The **Router** picks up this request.
 2.  It identifies the `system_migration` formula.
@@ -100,12 +181,26 @@ For deterministic execution without relying on the Router to parse intent, use t
 citadel create "Deploy Production" --formula deploy --vars env=prod
 ```
 
+_or_
+
+```bash
+citadel create "AI Trends Whitepaper" --formula whitepaper --vars topic="Agentic Workflows"
+```
+
 ### 4. Dynamic Bonding
-Workers are not limited to single tasks. If a Worker picks up a large task (e.g., "Refactor API"), it can:
-1.  Explore the codebase.
-2.  Realize the task is too big.
-3.  **Delegate** sub-tasks (create new child beads) to other workers.
-4.  Block the parent task until children are complete.
+Workers are not limited to single tasks. If a Worker picks up a large objective, it can recursively spawn child beads.
+
+**Example A: Refactoring (Software)**
+1.  Worker claims "Refactor API".
+2.  Explores code, finds 3 distinct services.
+3.  Spawns 3 child beads: "Refactor Auth", "Refactor Billing", "Refactor Users".
+4.  Delegates beads to other workers.
+
+**Example B: Market Analysis (Research)**
+1.  Worker claims "Competitor Analysis 2024".
+2.  Identifies 5 key competitors.
+3.  Spawns 5 child beads (one per competitor) to gather deep data in parallel.
+4.  Synthesizes the results once all children complete.
 
 ### 5. Project Awareness (AGENTS.md)
 You can "teach" agents about your specific project by placing `AGENTS.md` files in your repository.
@@ -113,16 +208,13 @@ You can "teach" agents about your specific project by placing `AGENTS.md` files 
 **Example `.citadel/AGENTS.md`:**
 ```markdown
 # Project Rules
-- Framework: Next.js 14 (App Router)
-- Styling: TailwindCSS
-- Testing: Playwright
-
-# Commands
-- Test: `npm test`
-- Lint: `npm run lint`
+- Tone: Professional, Academic
+- Format: APA Style Citations
+- Tools: Use 'filesystem' for gathering existing data
 
 # Behavior
-- Always write a test plan before implementing.
+- Always verify sources before citing.
+- Summarize findings before drafting sections.
 ```
 
 When a Worker enters a directory, it automatically merges the instructions from the nearest `AGENTS.md`.

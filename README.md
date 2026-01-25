@@ -1,26 +1,31 @@
 # The Citadel
 
-**Deterministic Agent Orchestration System** – a lightweight engine that turns chaotic agent swarms into an auditable, deterministic pipeline.
+**Deterministic Agent Orchestration System** – a lightweight engine that turns chaotic agent swarms into an auditable, deterministic **Knowledge Factory**.
+
+---
+
+Use The Citadel for complex, multi-step objectives: **building software features**, **conducting deep research**, **synthesizing market reports**, or **managing content pipelines**. By decoupling the *process* (SOPs) from the *execution* (Agents), it ensures that even creative work follows a reliable, auditable path.
 
 ---
 
 ## Features
 
-- **Foundry (Workflow Engine)** – Compile deterministic TOML `Formulas` into dynamic **Molecules** (task DAGs).
-- **Stateful Agents** – The *state machine* guarantees `Open → In Progress → Verify → Done` transitions.
-- **Dynamic Bonding** – Workers spawn sub‑tasks in parallel.
+- **Foundry (Workflow Engine)** – Compile standard operating procedures (SOPs) into dynamic **Molecules** (task DAGs).
+- **Process Integrity** – The *state machine* guarantees `Open → In Progress → Verify → Done` transitions for every task.
+- **Dynamic Bonding** – Agents can spawn sub‑tasks in parallel to handle complex objectives (research, coding, analysis).
 - **Resilient Recovery** – Automated `on_failure` handling with conditional skips.
 - **Durable State** – All context is stored in Git‑backed SQLite **Beads** (audit‑ready, restartable).
 - **Provider‑agnostic** – Works with Ollama, OpenAI, Anthropic, and more.
-- **Project Aware** – Finds `AGENTS.md` rules automatically.
+- **Context Aware** – Adheres to specific project rules and style guides (`AGENTS.md`) automatically.
 
 ---
 
 ## Quick Start
 
 ```bash
-# 1️⃣ Install deps (Bun is required)
+# 1️⃣ Install deps & link binary (Bun is required)
 bun install
+bun link
 
 # 2️⃣ Bootstrap a new project
 citadel init   # creates .citadel/ + config + sample formula
@@ -41,7 +46,7 @@ citadel start
 
 ## Documentation
 
-For detailed usage instructions, including advanced configuration, formula creation, and troubleshooting, please refer to the **[User Guide](docs/USER-GUIDE.md)**.
+For detailed usage instructions, including advanced configuration, formula creation, and troubleshooting, please refer to the **[User Guide](wiki/USER-GUIDE.md)**.
 
 ---
 
@@ -105,7 +110,7 @@ bun test tests/
 
 1. `bd ready` → Find a work item.
 2. `bd update <id> --status in_progress` → Claim it.
-3. code & tests → Pass all checks.
+3. execute & verify → Pass all checks.
 4. `bd close <id>` → Ship it.
 
 Love to see you play around!
