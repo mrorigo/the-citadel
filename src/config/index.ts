@@ -77,7 +77,6 @@ export function resetConfig() {
 
 export function getConfig(): CitadelConfig {
     if (!configCache) {
-        logger.error('[Config] Error: Config accessed before load');
         throw new Error('Config not loaded. Call loadConfig() first.');
     }
     return configCache;

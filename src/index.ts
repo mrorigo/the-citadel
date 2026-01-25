@@ -41,10 +41,10 @@ program
                 console.log('ℹ️  citadel.config.ts already exists');
             } catch {
                 const configTemplate = `
-import { defineConfig } from './src/config/schema'; // Adjust import if using as package
-// In a real install, you might import from 'the-citadel/config'
+// import { defineConfig } from 'the-citadel/config'; 
 
-export default defineConfig({
+// export default defineConfig({
+export default {
     env: 'development',
     providers: {
         ollama: {
@@ -54,11 +54,36 @@ export default defineConfig({
     },
     agents: {
         router: { provider: 'ollama', model: 'llama3:8b' },
-        worker: { provider: 'ollama', model: 'llama3:8b' },
-        gatekeeper: { provider: 'ollama', model: 'llama3:8b' },
+        worker: { 
+            provider: 'ollama', 
+            model: 'llama3:8b',
+            mcpTools: ['filesystem:*']
+        },
+        gatekeeper: { 
+            provider: 'ollama', 
+            model: 'llama3:8b',
+            mcpTools: ['filesystem:read_text_file', 'filesystem:list_directory']
+        },
         supervisor: { provider: 'ollama', model: 'llama3:8b' },
-    }
-});
+    },
+    mcpServers: {
+        filesystem: {
+            command: 'npx',
+            args: ['-y', '@modelcontextprotocol/server-filesystem'],
+        },
+    },
+    worker: {
+        timeout: 300,
+        maxRetries: 3,
+        costLimit: 1.00,
+    },
+    beads: {
+        path: '.beads',
+        binary: 'bd',
+        autoSync: true,
+    },
+// });
+};
 `;
                 await writeFile(configPath, configTemplate.trim());
                 console.log('✅ Created citadel.config.ts (Ollama default)');
@@ -120,7 +145,7 @@ description = "Create a file named hello_{{name}}.txt with a greeting."
 
             console.log('\n🚀 Citadel initialized successfully!');
             console.log('Try running:');
-            console.log('  bd create "Run hello_world name=Developer"');
+            console.log('  citadel create "My First Run" -f hello_world -v name=Developer');
             console.log('  citadel start');
 
         } catch (error) {

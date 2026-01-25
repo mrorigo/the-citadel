@@ -69,9 +69,14 @@ export class BeadsClient {
     private binary: string;
 
     constructor(basePath?: string, binary?: string) {
-        const config = getConfig();
-        this.basePath = basePath || config.beads.path;
-        this.binary = binary || config.beads.binary;
+        let config;
+        try {
+            config = getConfig();
+        } catch {
+            // Config might not be loaded during init
+        }
+        this.basePath = basePath || config?.beads.path || '.beads';
+        this.binary = binary || config?.beads.binary || 'bd';
     }
 
     private async runCommand(args: string): Promise<string> {
@@ -287,8 +292,15 @@ export class BeadsClient {
 let _beads: BeadsClient | null = null;
 export function getBeads(basePath?: string): BeadsClient {
     if (!_beads) {
-        const config = getConfig();
-        const path = basePath || config.beads.path;
+        let path = basePath;
+        if (!path) {
+            try {
+                const config = getConfig();
+                path = config.beads.path;
+            } catch {
+                path = '.beads';
+            }
+        }
         _beads = new BeadsClient(path);
     }
     return _beads;
