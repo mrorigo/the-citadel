@@ -4,6 +4,8 @@ import { loadConfig } from './config';
 import { Conductor } from './services/conductor';
 import { getQueue } from './core/queue';
 import { unlink } from 'node:fs/promises';
+import { startBridge } from './bridge/index';
+import { getWorkflowEngine } from './services/workflow-engine';
 
 const program = new Command();
 
@@ -14,7 +16,7 @@ program
 
 // --- Init Command ---
 import { mkdir, writeFile, access } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { getBeads } from './core/beads';
 
 program
@@ -167,7 +169,6 @@ program
                 queue.resetBead(beadId);
                 console.log(`Tickets for ${beadId} have been cleared.`);
             } else {
-                const { resolve } = await import('node:path');
                 const dbPath = resolve(process.cwd(), '.citadel', 'queue.sqlite');
                 console.log(`Resetting entire queue at ${dbPath}...`);
                 await unlink(dbPath);
@@ -199,7 +200,6 @@ program
     .command('bridge')
     .description('Start The Bridge (TUI Dashboard)')
     .action(async () => {
-        const { startBridge } = await import('./bridge/index');
         await startBridge();
     });
 
@@ -215,7 +215,6 @@ program
         }
 
         await loadConfig();
-        const { getWorkflowEngine } = await import('./services/workflow-engine');
         const engine = getWorkflowEngine();
         await engine.init();
 

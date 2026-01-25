@@ -1,7 +1,7 @@
 import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
 import { Conductor } from '../../src/services/conductor';
-import { WorkQueue, setQueueInstance } from '../../src/core/queue';
-import { BeadsClient, setBeadsInstance } from '../../src/core/beads';
+import { WorkQueue, setQueueInstance, getQueue } from '../../src/core/queue';
+import { BeadsClient, setBeadsInstance, getBeads } from '../../src/core/beads';
 import { rm, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -22,7 +22,7 @@ mock.module('../../src/agents/router', () => ({
             console.log(`[MockRouter] Analyze ${beadId} (${status})`);
             // We need to access the real Queue using the singleton accessor, 
             // which we will inject with our instance.
-            const q = (await import('../../src/core/queue')).getQueue();
+            const q = getQueue();
 
             if (status === 'open') {
                 console.log(`[MockRouter] Enqueuing ${beadId} for worker`);
@@ -42,12 +42,10 @@ mock.module('../../src/agents/worker', () => ({
     WorkerAgent: class MockWorker {
         // biome-ignore lint/suspicious/noExplicitAny: Mocking context
         async run(_prompt: string, context: any) {
-            const { getBeads } = await import('../../src/core/beads');
-            const beads = getBeads();
             console.log(`[Worker] Moving ${context.beadId} to in_progress...`);
-            await beads.update(context.beadId, { status: 'in_progress' });
+            await getBeads().update(context.beadId, { status: 'in_progress' });
             console.log(`[Worker] Moving ${context.beadId} to verify...`);
-            await beads.update(context.beadId, { status: 'verify' });
+            await getBeads().update(context.beadId, { status: 'verify' });
             return "Work done";
         }
     }
@@ -57,10 +55,8 @@ mock.module('../../src/agents/evaluator', () => ({
     EvaluatorAgent: class MockEvaluator {
         // biome-ignore lint/suspicious/noExplicitAny: Mocking context
         async run(_prompt: string, context: any) {
-            const { getBeads } = await import('../../src/core/beads');
-            const beads = getBeads();
             console.log(`[Gatekeeper] Approving ${context.beadId}...`);
-            await beads.update(context.beadId, { status: 'done' });
+            await getBeads().update(context.beadId, { status: 'done' });
             return "Approved";
         }
     }

@@ -2,6 +2,7 @@ import { CoreAgent } from '../core/agent';
 import { getQueue } from '../core/queue';
 import { z } from 'zod';
 import { getWorkflowEngine } from '../services/workflow-engine';
+import { getBeads } from '../core/beads';
 
 export class RouterAgent extends CoreAgent {
     constructor() {
@@ -21,7 +22,7 @@ export class RouterAgent extends CoreAgent {
                 // Defensive: Ensure bead actually exists.
                 // This prevents hallucinations like 'thec-citadel-123' caused by LLM typos.
                 try {
-                    await import('../core/beads').then(m => m.getBeads().get(beadId));
+                    await getBeads().get(beadId);
                 } catch {
                     return { success: false, error: `Bead ${beadId} does not exist.` };
                 }

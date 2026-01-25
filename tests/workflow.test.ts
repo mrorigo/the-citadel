@@ -5,6 +5,7 @@ import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { FormulaRegistry } from '../src/core/formula';
 import { WorkflowEngine } from '../src/services/workflow-engine';
 import { setBeadsInstance } from '../src/core/beads';
+import { getFormulaRegistry } from '../src/core/formula';
 
 describe('Workflow Engine', () => {
     const testRoot = join(process.cwd(), '.test_workflow_engine');
@@ -86,7 +87,6 @@ needs = ["prep"]
 
     it('should instantiate a formula correctly', async () => {
         // Initialize singleton for the engine to use
-        const { getFormulaRegistry } = await import('../src/core/formula');
         // Resetting singleton is hard if module is cached.
         // But we can try to rely on the fact that if we didn't call it before, it's null.
         // Assuming test runner separation? Bun test runner might share process state?

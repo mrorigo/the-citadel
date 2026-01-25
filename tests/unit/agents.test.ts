@@ -1,8 +1,4 @@
 import { describe, it, expect, mock, beforeAll } from 'bun:test';
-import { RouterAgent } from '../../src/agents/router';
-import { WorkerAgent } from '../../src/agents/worker';
-
-import { loadConfig } from '../../src/config';
 
 // Mock generateText to avoid calling real LLM
 mock.module('ai', () => ({
@@ -11,12 +7,17 @@ mock.module('ai', () => ({
     tool: (args: any) => args, // Return args as the tool for inspection
 }));
 
+import { loadConfig, resetConfig } from '../../src/config';
+
 describe('Agents Unit Tests', () => {
     beforeAll(async () => {
+        resetConfig();
         await loadConfig();
     });
 
-    it('RouterAgent should have enqueue_task tool', () => {
+    it('RouterAgent should have enqueue_task tool', async () => {
+        // Cache-busting hack to bypass mocks from other tests
+        const { RouterAgent } = await import(`../../src/agents/router?t=${Date.now()}`);
         const agent = new RouterAgent();
         // Since we mocked tool() to return args, we can inspect 'tools'
         // biome-ignore lint/suspicious/noExplicitAny: Accessing private property for testing
@@ -25,7 +26,8 @@ describe('Agents Unit Tests', () => {
         expect(tools.enqueue_task.description).toContain('Enqueue');
     });
 
-    it('WorkerAgent should have report_progress and submit_work tools', () => {
+    it('WorkerAgent should have report_progress and submit_work tools', async () => {
+        const { WorkerAgent } = await import(`../../src/agents/worker?t=${Date.now()}`);
         const agent = new WorkerAgent();
         // biome-ignore lint/suspicious/noExplicitAny: Accessing private property for testing
         const tools = (agent as any).tools;

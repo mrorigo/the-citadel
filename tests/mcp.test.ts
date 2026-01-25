@@ -120,9 +120,7 @@ describe('MCP Tools Integration', () => {
 
     it('should register MCP tools in WorkerAgent', async () => {
         // We need to mock getAgentModel for WorkerAgent
-        mock.module('../src/core/llm', () => ({
-            getAgentModel: () => ({}) // Dummy model
-        }));
+        // Using real model here as setConfig provides valid config
 
         setConfig({
             providers: {

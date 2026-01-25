@@ -7,6 +7,7 @@ import { WorkflowEngine } from '../src/services/workflow-engine';
 import { Conductor } from '../src/services/conductor';
 import { setBeadsInstance } from '../src/core/beads';
 import { setConfig } from '../src/config';
+import { EvaluatorAgent } from '../src/agents/evaluator';
 
 mock.module('../src/agents/router', () => ({
     RouterAgent: class {
@@ -152,7 +153,6 @@ description = "Cleaning up after main failure"
     });
 
     it('should correctly mark work as failed via EvaluatorAgent tool', async () => {
-        const { EvaluatorAgent } = await import('../src/agents/evaluator');
         const agent = new EvaluatorAgent();
         const beadId = 'bd-test1';
         store.set(beadId, { id: beadId, title: 'Test Task', status: 'verify', labels: [] });

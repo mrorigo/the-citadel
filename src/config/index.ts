@@ -70,6 +70,11 @@ export function setConfig(config: CitadelConfigInput) {
     configCache = parsed;
 }
 
+export function resetConfig() {
+    configCache = null;
+    logger.debug('[Config] Cache cleared');
+}
+
 export function getConfig(): CitadelConfig {
     if (!configCache) {
         logger.error('[Config] Error: Config accessed before load');

@@ -1,6 +1,10 @@
 import { CoreAgent } from '../core/agent';
 import { getBeads } from '../core/beads';
 import { z } from 'zod';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execAsync = promisify(exec);
 
 export class EvaluatorAgent extends CoreAgent {
     constructor() {
@@ -56,10 +60,8 @@ export class EvaluatorAgent extends CoreAgent {
             'Execute a shell command (e.g. to run tests)',
             z.object({ command: z.string() }),
             async ({ command }) => {
-                const { exec } = await import('node:child_process');
-                const { promisify } = await import('node:util');
                 try {
-                    const { stdout, stderr } = await promisify(exec)(command);
+                    const { stdout, stderr } = await execAsync(command);
                     return { success: true, stdout, stderr };
                 } catch (error: unknown) {
                     const errorMessage = error instanceof Error ? error.message : String(error);
