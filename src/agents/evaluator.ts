@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 export class EvaluatorAgent extends CoreAgent {
     constructor() {
-        super('gatekeeper'); // Using 'gatekeeper' role from config
+        super('gatekeeper');
 
         // Approve
         this.registerTool(
@@ -31,6 +31,23 @@ export class EvaluatorAgent extends CoreAgent {
             async ({ beadId, reason }) => {
                 await getBeads().update(beadId, { status: 'in_progress' });
                 return { success: true, status: 'in_progress', reason };
+            }
+        );
+
+        // Fail
+        this.registerTool(
+            'fail_work',
+            'Mark the work as terminal failure (triggers recovery steps if defined)',
+            z.object({
+                beadId: z.string().describe('The ID of the bead being failed'),
+                reason: z.string().describe('Why the work is considered a terminal failure'),
+            }),
+            async ({ beadId }) => {
+                await getBeads().update(beadId, {
+                    status: 'done',
+                    labels: ['failed']
+                });
+                return { success: true, status: 'done', failed: true };
             }
         );
 

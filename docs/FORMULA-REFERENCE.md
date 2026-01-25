@@ -94,8 +94,13 @@ on_failure = "rollback_db"
 id = "rollback_db"
 title = "Rollback Database"
 description = "Run if migration fails"
-# Note: In the current engine, this explicit dependency is auto-wired.
 ```
+
+**Resilience Logic**:
+- The **Conductor** monitors recovery steps (beads with the `recovery` label).
+- If the main step finishes successfully (status `done`), the recovery step is **skipped** automatically.
+- If the main step finishes with a terminal failure (Gatekeeper uses `fail_work` to add the `failed` label), the recovery step is **executed**.
+- Recovery steps are tagged with `recovers:<main_bead_id>` for traceability.
 
 ## 4. Dependencies
 

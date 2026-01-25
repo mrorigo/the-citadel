@@ -30,7 +30,17 @@ Run these to verify types:
     - NEVER use `// biome-ignore` to hide type errors
     - Always define proper interfaces
     - If you are stuck on a type error, FIX IT by understanding the type data, do not bypass it.
+- **FAILURE HANDLING**:
+    - Gatekeepers: Use `fail_work` for terminal failures that require recovery steps.
+    - Workers: Respect the `recovery` label on beads.
 - Work is NOT complete until all checks pass.
+
+### Agent-Specific Instructions
+
+#### Gatekeeper (EvaluatorAgent)
+- Use `approve_work` when acceptance criteria are met.
+- Use `reject_work` for fixable issues (sends task back to in-progress).
+- Use `fail_work` for **terminal failures**. This marks the task as `done` but applies a `failed` label, triggering any defined `on_failure` recovery steps in the workflow.
 
 ### Quick Reference (Beads)
 

@@ -156,13 +156,7 @@ export class WorkflowEngine {
             }
 
             // Wire 'on_failure' (Recovery)
-            // Semantic: "Step A on_failure Step B" => B depends on A, but runs ONLY if A fails?
-            // Current Beads primitives support: B blocked by A.
-            // If A fails, B becomes unblocked (if verify fail -> open?).
-            // Actually, usually B waits for A to be DONE.
-            // If A fails, we need logic.
-            // For now, we wire it as a dependency + add a label "recovery".
-            // The Conductor would need to know to SKIP B if A succeeds.
+            // Semantic: "Step A on_failure Step B" => B depends on A, but runs ONLY if A fails.
             if (step.on_failure) {
                 const recoveryIds = stepIdToBeadIds.get(step.on_failure);
                 if (recoveryIds) {
@@ -170,10 +164,10 @@ export class WorkflowEngine {
                         for (const recId of recoveryIds) {
                             // Recovery step (recId) blocked by Main step (childId)
                             await beads.addDependency(recId, childId);
-                            // Flag recovery bead
-                            await beads.update(recId, { status: 'open' }); // Ensure open? 
-                            // Add 'recovery' label via update? beads.update doesn't support addLabel yet directly in interface but cli does.
-                            // We assume primitive wiring for now. 
+                            // Flag recovery bead and link it to its source for traceability
+                            await beads.update(recId, {
+                                labels: ['recovery', `recovers:${childId}`]
+                            });
                             console.log(`[WorkflowEngine] Wired ${recId} (recovery) -> ${childId}`);
                         }
                     }

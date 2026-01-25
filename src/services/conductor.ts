@@ -103,12 +103,32 @@ export class Conductor {
             const active = queue.getActiveTicket(bead.id);
             if (!active) {
                 // Double-check: ensure bead is STILL open (race condition protect)
-                // If Router fetched list before Worker finished, and Worker finished before Queue check,
-                // we might see Open+Inactive when it's actually Verify+Inactive.
                 const fresh = await beadsClient.get(bead.id);
                 if (fresh.status !== 'open') {
                     logger.info(`[Router] Skipping ${bead.id} (status changed to ${fresh.status})`, { beadId: bead.id });
                     continue;
+                }
+
+                // --- Recovery Logic ---
+                if (fresh.labels?.includes('recovery')) {
+                    const blockers = fresh.blockers || [];
+                    if (blockers.length > 0) {
+                        const blockerBeads = await Promise.all(blockers.map(id => beadsClient.get(id)));
+                        const anyFailed = blockerBeads.some(b => b.labels?.includes('failed'));
+                        const allDone = blockerBeads.every(b => b.status === 'done');
+
+                        if (allDone && !anyFailed) {
+                            logger.info(`[Router] Skipping recovery bead ${bead.id} (all dependencies succeeded)`, { beadId: bead.id });
+                            await beadsClient.update(bead.id, { status: 'done' });
+                            continue;
+                        }
+
+                        if (!anyFailed) {
+                            // If not all done and none failed yet, we wait.
+                            // But usually `open` status implies blockers ARE done.
+                            // If they are done and none failed, we skip.
+                        }
+                    }
                 }
 
                 logger.info(`[Router] Found unassigned open bead: ${bead.id}`, { beadId: bead.id });

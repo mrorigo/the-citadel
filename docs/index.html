@@ -481,6 +481,13 @@
             constraints.
           </p>
         </div>
+        <div class="card">
+          <h3>Resilient Recovery</h3>
+          <p>
+            Automated <strong>on_failure</strong> logic ensures reliability. The system skips recovery steps on success,
+            but executes them immediately on failure.
+          </p>
+        </div>
       </div>
     </section>
 
@@ -501,7 +508,7 @@
         </div>
         <div class="pipeline-step">
           <strong>4. Verification</strong>
-          <span>Gatekeepers validate against acceptance criteria</span>
+          <span>Gatekeepers validate work or trigger Recovery steps on failure</span>
         </div>
         <div class="pipeline-step">
           <strong>5. Delivery</strong>

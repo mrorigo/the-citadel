@@ -9,6 +9,7 @@
 - **Foundry (Workflow Engine)** – Compile deterministic TOML `Formulas` into dynamic **Molecules** (task DAGs).
 - **Stateful Agents** – The *state machine* guarantees `Open → In Progress → Verify → Done` transitions.
 - **Dynamic Bonding** – Workers spawn sub‑tasks in parallel.
+- **Resilient Recovery** – Automated `on_failure` handling with conditional skips.
 - **Durable State** – All context is stored in Git‑backed SQLite **Beads** (audit‑ready, restartable).
 - **Provider‑agnostic** – Works with Ollama, OpenAI, Anthropic, and more.
 - **Project Aware** – Finds `AGENTS.md` rules automatically.
