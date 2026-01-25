@@ -45,6 +45,10 @@ export const ConfigSchema = z.object({
     path: z.string().default('.beads'),
     autoSync: z.boolean().default(true),
   }),
+
+  bridge: z.object({
+    maxLogs: z.number().default(1000),
+  }).default({ maxLogs: 1000 }),
 });
 
 export type CitadelConfig = z.infer<typeof ConfigSchema>;

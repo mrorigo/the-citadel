@@ -1,27 +1,75 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Text } from 'ink'; // Removed useInput
+import { Box, Text, useInput } from 'ink';
 import { logger, type LogEntry } from '../../core/logger';
 import { getQueue } from '../../core/queue';
 import { getBeads } from '../../core/beads';
 import { MoleculeTree } from './MoleculeTree';
+import { getConfig } from '../../config';
 
 // Simple Log Component
 const LogStream = () => {
+    const config = getConfig();
+    const maxLogs = config.bridge?.maxLogs || 1000;
+
     const [logs, setLogs] = useState<LogEntry[]>([]);
+    const [scrollTop, setScrollTop] = useState(0); // 0 means "at bottom" (showing latest)
+    // >0 means scrolled UP by N lines from bottom
+    const [viewHeight, setViewHeight] = useState(15);
 
     useEffect(() => {
         const handler = (entry: LogEntry) => {
-            setLogs(prev => [...prev.slice(-10), entry]); // Keep last 10
+            setLogs(prev => {
+                const updated = [...prev, entry];
+                if (updated.length > maxLogs) {
+                    return updated.slice(updated.length - maxLogs);
+                }
+                return updated;
+            });
         };
         logger.on('log', handler);
         return () => { logger.off('log', handler); };
-    }, []);
+    }, [maxLogs]);
+
+    useInput((input, key) => {
+        if (key.upArrow) {
+            setScrollTop(prev => Math.min(prev + 1, Math.max(0, logs.length - viewHeight)));
+        }
+        if (key.downArrow) {
+            setScrollTop(prev => Math.max(0, prev - 1));
+        }
+        if (key.pageUp) {
+            setScrollTop(prev => Math.min(prev + 10, Math.max(0, logs.length - viewHeight)));
+        }
+        if (key.pageDown) {
+            setScrollTop(prev => Math.max(0, prev - 10));
+        }
+    });
+
+    // Calculate view slice
+    // logs[length-1] is newest.
+    // We want to show lines from (length - viewHeight - scrollTop) to (length - scrollTop)
+    const total = logs.length;
+    const effectiveHeight = Math.min(total, viewHeight);
+
+    // Start index (inclusive)
+    // If scrollTop=0, start = total - effectiveHeight
+    // If scrollTop=1, start = total - effectiveHeight - 1
+    let startIndex = total - effectiveHeight - scrollTop;
+    if (startIndex < 0) startIndex = 0;
+
+    // End index (exclusive)
+    let endIndex = startIndex + effectiveHeight;
+
+    const viewLogs = logs.slice(startIndex, endIndex);
 
     return (
-        <Box flexDirection="column" borderStyle="round" borderColor="green" width="100%" height={15}>
-            <Text bold>Live Logs</Text>
-            {logs.map((l, i) => (
-                <Text key={`${l.timestamp}-${i}`}>
+        <Box flexDirection="column" borderStyle="round" borderColor={scrollTop > 0 ? "yellow" : "green"} width="100%" height={viewHeight + 2}>
+            <Box flexDirection="row" justifyContent="space-between">
+                <Text bold>Live Logs {scrollTop > 0 ? `(Scrolled: -${scrollTop})` : '(Live)'}</Text>
+                <Text color="gray">{logs.length}/{maxLogs}</Text>
+            </Box>
+            {viewLogs.map((l, i) => (
+                <Text key={`${l.timestamp}-${startIndex + i}`} wrap="truncate">
                     <Text color="gray">[{l.timestamp.split('T')[1]?.split('.')[0] || '00:00:00'}]</Text>
                     <Text color={l.level === 'error' ? 'red' : l.level === 'warn' ? 'yellow' : 'white'}> [{l.level.toUpperCase()}] </Text>
                     {l.message}

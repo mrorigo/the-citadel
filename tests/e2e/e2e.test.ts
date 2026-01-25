@@ -82,7 +82,8 @@ setConfig({
         supervisor: { provider: 'ollama', model: 'mock' }
     },
     worker: { timeout: 300, maxRetries: 3, costLimit: 1 },
-    beads: { path: TEST_BEADS_PATH, autoSync: true }
+    beads: { path: TEST_BEADS_PATH, autoSync: true },
+    bridge: { maxLogs: 1000 }
 });
 
 describe('E2E Lifecycle', () => {

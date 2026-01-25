@@ -43,4 +43,8 @@ export default defineConfig({
         path: '.beads',
         autoSync: true,
     },
+
+    bridge: {
+        maxLogs: 1000,
+    },
 });
