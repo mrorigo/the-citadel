@@ -1,6 +1,7 @@
 import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
 import { Conductor } from '../../src/services/conductor';
-import type { Bead } from '../../src/core/beads';
+import type { Bead, BeadsClient } from '../../src/core/beads';
+import type { WorkQueue } from '../../src/core/queue';
 
 // Mock dependencies
 const mockBeads = {
@@ -46,7 +47,7 @@ describe('Conductor Service Integration', () => {
     let conductor: Conductor;
 
     beforeEach(() => {
-        conductor = new Conductor(mockBeads, mockQueue);
+        conductor = new Conductor(mockBeads as unknown as BeadsClient, mockQueue as unknown as WorkQueue);
     });
 
     afterEach(() => {

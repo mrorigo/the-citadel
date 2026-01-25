@@ -2,8 +2,8 @@ import { RouterAgent } from '../agents/router';
 import { WorkerAgent } from '../agents/worker';
 import { EvaluatorAgent } from '../agents/evaluator';
 import { Hook } from '../core/hooks';
-import { getQueue } from '../core/queue';
-import { getBeads } from '../core/beads';
+import { getQueue, type WorkQueue } from '../core/queue';
+import { getBeads, type BeadsClient } from '../core/beads';
 import { logger } from '../core/logger';
 
 export class Conductor {
@@ -15,13 +15,10 @@ export class Conductor {
     private workerHook: Hook;
     private gatekeeperHook: Hook;
 
-    // biome-ignore lint/suspicious/noExplicitAny: DI
-    private beads: any;
-    // biome-ignore lint/suspicious/noExplicitAny: DI
-    private queue: any;
+    private beads: BeadsClient;
+    private queue: WorkQueue;
 
-    // biome-ignore lint/suspicious/noExplicitAny: DI
-    constructor(beads?: any, queue?: any) {
+    constructor(beads?: BeadsClient, queue?: WorkQueue) {
         this.beads = beads || getBeads();
         this.queue = queue || getQueue();
 

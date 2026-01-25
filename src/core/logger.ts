@@ -1,5 +1,5 @@
 
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 

@@ -104,7 +104,7 @@ export class ProjectContextService {
 
     private mergeConfigs(child: AgentsMdConfig, parent: AgentsMdConfig): AgentsMdConfig {
         return {
-            raw: child.raw + '\n\n' + parent.raw, // Keep full context
+            raw: `${child.raw}\n\n${parent.raw}`, // Keep full context
             sections: { ...parent.sections, ...child.sections }, // Child overrides parent sections
             commands: {
                 setup: [...child.commands.setup, ...parent.commands.setup],
@@ -144,7 +144,7 @@ export class ProjectContextService {
 
             // Append to generic section text
             if (!sections[currentSection]) sections[currentSection] = '';
-            sections[currentSection] += line + '\n';
+            sections[currentSection] += `${line}\n`;
 
             // Command extraction (heuristic: code blocks or indented lines often contain commands)
             // Ideally we look for fenced code blocks, but line-by-line is harder.
