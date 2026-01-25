@@ -1,0 +1,195 @@
+# Formula Reference Manual
+
+Formulas are the blueprints for **Molecules** (workflow graphs) in The Citadel. They are written in **TOML**.
+
+Formulas allow you to define repeatable processes, from simple sequences to dynamic graphs with loops and conditional logic.
+
+## 1. Basic Structure
+
+A formula file must live in `.citadel/formulas/` and end in `.toml`.
+
+```toml
+formula = "deploy_app"          # Unique identifier (used in CLI)
+description = "Deploys the app" # Human readable description
+
+# 1. Variables (Input Arguments)
+[vars.env]
+description = "Target environment (dev/prod)"
+required = true
+default = "dev"
+
+# 2. Steps (Tasks)
+[[steps]]
+id = "build"
+title = "Build Application"
+description = "Run build script for {{env}}"
+
+[[steps]]
+id = "deploy"
+title = "Deploy to {{env}}"
+description = "Upload artifacts"
+needs = ["build"]  # Dependency: 'deploy' waits for 'build'
+```
+
+## 2. Variables & Templating
+
+Variables defined in `[vars]` can be injected into any string field using `{{var_name}}` syntax.
+
+- **Definition**:
+  ```toml
+  [vars.region]
+  default = "us-east-1"
+  ```
+- **Usage**:
+  ```toml
+  title = "Deploy to {{region}}"
+  ```
+
+## 3. Smart Features
+
+Smart Molecules support dynamic logic that evaluates at **Creation Time**.
+
+### Conditionals (`if`)
+
+Skip a step unless a condition is met.
+
+Supported operators: `==`, `!=`. Items are treated as strings.
+
+```toml
+[[steps]]
+id = "safety_check"
+title = "Production Safety Check"
+if = "{{env}} == 'prod'"   # Only creates this bead if env is 'prod'
+```
+
+### Loops (`for`)
+
+Generate multiple beads from a single step definition by iterating over a list.
+
+- **`items`**: Variable containing the list (CSV string or JSON array).
+- **`as`**: Variable name for the current item in the loop context.
+
+```toml
+# Input var: services="auth, payment, email"
+
+[[steps]]
+id = "deploy_svc"
+title = "Deploy Service: {{svc}}"
+for = { items = "{{services}}", as = "svc" }
+```
+
+**Result**: Creates 3 beads: "Deploy Service: auth", "Deploy Service: payment", etc.
+
+### Failure Handlers (`on_failure`)
+
+Define a recovery step that should run if the main step fails.
+
+```toml
+[[steps]]
+id = "main_task"
+title = "Migrate Database"
+on_failure = "rollback_db"
+
+[[steps]]
+id = "rollback_db"
+title = "Rollback Database"
+description = "Run if migration fails"
+# Note: In the current engine, this explicit dependency is auto-wired.
+```
+
+## 4. Dependencies
+
+Use the `needs` array to define the Directed Acyclic Graph (DAG).
+
+```toml
+needs = ["step_id_1", "step_id_2"]
+```
+
+- If `step_id_1` was a **Loop**, the current step will depend on **ALL** iterations of that loop (fan-in).
+- If `step_id_1` was **Skipped** (due to `if`), the dependency is ignored.
+
+## 5. Usage
+
+Create a new Molecule from a formula:
+
+```bash
+citadel create "My Deployment" --formula deploy_app --vars env=prod
+```
+
+## 6. Practical Examples
+
+### Example A: Monorepo Deployment (Loops)
+Deploy multiple microservices in parallel, then run integration tests.
+
+```toml
+formula = "deploy_monorepo"
+description = "Deploy specified services and test"
+
+[vars.services]
+description = "Comma-separated list of services (e.g. 'auth,payment,ui')"
+required = true
+
+[[steps]]
+id = "deploy"
+title = "Deploy {{service}}"
+for = { items = "{{services}}", as = "service" }
+
+[[steps]]
+id = "integration_test"
+title = "Run Integration Tests"
+needs = ["deploy"] # Waits for ALL services to deploy
+```
+
+### Example B: Feature Flag Rollout (Conditionals)
+Perform a rollout only if the environment is production.
+
+```toml
+formula = "feature_rollout"
+description = "Toggle feature flag"
+
+[vars.env]
+default = "dev"
+[vars.flag]
+required = true
+
+[[steps]]
+id = "enable_flag"
+title = "Enable {{flag}} in {{env}}"
+
+[[steps]]
+id = "verify_metrics"
+title = "Verify Health Metrics"
+if = "{{env}} == 'prod'" # Only strictly verify in prod
+needs = ["enable_flag"]
+
+[[steps]]
+id = "notify_team"
+title = "Slack Notification"
+if = "{{env}} == 'prod'"
+needs = ["verify_metrics"]
+```
+
+### Example C: Risky Database Migration (Failure Handling)
+If migration fails, automatically trigger a rollback task.
+
+```toml
+formula = "db_migration"
+description = "Apply schema changes with safety net"
+
+[[steps]]
+id = "snapshot"
+title = "Take DB Snapshot"
+
+[[steps]]
+id = "migrate"
+title = "Run Migration Script"
+needs = ["snapshot"]
+on_failure = "rollback"
+
+[[steps]]
+id = "rollback"
+title = "Restore from Snapshot"
+description = "EMERGENCY: Restoring DB state"
+# Implicitly depends on 'migrate' due to on_failure wiring
+```
+
