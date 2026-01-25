@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Text } from 'ink';
 import { getBeads, type Bead } from '../../core/beads';
 
@@ -18,10 +18,14 @@ const buildTree = (beads: Bead[]): TreeNode[] => {
 
     // Build hierarchy
     for (const bead of beads) {
-        const node = map.get(bead.id)!;
+        const node = map.get(bead.id);
+        if (!node) continue;
+
         if (bead.parent && map.has(bead.parent)) {
-            const parent = map.get(bead.parent)!;
-            parent.children.push(node);
+            const parent = map.get(bead.parent);
+            if (parent) {
+                parent.children.push(node);
+            }
         } else {
             roots.push(node);
         }
@@ -63,7 +67,7 @@ export const MoleculeTree = () => {
             try {
                 const beads = await getBeads().getAll();
                 setTree(buildTree(beads));
-            } catch (e) {
+            } catch (_e) {
                 // Ignore errors during refresh (might be due to concurrent writes)
             }
         };

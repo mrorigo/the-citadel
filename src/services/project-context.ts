@@ -1,5 +1,5 @@
-import { readFile, readdir } from 'node:fs/promises';
-import { join, dirname, resolve, sep } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { join, dirname, resolve } from 'node:path';
 import { existsSync } from 'node:fs';
 
 export interface AgentsMdConfig {
@@ -81,7 +81,7 @@ export class ProjectContextService {
         let rootConfig: AgentsMdConfig | null = null;
 
         if (this.cache.has(rootAgentPath)) {
-            rootConfig = this.cache.get(rootAgentPath)!.config;
+            rootConfig = this.cache.get(rootAgentPath)?.config || null;
         } else if (existsSync(rootAgentPath)) {
             try {
                 const content = await readFile(rootAgentPath, 'utf-8');
@@ -167,13 +167,16 @@ export class ProjectContextService {
             else commands.other.push(cmd);
         };
 
-        while ((match = commandRegex.exec(content)) !== null) {
+        match = commandRegex.exec(content);
+        while (match !== null) {
             processCommand(match[0].replace(/`/g, ''));
+            match = commandRegex.exec(content);
         }
 
         // 2. Fenced code blocks (bash/sh/zsh/shell)
         const codeBlockRegex = /```(?:bash|sh|zsh|shell|cmd|powershell)\s*([\s\S]*?)```/g;
-        while ((match = codeBlockRegex.exec(content)) !== null) {
+        match = codeBlockRegex.exec(content);
+        while (match !== null) {
             const blockContent = match[1] || '';
             const lines = blockContent.split('\n');
             for (const line of lines) {
@@ -183,12 +186,15 @@ export class ProjectContextService {
                     processCommand(trimmed);
                 }
             }
+            match = codeBlockRegex.exec(content);
         }
 
         // Rule extraction (imperative keywords)
         const ruleRegex = /(?:Always|Never|Must|Ensure|Verify|Done =)\s+([^.\n]+)/gi;
-        while ((match = ruleRegex.exec(content)) !== null) {
+        match = ruleRegex.exec(content);
+        while (match !== null) {
             rules.push(match[0].trim());
+            match = ruleRegex.exec(content);
         }
 
         return {

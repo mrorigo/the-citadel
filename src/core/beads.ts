@@ -3,7 +3,6 @@ import { promisify } from 'node:util';
 import { z } from 'zod';
 import { resolve } from 'node:path';
 import { getConfig } from '../config';
-import { logger } from './logger';
 
 const execAsync = promisify(exec);
 

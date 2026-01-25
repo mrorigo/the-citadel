@@ -27,6 +27,7 @@ export abstract class CoreAgent {
             parameters: schema,
             // biome-ignore lint/suspicious/noExplicitAny: Casting for tool compatibility
             execute: execute as any,
+            // biome-ignore lint/suspicious/noExplicitAny: Casting for tool compatibility
         } as any);
     }
 

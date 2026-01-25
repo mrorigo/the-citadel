@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { FormulaRegistry } from '../src/core/formula';
 import { WorkflowEngine } from '../src/services/workflow-engine';
-import { BeadsClient, setBeadsInstance } from '../src/core/beads';
+import { setBeadsInstance } from '../src/core/beads';
 
 describe('Workflow Engine', () => {
     const testRoot = join(process.cwd(), '.test_workflow_engine');
@@ -13,6 +13,7 @@ describe('Workflow Engine', () => {
 
     let registry: FormulaRegistry;
     let engine: WorkflowEngine;
+    // biome-ignore lint/suspicious/noExplicitAny: Mocking
     let beadsClientMock: any;
 
     beforeEach(async () => {
@@ -49,13 +50,14 @@ needs = ["prep"]
 
         // Mock BeadsClient
         beadsClientMock = {
+            // biome-ignore lint/suspicious/noExplicitAny: Mocking
             create: mock(async (title: string, options: any) => ({
                 id: `bd-${Math.random().toString(36).substr(2, 5)}`,
                 title,
                 status: 'open',
                 ...options
             })),
-            addDependency: mock(async (child: string, parent: string) => {
+            addDependency: mock(async (_child: string, _parent: string) => {
                 // valid
             })
         };
@@ -107,18 +109,22 @@ needs = ["prep"]
         // Needs Root + 2 steps = 3 calls
         expect(createCalls.length).toBe(3);
 
-        const rootCall = createCalls.find((c: any[]) => c[1]?.type === 'epic');
+        // biome-ignore lint/suspicious/noExplicitAny: Mocking types
+        const rootCall = createCalls.find((c: unknown[]) => (c as any)[1]?.type === 'epic');
         expect(rootCall).toBeDefined();
-        expect(rootCall[0]).toContain('Compile MyApp app'); // resolved var
-        expect(rootCall[1].parent).toBe('bd-convoy1'); // Verify parenting to convoy
+        // biome-ignore lint/style/noNonNullAssertion: Test
+        expect(rootCall![0]).toContain('Compile MyApp app'); // resolved var
+        // biome-ignore lint/suspicious/noExplicitAny: Mocking types
+        expect((rootCall as any)[1].parent).toBe('bd-convoy1'); // Verify parenting to convoy
 
         // 2. Steps
-        const prepCall = createCalls.find((c: any[]) => c[0] === 'Prepare MyApp');
+        const prepCall = createCalls.find((c: unknown[]) => c[0] === 'Prepare MyApp');
         expect(prepCall).toBeDefined();
         // Check description passed via options
-        expect(prepCall[1].description).toBe('Cleaning build dir');
+        // biome-ignore lint/suspicious/noExplicitAny: Mocking types
+        expect((prepCall as any)[1].description).toBe('Cleaning build dir');
 
-        const buildCall = createCalls.find((c: any[]) => c[0] === 'Build MyApp');
+        const buildCall = createCalls.find((c: unknown[]) => c[0] === 'Build MyApp');
         expect(buildCall).toBeDefined();
 
         // 3. Dependencies

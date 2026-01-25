@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Text, useInput } from 'ink';
 import { logger, type LogEntry } from '../../core/logger';
 import { getQueue } from '../../core/queue';
-import { getBeads } from '../../core/beads';
 import { MoleculeTree } from './MoleculeTree';
 import { getConfig } from '../../config';
 
@@ -14,7 +13,7 @@ const LogStream = () => {
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [scrollTop, setScrollTop] = useState(0); // 0 means "at bottom" (showing latest)
     // >0 means scrolled UP by N lines from bottom
-    const [viewHeight, setViewHeight] = useState(15);
+    const [viewHeight, _setViewHeight] = useState(15);
 
     useEffect(() => {
         const handler = (entry: LogEntry) => {
@@ -30,7 +29,7 @@ const LogStream = () => {
         return () => { logger.off('log', handler); };
     }, [maxLogs]);
 
-    useInput((input, key) => {
+    useInput((_input, key) => {
         if (key.upArrow) {
             setScrollTop(prev => Math.min(prev + 1, Math.max(0, logs.length - viewHeight)));
         }
@@ -58,7 +57,7 @@ const LogStream = () => {
     if (startIndex < 0) startIndex = 0;
 
     // End index (exclusive)
-    let endIndex = startIndex + effectiveHeight;
+    const endIndex = startIndex + effectiveHeight;
 
     const viewLogs = logs.slice(startIndex, endIndex);
 
@@ -84,6 +83,7 @@ const AgentMatrix = () => {
     // In a real app, we'd listen to 'agent-state' events.
     // For now, we'll just mock it or read from DB polling? 
     // Polling is easier for mvp.
+    // biome-ignore lint/suspicious/noExplicitAny: Quick hack
     const [activeTickets, setActiveTickets] = useState<any[]>([]);
 
     useEffect(() => {
@@ -91,10 +91,10 @@ const AgentMatrix = () => {
             // This is a hacky way to get state. Ideally Conductor emits state.
             // But let's just peek at queue for now.
             // biome-ignore lint/suspicious/noExplicitAny: Quick hack
-            // biome-ignore lint/suspicious/noExplicitAny: Quick hack
             const db = (getQueue() as any).db;
-            // biome-ignore lint/suspicious/noExplicitAny: Quick hack
             const rows = db.query("SELECT * FROM tickets WHERE status = 'processing'").all();
+
+            // biome-ignore lint/suspicious/noExplicitAny: Quick hack
             if (rows) setActiveTickets(rows as any[]);
         }, 1000);
         return () => clearInterval(timer);

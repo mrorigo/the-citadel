@@ -44,6 +44,7 @@ export class EvaluatorAgent extends CoreAgent {
                 try {
                     const content = await fs.readFile(path, 'utf-8');
                     return { success: true, content };
+                    // biome-ignore lint/suspicious/noExplicitAny: Exec error
                 } catch (error: any) {
                     return { success: false, error: error.message };
                 }
@@ -60,6 +61,7 @@ export class EvaluatorAgent extends CoreAgent {
                 try {
                     const { stdout, stderr } = await promisify(exec)(command);
                     return { success: true, stdout, stderr };
+                    // biome-ignore lint/suspicious/noExplicitAny: Exec error
                 } catch (error: any) {
                     return { success: false, error: error.message };
                 }

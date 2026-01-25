@@ -15,9 +15,12 @@ export class Conductor {
     private workerHook: Hook;
     private gatekeeperHook: Hook;
 
+    // biome-ignore lint/suspicious/noExplicitAny: DI
     private beads: any;
+    // biome-ignore lint/suspicious/noExplicitAny: DI
     private queue: any;
 
+    // biome-ignore lint/suspicious/noExplicitAny: DI
     constructor(beads?: any, queue?: any) {
         this.beads = beads || getBeads();
         this.queue = queue || getQueue();

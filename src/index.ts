@@ -3,7 +3,6 @@ import { Command } from 'commander';
 import { loadConfig } from './config';
 import { Conductor } from './services/conductor';
 import { getQueue } from './core/queue';
-import { resolve } from 'node:path';
 import { unlink } from 'node:fs/promises';
 
 const program = new Command();
@@ -173,6 +172,7 @@ program
                 db.run("DELETE FROM tickets WHERE bead_id = ?", [beadId]);
                 console.log(`Tickets for ${beadId} have been cleared.`);
             } else {
+                const { resolve } = await import('node:path');
                 const dbPath = resolve(process.cwd(), '.citadel', 'queue.sqlite');
                 console.log(`Resetting entire queue at ${dbPath}...`);
                 await unlink(dbPath);
@@ -213,7 +213,7 @@ program
     .description('Create a new molecule from a formula')
     .option('-f, --formula <name>', 'Formula name to use')
     .option('-v, --vars <items...>', 'Variables key=value', [])
-    .action(async (title, options) => {
+    .action(async (_title, options) => {
         if (!options.formula) {
             console.error('Error: --formula is required for citadel create');
             process.exit(1);
@@ -236,6 +236,7 @@ program
         try {
             const moleculeId = await engine.instantiateFormula(options.formula, variables);
             console.log(`Successfully created molecule: ${moleculeId}`);
+            // biome-ignore lint/suspicious/noExplicitAny: CLI Error
         } catch (error: any) {
             console.error('Failed to instantiate formula:', error.message);
             process.exit(1);

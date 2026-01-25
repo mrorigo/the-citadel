@@ -107,7 +107,7 @@ export class WorkflowEngine {
                     }
 
                     if (Array.isArray(items)) {
-                        iterations = items.map(item => ({ [step.for!.as]: item }));
+                        iterations = items.map(item => ({ [step.for?.as || 'item']: item }));
                     }
                 } catch (e) {
                     console.error(`[WorkflowEngine] Failed to parse loop items for step ${step.id}: ${e}`);
