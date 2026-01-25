@@ -25,7 +25,12 @@ bun install
 citadel init   # creates .citadel/ + config + sample formula
 
 # 3️⃣ Run a workload
+# Option A: Simple Task
 bd create "Hello world"
+
+# Option B: Run a Formula
+citadel create "My Release" --formula feature_release --vars name="Dark Mode"
+
 citadel start
 ```
 

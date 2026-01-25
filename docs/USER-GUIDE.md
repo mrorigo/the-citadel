@@ -93,14 +93,21 @@ bd create "Run the system migration formula for the Auth module"
 4.  It compiles the Formula into a **Molecule** (a graph of Beads).
 5.  **Workers** immediately start claiming the `open` steps.
 
-### 3. Dynamic Bonding
+### 3. Explicit Trigger (CLI)
+For deterministic execution without relying on the Router to parse intent, use the CLI directly:
+
+```bash
+citadel create "Deploy Production" --formula deploy --vars env=prod
+```
+
+### 4. Dynamic Bonding
 Workers are not limited to single tasks. If a Worker picks up a large task (e.g., "Refactor API"), it can:
 1.  Explore the codebase.
 2.  Realize the task is too big.
 3.  **Delegate** sub-tasks (create new child beads) to other workers.
 4.  Block the parent task until children are complete.
 
-### 4. Project Awareness (AGENTS.md)
+### 5. Project Awareness (AGENTS.md)
 You can "teach" agents about your specific project by placing `AGENTS.md` files in your repository.
 
 **Example `.citadel/AGENTS.md`:**
@@ -124,6 +131,8 @@ When a Worker enters a directory, it automatically merges the instructions from 
 
 ## Advanced: Creating a New Formula
 
+### 6. Writing Formulas
+
 1.  Create a file in `.citadel/formulas/my_workflow.toml`.
 2.  Define `vars` for any inputs you need.
 3.  Define `steps` for the tasks.
@@ -131,7 +140,7 @@ When a Worker enters a directory, it automatically merges the instructions from 
 
 The Router will automatically discover the new formula on its next cycle.
 
-### 5. Smart Molecules
+### 7. Smart Molecules
 Formulas support advanced logic like **Conditions** and **Loops**.
 
 ```toml
