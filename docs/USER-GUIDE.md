@@ -152,3 +152,50 @@ on_failure = "rollback"   # Triggers rollback if safety check fails
 ```
 
 For more details on conditionals, loops, and the resilient failure handling logic, see the **[Formula Reference Manual](./FORMULA-REFERENCE.md)**.
+
+---
+
+## MCP Tools (Extending Capabilities)
+
+The Citadel supports the **Model Context Protocol (MCP)**, allowing you to connect agents to external tools and data sources.
+
+### 1. Configure MCP Servers
+Add your MCP servers to `citadel.config.ts`. The Citadel supports both local **Stdio** servers (via `command`) and remote **HTTP/SSE** servers (via `url`).
+
+```typescript
+export default defineConfig({
+  mcpServers: {
+    // Local Stdio server
+    filesystem: {
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-filesystem', '/path/to/repo'],
+    },
+    // Remote HTTP/SSE server
+    professional_api: {
+      url: 'https://mcp.company.com/api',
+      headers: {
+        'Authorization': 'Bearer YOUR_TOKEN',
+      }
+    }
+  },
+  // ...
+});
+```
+
+### 2. Assign Tools to Agents
+You can selectively expose MCP tools to specific agent roles using the `mcpTools` array.
+
+```typescript
+  agents: {
+    worker: { 
+      provider: 'ollama', 
+      model: 'llama3',
+      mcpTools: ['filesystem:*', 'weather:get_forecast'] 
+    },
+  }
+```
+
+- `server:*`: Exposes all tools from that server.
+- `server:tool_name`: Exposes a specific tool.
+
+Agents will see these tools alongside their native capabilities, prefixed with the server name (e.g., `filesystem_read_file`).

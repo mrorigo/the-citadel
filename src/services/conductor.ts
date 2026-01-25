@@ -5,6 +5,7 @@ import { Hook } from '../core/hooks';
 import { getQueue, type WorkQueue } from '../core/queue';
 import { getBeads, type BeadsClient } from '../core/beads';
 import { logger } from '../core/logger';
+import { getMCPService } from './mcp';
 
 export class Conductor {
     private isRunning = false;
@@ -41,10 +42,13 @@ export class Conductor {
         });
     }
 
-    start() {
+    async start() {
         if (this.isRunning) return;
         this.isRunning = true;
         logger.info('[Conductor] Starting...');
+
+        // Initialize MCP
+        await getMCPService().initialize();
 
         // Start Hooks
         this.workerHook.start();
@@ -54,7 +58,7 @@ export class Conductor {
         this.routerLoop();
     }
 
-    stop() {
+    async stop() {
         this.isRunning = false;
         logger.info('[Conductor] Stopping...');
 
@@ -65,6 +69,9 @@ export class Conductor {
             clearTimeout(this.routerTimer);
             this.routerTimer = null;
         }
+
+        // Shutdown MCP
+        await getMCPService().shutdown();
     }
 
     private async routerLoop() {

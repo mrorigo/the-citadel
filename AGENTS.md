@@ -33,6 +33,7 @@ Run these to verify types:
 - **FAILURE HANDLING**:
     - Gatekeepers: Use `fail_work` for terminal failures that require recovery steps.
     - Workers: Respect the `recovery` label on beads.
+- **MCP TOOLS**: Agents have access to external tools from MCP servers. Use them similarly to native tools.
 - Work is NOT complete until all checks pass.
 
 ### Agent-Specific Instructions

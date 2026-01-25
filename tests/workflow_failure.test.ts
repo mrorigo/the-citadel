@@ -5,7 +5,7 @@ import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { FormulaRegistry } from '../src/core/formula';
 import { WorkflowEngine } from '../src/services/workflow-engine';
 import { Conductor } from '../src/services/conductor';
-import { setBeadsInstance, type Bead } from '../src/core/beads';
+import { setBeadsInstance } from '../src/core/beads';
 import { setConfig } from '../src/config';
 
 mock.module('../src/agents/router', () => ({
@@ -20,7 +20,9 @@ describe('Workflow Failure Handling', () => {
 
     let registry: FormulaRegistry;
     let engine: WorkflowEngine;
+    // biome-ignore lint/suspicious/noExplicitAny: mock
     let beadsMock: any;
+    // biome-ignore lint/suspicious/noExplicitAny: mock
     let store: Map<string, any>;
 
     beforeEach(async () => {
@@ -62,8 +64,10 @@ description = "Cleaning up after main failure"
         await registry.loadAll();
         engine = new WorkflowEngine(registry);
 
+        // biome-ignore lint/suspicious/noExplicitAny: mock
         store = new Map<string, any>();
         beadsMock = {
+            // biome-ignore lint/suspicious/noExplicitAny: mock
             create: mock(async (title: string, options: any) => {
                 const id = `bd-${Math.random().toString(36).substr(2, 5)}`;
                 const bead = { id, title, status: 'open', privacy: 'public', ...options };
@@ -71,6 +75,7 @@ description = "Cleaning up after main failure"
                 return bead;
             }),
             get: mock(async (id: string) => store.get(id)),
+            // biome-ignore lint/suspicious/noExplicitAny: mock
             update: mock(async (id: string, changes: any) => {
                 const current = store.get(id);
                 if (!current) throw new Error(`Bead not found: ${id}`);
@@ -119,7 +124,7 @@ description = "Cleaning up after main failure"
 
         // Run Conductor cycle
         const conductor = new Conductor(beadsMock);
-        // @ts-ignore - access private for test
+        // @ts-expect-error - access private for test
         await conductor.cycleRouter();
 
         // Check if recovery bead is now done
@@ -138,7 +143,7 @@ description = "Cleaning up after main failure"
 
         // Run Conductor cycle
         const conductor = new Conductor(beadsMock);
-        // @ts-ignore - access private for test
+        // @ts-expect-error - access private for test
         await conductor.cycleRouter();
 
         // Check if recovery bead is STILL open (ready for worker)
@@ -152,7 +157,8 @@ description = "Cleaning up after main failure"
         const beadId = 'bd-test1';
         store.set(beadId, { id: beadId, title: 'Test Task', status: 'verify', labels: [] });
 
-        const failTool = (agent as any).tools['fail_work'];
+        // biome-ignore lint/suspicious/noExplicitAny: access private for test
+        const failTool = (agent as any).tools.fail_work;
         await failTool.execute({ beadId, reason: 'Test Reason' });
 
         const updated = store.get(beadId);

@@ -20,20 +20,34 @@ export const ConfigSchema = z.object({
     router: z.object({
       provider: z.enum(['openai', 'anthropic', 'ollama']),
       model: z.string(),
+      mcpTools: z.array(z.string()).optional(), // Format: ["server:tool", "server:*"]
     }),
     worker: z.object({
       provider: z.enum(['openai', 'anthropic', 'ollama']),
       model: z.string(),
+      mcpTools: z.array(z.string()).optional(),
     }),
     supervisor: z.object({
       provider: z.enum(['openai', 'anthropic', 'ollama']),
       model: z.string(),
+      mcpTools: z.array(z.string()).optional(),
     }),
     gatekeeper: z.object({
       provider: z.enum(['openai', 'anthropic', 'ollama']),
       model: z.string(),
+      mcpTools: z.array(z.string()).optional(),
     }),
   }),
+
+  mcpServers: z.record(z.string(), z.object({
+    command: z.string().optional(),
+    args: z.array(z.string()).optional(),
+    env: z.record(z.string(), z.string()).optional(),
+    url: z.string().optional(),
+    headers: z.record(z.string(), z.string()).optional(),
+  }).refine(data => data.command || data.url, {
+    message: "MCP server must have either a command (stdio) or a url (http)",
+  })).optional(),
 
   worker: z.object({
     timeout: z.number().default(300),

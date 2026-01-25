@@ -1,9 +1,11 @@
-import { generateText, tool, type Tool, type LanguageModel, type ModelMessage, type ToolCallPart, type ToolResultPart, type TextPart } from 'ai';
+import { generateText, tool, jsonSchema, type Tool, type LanguageModel, type ModelMessage, type ToolCallPart, type ToolResultPart, type TextPart } from 'ai';
 import { getAgentModel } from './llm';
 import type { AgentRole } from '../config/schema';
 import type { z } from 'zod';
 import { logger } from './logger';
 import { getProjectContext } from '../services/project-context';
+import { getConfig } from '../config';
+import { getMCPService } from '../services/mcp';
 
 export interface AgentContext {
     beadId?: string;
@@ -18,6 +20,40 @@ export abstract class CoreAgent {
     constructor(role: AgentRole) {
         this.role = role;
         this.model = getAgentModel(role);
+        // We'll call this after subclasses register their own tools to allow overrides
+        // but wait, constructor can't be async. We'll use a deferred initialization or just call it in run if not loaded.
+    }
+
+    private mcpLoaded = false;
+    private async ensureMCPTools() {
+        if (this.mcpLoaded) return;
+
+        const config = getConfig();
+        const roleConfig = config.agents[this.role];
+        const assignedTools = roleConfig.mcpTools;
+
+        if (assignedTools && assignedTools.length > 0) {
+            const mcp = getMCPService();
+            const tools = await mcp.getToolsForAgent(assignedTools);
+
+            for (const tool of tools) {
+                const toolName = `${tool.serverName}_${tool.name}`;
+                logger.info(`[${this.role}] Registering MCP tool: ${toolName}`);
+
+                this.registerTool(
+                    toolName,
+                    tool.description || `MCP Tool from ${tool.serverName}`,
+                    // biome-ignore lint/suspicious/noExplicitAny: AI SDK tool registration bridge
+                    jsonSchema(tool.inputSchema) as any,
+                    // biome-ignore lint/suspicious/noExplicitAny: arguments are generic for MCP
+                    async (args: any) => {
+                        const result = await mcp.callTool(tool.serverName, tool.name, args);
+                        return result;
+                    }
+                );
+            }
+        }
+        this.mcpLoaded = true;
     }
 
     protected registerTool<T extends z.ZodTypeAny, R>(
@@ -50,6 +86,9 @@ export abstract class CoreAgent {
      */
     async run(prompt: string, context?: AgentContext): Promise<string> {
         logger.info(`[${this.role}] Running...`, { role: this.role });
+
+        // Ensure MCP tools are loaded
+        await this.ensureMCPTools();
 
         // 1. Load Project Awareness
         const projectContext = await getProjectContext().resolveContext(process.cwd(), process.cwd());
