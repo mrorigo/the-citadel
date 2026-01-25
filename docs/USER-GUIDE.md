@@ -168,7 +168,7 @@ export default defineConfig({
     // Local Stdio server
     filesystem: {
       command: 'npx',
-      args: ['-y', '@modelcontextprotocol/server-filesystem', '/path/to/repo'],
+      args: ['-y', '@modelcontextprotocol/server-filesystem'],
     },
     // Remote HTTP/SSE server
     professional_api: {
@@ -182,20 +182,28 @@ export default defineConfig({
 });
 ```
 
+> [!NOTE]
+> The filesystem server uses **MCP Roots** to dynamically determine which directories it can access. The Citadel automatically provides the current project workspace to servers during initialization.
+
 ### 2. Assign Tools to Agents
 You can selectively expose MCP tools to specific agent roles using the `mcpTools` array.
 
+- `server:*`: Exposes all tools from that server (standard for **WorkerAgent**).
+- `server:tool_name`: Exposes a specific tool (useful for restricting **EvaluatorAgent**).
+
 ```typescript
-  agents: {
-    worker: { 
-      provider: 'ollama', 
-      model: 'llama3',
-      mcpTools: ['filesystem:*', 'weather:get_forecast'] 
-    },
+agents: {
+  worker: { 
+    mcpTools: ['filesystem:*'] 
+  },
+  gatekeeper: {
+    mcpTools: [
+      'filesystem:read_text_file',
+      'filesystem:list_directory',
+      // ... only read-only tools
+    ]
   }
+}
 ```
 
-- `server:*`: Exposes all tools from that server.
-- `server:tool_name`: Exposes a specific tool.
-
-Agents will see these tools alongside their native capabilities, prefixed with the server name (e.g., `filesystem_read_file`).
+Agents will see these tools alongside their native capabilities, prefixed with the server name (e.g., `filesystem_read_text_file`).

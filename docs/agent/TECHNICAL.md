@@ -190,24 +190,22 @@ ANTHROPIC_API_KEY=sk-ant-...
 CITADEL_ENV=development       # development | production
 CITADEL_MAX_TOKENS=4096       # Per-request limit
 CITADEL_COST_LIMIT=1.00       # USD per ticket
-CITADEL_TIMEOUT=300           # Seconds before worker termination
+CITADEL_TIMEOUT=1200          # Seconds before worker termination
 ```
 
 ### Configuration File (`citadel.config.ts`)
 ```typescript
-import { defineConfig } from './src/config';
+import { defineConfig } from './src/config/schema';
 
 export default defineConfig({
-  env: process.env.CITADEL_ENV || 'development',
+  env: 'development',
   
   // Provider configurations
   providers: {
     ollama: {
-      baseURL: process.env.CITADEL_OLLAMA_BASE_URL || 'http://localhost:11434/v1',
-      apiKey: process.env.CITADEL_OLLAMA_API_KEY || 'ollama',
+      baseURL: 'http://localhost:11434/v1',
+      apiKey: 'ollama',
     },
-    openai: { apiKey: process.env.OPENAI_API_KEY },
-    anthropic: { apiKey: process.env.ANTHROPIC_API_KEY },
   },
 
   // Per-agent model configuration
@@ -218,21 +216,34 @@ export default defineConfig({
     },
     worker: {
       provider: 'ollama',
-      model: 'qwen3:14b',
+      model: 'gpt-oss:120b-cloud',
+      mcpTools: ['filesystem:*'],
     },
     supervisor: {
       provider: 'ollama',
-      model: 'llama3.2:3b',
+      model: 'gpt-oss:120b-cloud',
     },
     gatekeeper: {
       provider: 'ollama',
       model: 'gpt-oss:120b-cloud',
+      mcpTools: [
+        'filesystem:read_text_file',
+        'filesystem:list_directory',
+        // ... read-only subset
+      ],
+    },
+  },
+
+  mcpServers: {
+    filesystem: {
+      command: 'npx',
+      args: ['-y', '@modelcontextprotocol/server-filesystem'],
     },
   },
 
   // Worker settings
   worker: {
-    timeout: 300,
+    timeout: 1200,
     maxRetries: 3,
     costLimit: 1.00,
   },

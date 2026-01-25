@@ -29,7 +29,16 @@ export default defineConfig({
         gatekeeper: {
             provider: 'ollama',
             model: 'gpt-oss:120b-cloud',
-            mcpTools: ['filesystem:*'],
+            mcpTools: [
+                'filesystem:read_text_file',
+                'filesystem:read_multiple_files',
+                'filesystem:list_directory',
+                'filesystem:list_directory_with_sizes',
+                'filesystem:directory_tree',
+                'filesystem:search_files',
+                'filesystem:get_file_info',
+                'filesystem:list_allowed_directories',
+            ],
         },
     },
 
@@ -42,7 +51,7 @@ export default defineConfig({
 
     // Worker settings
     worker: {
-        timeout: 300,
+        timeout: 1200,
         maxRetries: 3,
         costLimit: 1.00,
     },

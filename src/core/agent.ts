@@ -20,8 +20,6 @@ export abstract class CoreAgent {
     constructor(role: AgentRole) {
         this.role = role;
         this.model = getAgentModel(role);
-        // We'll call this after subclasses register their own tools to allow overrides
-        // but wait, constructor can't be async. We'll use a deferred initialization or just call it in run if not loaded.
     }
 
     private mcpLoaded = false;

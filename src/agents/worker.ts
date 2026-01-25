@@ -1,10 +1,8 @@
 import { CoreAgent } from '../core/agent';
 import { getBeads } from '../core/beads';
 import { z } from 'zod';
-import { readFile, writeFile, readdir, mkdir } from 'node:fs/promises';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { dirname } from 'node:path';
 import { logger } from '../core/logger';
 
 const execAsync = promisify(exec);
