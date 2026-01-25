@@ -41,9 +41,6 @@ program
                 console.log('ℹ️  citadel.config.ts already exists');
             } catch {
                 const configTemplate = `
-// import { defineConfig } from 'the-citadel/config'; 
-
-// export default defineConfig({
 export default {
     env: 'development',
     providers: {
@@ -82,7 +79,6 @@ export default {
         binary: 'bd',
         autoSync: true,
     },
-// });
 };
 `;
                 await writeFile(configPath, configTemplate.trim());
