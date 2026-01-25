@@ -70,69 +70,6 @@ export class WorkerAgent extends CoreAgent {
             }
         );
 
-        // --- File System Tools ---
-
-        this.registerTool(
-            'read_file',
-            'Read the contents of a file',
-            z.object({
-                path: z.string().describe('Absolute path to file'),
-            }),
-            async ({ path }) => {
-                logger.debug(`[Worker] Reading file: ${path}`);
-                try {
-                    const content = await readFile(path, 'utf-8');
-                    return { success: true, content };
-                } catch (error: unknown) {
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    return { success: false, error: errorMessage };
-                }
-            }
-        );
-
-        this.registerTool(
-            'write_file',
-            'Create or overwrite a file with new content',
-            z.object({
-                path: z.string().describe('Absolute path to file'),
-                content: z.string().describe('The content to write'),
-            }),
-            async ({ path, content }) => {
-                logger.debug(`[Worker] Writing file: ${path} (${content.length} bytes)`);
-                try {
-                    await mkdir(dirname(path), { recursive: true });
-                    await writeFile(path, content, 'utf-8');
-                    return { success: true, path };
-                } catch (error: unknown) {
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    return { success: false, error: errorMessage };
-                }
-            }
-        );
-
-        this.registerTool(
-            'list_dir',
-            'List files and directories in a path',
-            z.object({
-                path: z.string().describe('Absolute path to directory'),
-            }),
-            async ({ path }) => {
-                const searchPath = path || '.';
-                logger.debug(`[Worker] Listing directory: ${searchPath}`);
-                try {
-                    const items = await readdir(searchPath, { withFileTypes: true });
-                    const listing = items.map(d => ({
-                        name: d.name,
-                        isDirectory: d.isDirectory()
-                    }));
-                    return { success: true, items: listing };
-                } catch (error: unknown) {
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    return { success: false, error: errorMessage };
-                }
-            }
-        );
-
         // --- Shell Execution ---
 
         this.registerTool(
@@ -162,13 +99,18 @@ export class WorkerAgent extends CoreAgent {
     protected override getSystemPrompt(defaultPrompt: string): string {
         return `
         ${defaultPrompt}
+        
+        # Filesystem
+        You have access to the \`filesystem\` MCP server tools.
+        - Use \`filesystem_list_directory\` and \`filesystem_read_text_file\` to explore.
+        - Use \`filesystem_write_file\` to create or overwrite files.
+        - Use \`filesystem_edit_file\` for precise modifications.
 
         # Implementation Mode
         You are the Worker. Your primary goal is to write code and fix issues.
         
         # Guidelines
-        - Use read_file/list_dir to explore first.
-        - Create complete files with write_file.
+        - Use filesystem tools to explore and write code.
         - Run tests with run_command if available.
         - Keep the user informed with report_progress.
         - Submit your work when done with submit_work.

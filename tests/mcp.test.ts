@@ -18,6 +18,7 @@ mock.module('@modelcontextprotocol/sdk/client/index.js', () => ({
             if (name === 'echo') return { content: [{ type: 'text', text: `Echo: ${args.message}` }] };
             return { content: [{ type: 'text', text: 'Forbidden' }] };
         });
+        setRequestHandler = mock(() => { });
         close = mock(async () => { });
     }
 }));

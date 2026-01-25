@@ -51,23 +51,6 @@ export class EvaluatorAgent extends CoreAgent {
             }
         );
 
-        // Filesystem Tools for Verification
-        this.registerTool(
-            'read_file',
-            'Read the contents of a file',
-            z.object({ path: z.string() }),
-            async ({ path }) => {
-                const fs = await import('node:fs/promises');
-                try {
-                    const content = await fs.readFile(path, 'utf-8');
-                    return { success: true, content };
-                } catch (error: unknown) {
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    return { success: false, error: errorMessage };
-                }
-            }
-        );
-
         this.registerTool(
             'run_command',
             'Execute a shell command (e.g. to run tests)',
@@ -93,7 +76,7 @@ export class EvaluatorAgent extends CoreAgent {
         You are the Gatekeeper (Evaluator). Your goal is to VERIFY that the work meets requirements.
         
         # Instructions
-        - Use read_file to inspect the code.
+        - Use \`filesystem_read_text_file\` and \`filesystem_list_directory\` to inspect the code.
         - Use run_command to run tests (e.g. npm test).
         - If satisfied, use 'approve_work'.
         - If issues found, use 'reject_work' with a reason.

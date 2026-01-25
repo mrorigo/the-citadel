@@ -1,6 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { ListRootsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { getConfig } from '../config';
 import { logger } from '../core/logger';
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
@@ -58,7 +59,22 @@ export class MCPService {
 
                 const client = new Client(
                     { name: 'the-citadel', version: '1.0.0' },
-                    { capabilities: {} }
+                    { capabilities: { roots: { listChanged: true } } }
+                );
+
+                // Set up roots handler
+                client.setRequestHandler(
+                    ListRootsRequestSchema,
+                    async () => {
+                        return {
+                            roots: [
+                                {
+                                    uri: `file://${process.cwd()}`,
+                                    name: 'Current Project Workspace'
+                                }
+                            ]
+                        };
+                    }
                 );
 
                 await client.connect(transport);

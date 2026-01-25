@@ -25,43 +25,13 @@ describe('WorkerAgent Tools', () => {
         await rm(TEST_DIR, { recursive: true, force: true });
     });
 
-    it('should have new tools registered', () => {
+    it('should have native tools registered', () => {
         // biome-ignore lint/suspicious/noExplicitAny: Accessing private property
         const tools = (agent as any).tools;
-        expect(tools).toHaveProperty('read_file');
-        expect(tools).toHaveProperty('write_file');
-        expect(tools).toHaveProperty('list_dir');
+        expect(tools).toHaveProperty('report_progress');
+        expect(tools).toHaveProperty('submit_work');
+        expect(tools).toHaveProperty('delegate_task');
         expect(tools).toHaveProperty('run_command');
-    });
-
-    it('should write and read a file', async () => {
-        const filePath = join(TEST_DIR, 'test.txt');
-        const content = 'Hello Worker';
-
-        // Write
-        // biome-ignore lint/suspicious/noExplicitAny: Accessing private property
-        const writeTool = (agent as any).tools.write_file;
-        const writeResult = await writeTool.execute({ path: filePath, content });
-        expect(writeResult.success).toBe(true);
-        expect(writeResult.path).toBe(filePath);
-
-        // Read
-        // biome-ignore lint/suspicious/noExplicitAny: Accessing private property
-        const readTool = (agent as any).tools.read_file;
-        const readResult = await readTool.execute({ path: filePath });
-        expect(readResult.success).toBe(true);
-        expect(readResult.content).toBe(content);
-    });
-
-    it('should list directory contents', async () => {
-        // biome-ignore lint/suspicious/noExplicitAny: Accessing private property
-        const listTool = (agent as any).tools.list_dir;
-        const result = await listTool.execute({ path: TEST_DIR });
-
-        expect(result.success).toBe(true);
-        expect(result.items).toBeArray();
-        // biome-ignore lint/suspicious/noExplicitAny: Test assertion
-        expect(result.items.some((i: any) => i.name === 'test.txt')).toBe(true);
     });
 
     it('should run a shell command', async () => {
@@ -71,14 +41,5 @@ describe('WorkerAgent Tools', () => {
 
         expect(result.success).toBe(true);
         expect(result.stdout).toBe('hello shell');
-    });
-
-    it('should handle errors gracefully', async () => {
-        // biome-ignore lint/suspicious/noExplicitAny: Accessing private property
-        const readTool = (agent as any).tools.read_file;
-        const result = await readTool.execute({ path: join(TEST_DIR, 'nonexistent.txt') });
-
-        expect(result.success).toBe(false);
-        expect(result.error).toBeDefined();
     });
 });

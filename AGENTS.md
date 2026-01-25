@@ -34,6 +34,7 @@ Run these to verify types:
     - Gatekeepers: Use `fail_work` for terminal failures that require recovery steps.
     - Workers: Respect the `recovery` label on beads.
 - **MCP TOOLS**: Agents have access to external tools from MCP servers. Use them similarly to native tools.
+    - **Filesystem**: Use `filesystem_read_text_file`, `filesystem_write_file`, `filesystem_edit_file`, and `filesystem_list_directory` for file operations.
 - Work is NOT complete until all checks pass.
 
 ### Agent-Specific Instructions

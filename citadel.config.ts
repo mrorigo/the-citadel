@@ -20,6 +20,7 @@ export default defineConfig({
         worker: {
             provider: 'ollama',
             model: 'gpt-oss:120b-cloud',
+            mcpTools: ['filesystem:*'],
         },
         supervisor: {
             provider: 'ollama',
@@ -28,6 +29,14 @@ export default defineConfig({
         gatekeeper: {
             provider: 'ollama',
             model: 'gpt-oss:120b-cloud',
+            mcpTools: ['filesystem:*'],
+        },
+    },
+
+    mcpServers: {
+        filesystem: {
+            command: 'npx',
+            args: ['-y', '@modelcontextprotocol/server-filesystem'],
         },
     },
 
