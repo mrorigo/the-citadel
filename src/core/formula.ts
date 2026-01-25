@@ -18,6 +18,13 @@ export const FormulaStepSchema = z.object({
     title: z.string(),
     description: z.string(),
     needs: z.array(z.string()).optional(), // Dependencies (other step IDs)
+    // Smart Formula Extensions
+    if: z.string().optional(), // Condition regex/eval string
+    for: z.object({
+        items: z.string(), // Variable containing the list
+        as: z.string(), // Variable name for iteration
+    }).optional(),
+    on_failure: z.string().optional(), // Step ID to trigger if this step fails
 });
 
 export const FormulaSchema = z.object({

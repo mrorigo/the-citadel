@@ -208,4 +208,38 @@ program
         await startBridge();
     });
 
+program
+    .command('create <title>')
+    .description('Create a new molecule from a formula')
+    .option('-f, --formula <name>', 'Formula name to use')
+    .option('-v, --vars <items...>', 'Variables key=value', [])
+    .action(async (title, options) => {
+        if (!options.formula) {
+            console.error('Error: --formula is required for citadel create');
+            process.exit(1);
+        }
+
+        await loadConfig();
+        const { getWorkflowEngine } = await import('./services/workflow-engine');
+        const engine = getWorkflowEngine();
+        await engine.init();
+
+        // Parse variables
+        const variables: Record<string, string> = {};
+        if (options.vars) {
+            for (const item of options.vars) {
+                const [k, v] = item.split('=');
+                if (k && v) variables[k] = v;
+            }
+        }
+
+        try {
+            const moleculeId = await engine.instantiateFormula(options.formula, variables);
+            console.log(`Successfully created molecule: ${moleculeId}`);
+        } catch (error: any) {
+            console.error('Failed to instantiate formula:', error.message);
+            process.exit(1);
+        }
+    });
+
 program.parse(process.argv);

@@ -1,0 +1,42 @@
+# Smart Molecules Test Formula
+description = "Verifying conditionals and loops"
+formula = "smart_test"
+
+# Variables
+[vars.env]
+description = "Environment (dev/prod)"
+required = true
+default = "dev"
+
+[vars.services]
+description = "List of services to deploy"
+required = false
+default = "auth, payment"
+
+# Steps
+
+[[steps]]
+id = "setup"
+title = "Setup Environment"
+description = "Prepare configuration for {{env}}"
+
+[[steps]]
+id = "prod_check"
+title = "Production Safety Check"
+description = "Verify backup exists"
+if = "{{env}} == 'prod'"
+needs = ["setup"]
+
+[[steps]]
+id = "deploy_services"
+title = "Deploy {{service}}"
+description = "Deploying {{service}} to {{env}}"
+for = { items = "{{services}}", as = "service" }
+needs = ["setup"]
+
+[[steps]]
+id = "final_report"
+title = "Final Report"
+description = "Report status"
+needs = ["deploy_services", "prod_check"]
+if = "{{env}} == 'prod'"

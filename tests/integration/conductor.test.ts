@@ -5,7 +5,7 @@ import type { Bead } from '../../src/core/beads';
 // Mock dependencies
 const mockBeads = {
     list: mock(async (): Promise<Bead[]> => []),
-    get: mock(async () => ({ id: 'mock-id', title: 'mock', content: 'mock' })),
+    get: mock(async () => ({ id: 'mock-id', title: 'mock', status: 'open', created_at: '', updated_at: '', priority: 2 } as Bead)),
 };
 
 const mockQueue = {
@@ -26,13 +26,8 @@ const mockWorkerAgent = {
 };
 
 // Mock modules
-mock.module('../../src/core/beads', () => ({
-    getBeads: () => mockBeads,
-}));
+// Removed beads/queue module mocks in favor of DI
 
-mock.module('../../src/core/queue', () => ({
-    getQueue: () => mockQueue,
-}));
 
 mock.module('../../src/agents/router', () => ({
     RouterAgent: mock(() => mockRouterAgent),
@@ -51,7 +46,7 @@ describe('Conductor Service Integration', () => {
     let conductor: Conductor;
 
     beforeEach(() => {
-        conductor = new Conductor();
+        conductor = new Conductor(mockBeads, mockQueue);
     });
 
     afterEach(() => {
@@ -62,6 +57,9 @@ describe('Conductor Service Integration', () => {
     it('should route open beads to worker', async () => {
         // Setup state: 1 open bead, no active tickets
         mockBeads.list.mockResolvedValueOnce([{ id: 'bead-1', status: 'open', title: 'Task 1' } as Bead]);
+        // Double-check logic needs get() to return "open"
+        mockBeads.get.mockResolvedValueOnce({ id: 'bead-1', status: 'open', title: 'Task 1' } as Bead);
+
         mockQueue.getActiveTicket.mockReturnValue(null);
 
         // Start (triggers router loop)
@@ -80,14 +78,13 @@ describe('Conductor Service Integration', () => {
 
     it('should route verify beads to gatekeeper', async () => {
         // Setup state: 1 verify bead
-        mockBeads.list.mockResolvedValueOnce([]).mockResolvedValueOnce([{ id: 'bead-2', status: 'verify', title: 'Verify 1' } as Bead]);
-        // Note: cycleRouter calls open then verify.
-        // It calls list({status:'open'}) then list({status:'verify'}).
-        // So we need to mock list responses in order.
         mockBeads.list.mockReset();
         mockBeads.list
             .mockResolvedValueOnce([]) // Open
             .mockResolvedValueOnce([{ id: 'bead-2', status: 'verify', title: 'Verify 1' } as Bead]); // Verify
+
+        // Double-check logic needs get() to return "verify"
+        mockBeads.get.mockResolvedValueOnce({ id: 'bead-2', status: 'verify', title: 'Verify 1' } as Bead);
 
         conductor.start();
         await new Promise(r => setTimeout(r, 100));

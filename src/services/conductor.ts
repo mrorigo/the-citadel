@@ -15,14 +15,20 @@ export class Conductor {
     private workerHook: Hook;
     private gatekeeperHook: Hook;
 
-    constructor() {
+    private beads: any;
+    private queue: any;
+
+    constructor(beads?: any, queue?: any) {
+        this.beads = beads || getBeads();
+        this.queue = queue || getQueue();
+
         // Initialize Hooks
         // Workers process 'worker' tasks using WorkerAgent
         this.workerHook = new Hook('worker-1', 'worker', async (ticket) => {
             logger.info(`[Worker] Processing ${ticket.bead_id}`, { beadId: ticket.bead_id });
             const agent = new WorkerAgent();
             // Provide context
-            const bead = await getBeads().get(ticket.bead_id);
+            const bead = await this.beads.get(ticket.bead_id);
             await agent.run(`Process this task: ${bead.title}`, { beadId: ticket.bead_id, bead });
         });
 
@@ -30,7 +36,7 @@ export class Conductor {
         this.gatekeeperHook = new Hook('gatekeeper-1', 'gatekeeper', async (ticket) => {
             logger.info(`[Gatekeeper] Verifying ${ticket.bead_id}`, { beadId: ticket.bead_id });
             const agent = new EvaluatorAgent();
-            const bead = await getBeads().get(ticket.bead_id);
+            const bead = await this.beads.get(ticket.bead_id);
             await agent.run(`Verify this work: ${bead.title}`, { beadId: ticket.bead_id, bead });
         });
     }
@@ -77,8 +83,8 @@ export class Conductor {
     }
 
     private async cycleRouter() {
-        const beadsClient = getBeads();
-        const queue = getQueue();
+        const beadsClient = this.beads;
+        const queue = this.queue;
 
         // 1. Fetch Candidates (Open or Verify)
         // Currently beads client 'list' filters by status.

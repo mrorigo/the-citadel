@@ -1,72 +1,42 @@
-import { EventEmitter } from 'node:events';
 
-export type LogLevel = 'info' | 'warn' | 'error' | 'debug';
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-export interface LogEntry {
-    timestamp: string;
-    level: LogLevel;
-    message: string;
-    // biome-ignore lint/suspicious/noExplicitAny: Meta can be anything
-    meta?: any;
-}
-
-class CitadelLogger extends EventEmitter {
+export class CitadelLogger {
     private static instance: CitadelLogger;
 
-    private constructor() {
-        super();
+    // In the future, this could emit events to the TUI
+    // For now, it wraps console to allow centralized control
+
+    debug(message: string, meta?: Record<string, unknown>) {
+        this.log('debug', message, meta);
     }
 
-    static getInstance(): CitadelLogger {
-        if (!CitadelLogger.instance) {
-            CitadelLogger.instance = new CitadelLogger();
-        }
-        return CitadelLogger.instance;
-    }
-
-    private consoleEnabled = true;
-
-    public setConsoleEnabled(enabled: boolean) {
-        this.consoleEnabled = enabled;
-    }
-
-    log(level: LogLevel, message: string, meta?: unknown) {
-        const entry: LogEntry = {
-            timestamp: new Date().toISOString(),
-            level,
-            message,
-            meta,
-        };
-
-        // Emit event for TUI
-        this.emit('log', entry);
-
-        // Print to console if enabled
-        if (this.consoleEnabled) {
-            const output = `[${entry.timestamp}] [${level.toUpperCase()}] ${message}`;
-            if (level === 'error') {
-                console.error(output, meta || '');
-            } else {
-                console.log(output, meta || '');
-            }
-        }
-    }
-
-    info(message: string, meta?: unknown) {
+    info(message: string, meta?: Record<string, unknown>) {
         this.log('info', message, meta);
     }
 
-    warn(message: string, meta?: unknown) {
+    warn(message: string, meta?: Record<string, unknown>) {
         this.log('warn', message, meta);
     }
 
-    error(message: string, meta?: unknown) {
-        this.log('error', message, meta);
+    error(message: string, error?: unknown, meta?: Record<string, unknown>) {
+        const errMeta = error instanceof Error ? { error: error.message, stack: error.stack } : { error };
+        this.log('error', message, { ...meta, ...errMeta });
     }
 
-    debug(message: string, meta?: unknown) {
-        this.log('debug', message, meta);
+    private log(level: LogLevel, message: string, meta?: Record<string, unknown>) {
+        const timestamp = new Date().toISOString();
+        const metaStr = meta ? JSON.stringify(meta) : '';
+
+        // Use console methods for proper stdio streams
+        const logFn = console[level] || console.log;
+
+        if (level === 'debug' && process.env.NODE_ENV !== 'development' && !process.env.DEBUG) {
+            return;
+        }
+
+        logFn(`[${timestamp}] [${level.toUpperCase()}] ${message} ${metaStr}`);
     }
 }
 
-export const logger = CitadelLogger.getInstance();
+export const logger = new CitadelLogger();

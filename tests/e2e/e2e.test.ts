@@ -5,6 +5,14 @@ import { BeadsClient, setBeadsInstance } from '../../src/core/beads';
 import { rm, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
+// FORCE UNMOCK: Restore real implementations if they were mocked by other tests
+mock.module('../../src/core/beads', () => {
+    return import('../../src/core/beads'); // Re-import real module
+});
+mock.module('../../src/core/queue', () => {
+    return import('../../src/core/queue');
+});
+
 // Mock Agents to force deterministic behavior without LLM costs
 mock.module('../../src/agents/router', () => ({
     RouterAgent: class MockRouter {
@@ -94,7 +102,7 @@ describe('E2E Lifecycle', () => {
         setBeadsInstance(beadsClient);
         await beadsClient.init(); // Initialize the DB!
 
-        conductor = new Conductor();
+        conductor = new Conductor(beadsClient, queueInstance);
     });
 
     afterEach(async () => {
