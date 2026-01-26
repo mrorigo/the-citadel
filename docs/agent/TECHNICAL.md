@@ -195,9 +195,8 @@ CITADEL_TIMEOUT=1200          # Seconds before worker termination
 
 ### Configuration File (`citadel.config.ts`)
 ```typescript
-import { defineConfig } from './src/config/schema';
 
-export default defineConfig({
+export default {
   env: 'development',
   
   // Provider configurations
@@ -246,6 +245,15 @@ export default defineConfig({
     timeout: 1200,
     maxRetries: 3,
     costLimit: 1.00,
+    min_workers: 1,
+    max_workers: 5,
+    load_factor: 1.0,
+  },
+
+  gatekeeper: {
+    min_workers: 1,
+    max_workers: 5,
+    load_factor: 1.0,
   },
 
   // Beads integration
@@ -253,7 +261,7 @@ export default defineConfig({
     path: '.beads',
     autoSync: true,
   },
-});
+};
 ```
 
 ---
