@@ -256,6 +256,20 @@ Add your MCP servers to `citadel.config.ts`. The Citadel supports both local **S
 
 ```typescript
 export default defineConfig({
+    worker: {
+        timeout: 300,
+        maxRetries: 3,
+        costLimit: 1.00,
+        // Concurrency Settings
+        min_workers: 1,    // Minimum number of active workers
+        max_workers: 5,    // Scaled up when queue is deep
+        load_factor: 1.0,  // Ratio of tasks to workers (1.0 = 1 task per worker)
+    },
+    gatekeeper: {
+        min_workers: 1,
+        max_workers: 5,
+        load_factor: 1.0,
+    },
   mcpServers: {
     // Local Stdio server
     filesystem: {

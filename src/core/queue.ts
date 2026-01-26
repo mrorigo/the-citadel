@@ -197,6 +197,18 @@ export class WorkQueue {
     getTicketsByStatus(status: TicketStatus): Ticket[] {
         return this.db.query("SELECT * FROM tickets WHERE status = ?").all(status) as Ticket[];
     }
+
+    /**
+     * Get count of pending (queued) tickets for a specific role
+     */
+    getPendingCount(role: string): number {
+        const result = this.db.query(`
+            SELECT COUNT(*) as count 
+            FROM tickets 
+            WHERE status = 'queued' AND target_role = ?
+        `).get(role) as { count: number };
+        return result.count;
+    }
 }
 
 // Singleton accessor (defaulting to .citadel/queue.sqlite)

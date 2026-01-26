@@ -15,6 +15,7 @@ Use The Citadel for complex, multi-step objectives: **building software features
 - **Dynamic Bonding** – Agents can spawn sub‑tasks in parallel to handle complex objectives (research, coding, analysis).
 - **Resilient Recovery** – Automated `on_failure` handling with conditional skips.
 - **Durable State** – All context is stored in Git‑backed SQLite **Beads** (audit‑ready, restartable).
+- **Parallel Execution** – Configurable `max_workers` and `load_factor` for high-throughput concurrency.
 - **Provider‑agnostic** – Works with Ollama, OpenAI, Anthropic, and more.
 - **Context Aware** – Adheres to specific project rules and style guides (`AGENTS.md`) automatically.
 

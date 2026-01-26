@@ -2,7 +2,9 @@ import { RouterAgent } from '../agents/router';
 import { WorkerAgent } from '../agents/worker';
 import { EvaluatorAgent } from '../agents/evaluator';
 import { Hook } from '../core/hooks';
+import { WorkerPool } from '../core/pool';
 import { getQueue, type WorkQueue } from '../core/queue';
+import { getConfig } from '../config';
 import { getBeads, type BeadsClient } from '../core/beads';
 import { logger } from '../core/logger';
 import { getMCPService } from './mcp';
@@ -12,9 +14,9 @@ export class Conductor {
     private routerAgent = new RouterAgent();
     private routerTimer: Timer | null = null;
 
-    // Hooks
-    private workerHook: Hook;
-    private gatekeeperHook: Hook;
+    // Pools
+    private workerPool: WorkerPool;
+    private gatekeeperPool: WorkerPool;
 
     private beads: BeadsClient;
     private queue: WorkQueue;
@@ -23,23 +25,31 @@ export class Conductor {
         this.beads = beads || getBeads();
         this.queue = queue || getQueue();
 
-        // Initialize Hooks
-        // Workers process 'worker' tasks using WorkerAgent
-        this.workerHook = new Hook('worker-1', 'worker', async (ticket) => {
-            logger.info(`[Worker] Processing ${ticket.bead_id}`, { beadId: ticket.bead_id });
-            const agent = new WorkerAgent();
-            // Provide context
-            const bead = await this.beads.get(ticket.bead_id);
-            await agent.run(`Process this task: ${bead.title}`, { beadId: ticket.bead_id, bead });
-        });
+        const config = getConfig();
 
-        // Gatekeepers process 'gatekeeper' tasks using EvaluatorAgent
-        this.gatekeeperHook = new Hook('gatekeeper-1', 'gatekeeper', async (ticket) => {
-            logger.info(`[Gatekeeper] Verifying ${ticket.bead_id}`, { beadId: ticket.bead_id });
-            const agent = new EvaluatorAgent();
-            const bead = await this.beads.get(ticket.bead_id);
-            await agent.run(`Verify this work: ${bead.title}`, { beadId: ticket.bead_id, bead });
-        });
+        // Initialize Worker Pool
+        this.workerPool = new WorkerPool(
+            'worker',
+            (id) => new Hook(id, 'worker', async (ticket) => {
+                logger.info(`[Worker] Processing ${ticket.bead_id}`, { beadId: ticket.bead_id });
+                const agent = new WorkerAgent();
+                const bead = await this.beads.get(ticket.bead_id);
+                await agent.run(`Process this task: ${bead.title}`, { beadId: ticket.bead_id, bead });
+            }),
+            config.worker.min_workers
+        );
+
+        // Initialize Gatekeeper Pool
+        this.gatekeeperPool = new WorkerPool(
+            'gatekeeper',
+            (id) => new Hook(id, 'gatekeeper', async (ticket) => {
+                logger.info(`[Gatekeeper] Verifying ${ticket.bead_id}`, { beadId: ticket.bead_id });
+                const agent = new EvaluatorAgent();
+                const bead = await this.beads.get(ticket.bead_id);
+                await agent.run(`Verify this work: ${bead.title}`, { beadId: ticket.bead_id, bead });
+            }),
+            config.gatekeeper.min_workers
+        );
     }
 
     async start() {
@@ -50,9 +60,9 @@ export class Conductor {
         // Initialize MCP
         await getMCPService().initialize();
 
-        // Start Hooks
-        this.workerHook.start();
-        this.gatekeeperHook.start();
+        // Start Pools
+        this.workerPool.start();
+        this.gatekeeperPool.start();
 
         // Start Router Loop
         this.routerLoop();
@@ -62,8 +72,8 @@ export class Conductor {
         this.isRunning = false;
         logger.info('[Conductor] Stopping...');
 
-        this.workerHook.stop();
-        this.gatekeeperHook.stop();
+        this.workerPool.stop();
+        this.gatekeeperPool.stop();
 
         if (this.routerTimer) {
             clearTimeout(this.routerTimer);
@@ -79,8 +89,9 @@ export class Conductor {
 
         try {
             await this.cycleRouter();
+            await this.scalePools();
         } catch (error) {
-            logger.error('[Conductor] Router cycle failed:', error);
+            logger.error('[Conductor] Cycle failed:', error);
         }
 
         if (this.isRunning) {
@@ -167,5 +178,25 @@ export class Conductor {
                 );
             }
         }
+    }
+
+
+    private async scalePools() {
+        const config = getConfig();
+
+        // Scale Workers
+        const workerPending = this.queue.getPendingCount('worker');
+        let targetWorkers = Math.ceil(workerPending * config.worker.load_factor);
+        // Ensure bounds
+        targetWorkers = Math.max(config.worker.min_workers, Math.min(targetWorkers, config.worker.max_workers));
+
+        await this.workerPool.resize(targetWorkers);
+
+        // Scale Gatekeepers
+        const gatekeeperPending = this.queue.getPendingCount('gatekeeper');
+        let targetGatekeepers = Math.ceil(gatekeeperPending * config.gatekeeper.load_factor);
+        targetGatekeepers = Math.max(config.gatekeeper.min_workers, Math.min(targetGatekeepers, config.gatekeeper.max_workers));
+
+        await this.gatekeeperPool.resize(targetGatekeepers);
     }
 }

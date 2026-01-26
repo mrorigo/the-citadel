@@ -16,6 +16,7 @@ const mockQueue = {
     complete: mock(() => { }),
     fail: mock(() => { }),
     heartbeat: mock(() => { }),
+    getPendingCount: mock(() => 0),
 };
 
 const mockRouterAgent = {

@@ -73,6 +73,14 @@ export default {
         timeout: 300,
         maxRetries: 3,
         costLimit: 1.00,
+        min_workers: 1,
+        max_workers: 5,
+        load_factor: 1.0,
+    },
+    gatekeeper: {
+        min_workers: 1,
+        max_workers: 5,
+        load_factor: 1.0,
     },
     beads: {
         path: '.beads',

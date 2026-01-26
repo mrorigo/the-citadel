@@ -3,6 +3,7 @@ import { promisify } from 'node:util';
 import { z } from 'zod';
 import { resolve } from 'node:path';
 import { getConfig } from '../config';
+import type { CitadelConfig } from '../config/schema';
 
 const execAsync = promisify(exec);
 
@@ -69,7 +70,7 @@ export class BeadsClient {
     private binary: string;
 
     constructor(basePath?: string, binary?: string) {
-        let config;
+        let config: CitadelConfig | null = null;
         try {
             config = getConfig();
         } catch {

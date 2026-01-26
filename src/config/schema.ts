@@ -53,6 +53,19 @@ export const ConfigSchema = z.object({
     timeout: z.number().default(300),
     maxRetries: z.number().default(3),
     costLimit: z.number().default(1.00),
+    min_workers: z.number().default(1),
+    max_workers: z.number().default(5),
+    load_factor: z.number().default(1.0),
+  }),
+
+  gatekeeper: z.object({
+    min_workers: z.number().default(1),
+    max_workers: z.number().default(5),
+    load_factor: z.number().default(1.0),
+  }).default({
+    min_workers: 1,
+    max_workers: 5,
+    load_factor: 1.0,
   }),
 
   beads: z.object({
