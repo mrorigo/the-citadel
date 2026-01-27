@@ -8,6 +8,14 @@ Use The Citadel for complex, multi-step objectives: **building software features
 
 ---
 
+## Installation
+
+```bash
+npm install the-citadel@0.0.1
+```
+
+---
+
 ## Features
 
 - **Foundry (Workflow Engine)** – Compile standard operating procedures (SOPs) into dynamic **Molecules** (task DAGs).
