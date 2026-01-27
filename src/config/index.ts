@@ -3,15 +3,17 @@ import { resolve } from 'node:path';
 import { ConfigSchema, type CitadelConfig, type CitadelConfigInput } from './schema';
 import dotenv from 'dotenv';
 import { logger } from '../core/logger';
+import { getGlobalSingleton, setGlobalSingleton, clearGlobalSingleton } from '../core/registry';
 
 
 // Load .env immediately
 dotenv.config();
 
-let configCache: CitadelConfig | null = null;
+const CONFIG_KEY = 'config_cache';
 
 export async function loadConfig(): Promise<CitadelConfig> {
-    if (configCache) return configCache;
+    const existing = getGlobalSingleton<CitadelConfig | null>(CONFIG_KEY, () => null);
+    if (existing) return existing;
 
     // Default: citadel.config.ts in CWD
     const configPath = resolve(process.cwd(), 'citadel.config.ts');
@@ -59,25 +61,28 @@ export async function loadConfig(): Promise<CitadelConfig> {
         throw new Error('Invalid Citadel Configuration');
     }
 
-    configCache = parsed.data;
+    const config = parsed.data;
+    setGlobalSingleton(CONFIG_KEY, config);
     logger.debug('[Config] Loaded from file/env');
-    return configCache;
+    return config;
 }
 
 export function setConfig(config: CitadelConfigInput) {
     const parsed = ConfigSchema.parse(config);
     logger.debug('[Config] Manually set config');
-    configCache = parsed;
+    setGlobalSingleton(CONFIG_KEY, parsed);
 }
 
 export function resetConfig() {
-    configCache = null;
+    clearGlobalSingleton(CONFIG_KEY);
     logger.debug('[Config] Cache cleared');
 }
 
 export function getConfig(): CitadelConfig {
-    if (!configCache) {
+    const config = getGlobalSingleton<CitadelConfig | null>(CONFIG_KEY, () => null);
+    if (!config) {
         throw new Error('Config not loaded. Call loadConfig() first.');
     }
-    return configCache;
+    return config;
 }
+

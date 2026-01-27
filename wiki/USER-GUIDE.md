@@ -247,69 +247,115 @@ For more details on conditionals, loops, and the resilient failure handling logi
 
 ---
 
-## MCP Tools (Extending Capabilities)
+---
 
-The Citadel supports the **Model Context Protocol (MCP)**, allowing you to connect agents to external tools and data sources.
+## Configuration (`citadel.config.ts`)
 
-### 1. Configure MCP Servers
-Add your MCP servers to `citadel.config.ts`. The Citadel supports both local **Stdio** servers (via `command`) and remote **HTTP/SSE** servers (via `url`).
+The Citadel is configured via a `citadel.config.ts` file in your project root. Use the `defineConfig` helper for type-safe configuration.
+
+### 1. Providers
+Configure credentials and base URLs for LLM providers.
 
 ```typescript
-export default defineConfig({
-    worker: {
-        timeout: 300,
-        maxRetries: 3,
-        costLimit: 1.00,
-        // Concurrency Settings
-        min_workers: 1,    // Minimum number of active workers
-        max_workers: 5,    // Scaled up when queue is deep
-        load_factor: 1.0,  // Ratio of tasks to workers (1.0 = 1 task per worker)
-    },
-    gatekeeper: {
-        min_workers: 1,
-        max_workers: 5,
-        load_factor: 1.0,
-    },
-  mcpServers: {
-    // Local Stdio server
-    filesystem: {
-      command: 'npx',
-      args: ['-y', '@modelcontextprotocol/server-filesystem'],
-    },
-    // Remote HTTP/SSE server
-    professional_api: {
-      url: 'https://mcp.company.com/api',
-      headers: {
-        'Authorization': 'Bearer YOUR_TOKEN',
-      }
+providers: {
+    openai: { apiKey: 'sk-...' },
+    anthropic: { apiKey: 'sk-ant-...' },
+    ollama: {
+        baseURL: 'http://localhost:11434/v1',
+        apiKey: 'ollama', // Required for OpenAI compatibility layer
     }
-  },
-  // ...
-});
-```
-
-> [!NOTE]
-> The filesystem server uses **MCP Roots** to dynamically determine which directories it can access. The Citadel automatically provides the current project workspace to servers during initialization.
-
-### 2. Assign Tools to Agents
-You can selectively expose MCP tools to specific agent roles using the `mcpTools` array.
-
-- `server:*`: Exposes all tools from that server (standard for **WorkerAgent**).
-- `server:tool_name`: Exposes a specific tool (useful for restricting **EvaluatorAgent**).
-
-```typescript
-agents: {
-  worker: { 
-    mcpTools: ['filesystem:*'] 
-  },
-  gatekeeper: {
-    mcpTools: [
-      'filesystem:read_text_file',
-      'filesystem:list_directory',
-      // ... only read-only tools
-    ]
-  }
 }
 ```
 
-Agents will see these tools alongside their native capabilities, prefixed with the server name (e.g., `filesystem_read_text_file`).
+### 2. Agent Roles
+Define which model each agent role should use and which MCP tools they can access.
+
+*   **`router`**: Analyzes requests and instantiates formulas.
+*   **`worker`**: Executes tasks and handles dynamic bonding.
+*   **`gatekeeper`**: Verifies completed work (implemented by `EvaluatorAgent`).
+*   **`supervisor`**: (Optional) For high-level oversight.
+
+```typescript
+agents: {
+    router: { provider: 'ollama', model: 'gpt-oss:120b' },
+    worker: { 
+        provider: 'openai', 
+        model: 'gpt-4o',
+        mcpTools: ['filesystem:*', 'github:*'] 
+    },
+    gatekeeper: { 
+        provider: 'anthropic', 
+        model: 'claude-3-5-sonnet',
+        mcpTools: ['filesystem:read_text_file'] // Restricted access
+    }
+}
+```
+
+### 3. Execution & Scaling Pools
+Configure how workers and gatekeepers are scaled based on workload.
+
+#### Worker Pool (`worker`)
+Settings for agents processing standard tasks.
+
+*   **`timeout`**: Max seconds per task (default: 300).
+*   **`maxRetries`**: Max attempts per ticket (default: 3).
+*   **`costLimit`**: Max USD or weight per day (default: 1.00).
+*   **`min_workers`**: Minimum active instances (default: 1).
+*   **`max_workers`**: Maximum dynamic scaling limit (default: 5).
+*   **`load_factor`**: Ratio of tasks to workers. `1.0` means 1 worker per task; `0.5` means 1 worker per 2 tasks.
+
+#### Gatekeeper Pool (`gatekeeper`)
+Settings for agents verifying tasks.
+
+*   **`min_workers`**, **`max_workers`**, **`load_factor`**: Same logic as worker pool.
+
+```typescript
+worker: {
+    timeout: 600,
+    min_workers: 2,
+    max_workers: 10,
+    load_factor: 1.0
+},
+gatekeeper: {
+    min_workers: 1,
+    max_workers: 3
+}
+```
+
+### 4. MCP Servers
+Connect external tools via the Model Context Protocol. Supports **Stdio** (local) and **HTTP/SSE** (remote).
+
+```typescript
+mcpServers: {
+    filesystem: {
+        command: 'npx',
+        args: ['-y', '@modelcontextprotocol/server-filesystem', '/path/to/allow'],
+        env: { SOME_VAR: 'value' }
+    },
+    weather: {
+        url: 'https://api.weather-mcp.com/sse',
+        headers: { 'Authorization': 'Bearer ...' }
+    }
+}
+```
+
+### 5. Beads Integration
+Configure the underlying state engine.
+
+*   **`path`**: Directory for the SQLite database (default: `.beads`).
+*   **`binary`**: Path to the `bd` CLI (default: `bd`).
+*   **`autoSync`**: Automatically sync state with Git (default: true).
+
+```typescript
+beads: {
+    path: '.beads',
+    binary: '/usr/local/bin/bd',
+    autoSync: true
+}
+```
+
+### 6. Bridge Environment
+*   **`env`**: `'development'` or `'production'`.
+*   **`bridge.maxLogs`**: Number of log lines maintained in TUI memory (default: 1000).
+
+---

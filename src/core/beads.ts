@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { resolve } from 'node:path';
 import { getConfig } from '../config';
 import type { CitadelConfig } from '../config/schema';
+import { getGlobalSingleton, setGlobalSingleton } from './registry';
 
 const execAsync = promisify(exec);
 
@@ -91,7 +92,7 @@ export class BeadsClient {
             const { stdout, stderr } = await execAsync(command, { cwd });
             if (stderr && !stdout) {
                 // Some tools print info to stderr?
-                // Assuming strict JSON output on stdout for --json commands
+                // Assuming strictly JSON output on stdout for --json commands
             }
             return stdout.trim();
         } catch (error: unknown) {
@@ -290,9 +291,9 @@ export class BeadsClient {
 }
 
 // Singleton accessor
-let _beads: BeadsClient | null = null;
+const BEADS_KEY = 'beads_client';
 export function getBeads(basePath?: string): BeadsClient {
-    if (!_beads) {
+    return getGlobalSingleton(BEADS_KEY, () => {
         let path = basePath;
         if (!path) {
             try {
@@ -302,12 +303,10 @@ export function getBeads(basePath?: string): BeadsClient {
                 path = '.beads';
             }
         }
-        _beads = new BeadsClient(path);
-    }
-    return _beads;
+        return new BeadsClient(path);
+    });
 }
 
 export function setBeadsInstance(beads: BeadsClient) {
-    _beads = beads;
+    setGlobalSingleton(BEADS_KEY, beads);
 }
-

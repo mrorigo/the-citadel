@@ -2,6 +2,7 @@ import { Database } from 'bun:sqlite';
 import { z } from 'zod';
 import { resolve, dirname } from 'node:path';
 import { mkdirSync } from 'node:fs';
+import { getGlobalSingleton, setGlobalSingleton } from './registry';
 
 
 // --- Schema ---
@@ -212,12 +213,11 @@ export class WorkQueue {
 }
 
 // Singleton accessor (defaulting to .citadel/queue.sqlite)
-let _queue: WorkQueue | null = null;
+const QUEUE_KEY = 'work_queue';
 export function getQueue(): WorkQueue {
-    if (!_queue) _queue = new WorkQueue();
-    return _queue;
+    return getGlobalSingleton(QUEUE_KEY, () => new WorkQueue());
 }
 
 export function setQueueInstance(queue: WorkQueue) {
-    _queue = queue;
+    setGlobalSingleton(QUEUE_KEY, queue);
 }
