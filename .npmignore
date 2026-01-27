@@ -1,0 +1,21 @@
+
+# Source and Tests
+src/
+tests/
+tsconfig.json
+bunfig.toml
+biome.json
+citadel.config.ts
+
+# Artifacts
+.beads/
+.citadel/
+*.sqlite
+logs/
+docs/agent/
+docs/oh-my-opencode.md
+
+# Editor
+.vscode/
+.idea/
+.DS_Store
