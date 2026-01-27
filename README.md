@@ -32,16 +32,15 @@ npm install the-citadel@0.0.1
 ## Quick Start
 
 ```bash
-# 1️⃣ Install deps & link binary (Bun is required)
-bun install
-bun link
+# 1️⃣ Install globally
+npm install -g the-citadel@0.0.1
 
 # 2️⃣ Bootstrap a new project
 citadel init   # creates .citadel/ + config + sample formula
 
 # 3️⃣ Run a workload
 # Option A: Simple Task
-bd create "Hello world"
+citadel create "Hello world"
 
 # Option B: Run a Formula
 citadel create "My Release" --formula feature_release --vars name="Dark Mode"
