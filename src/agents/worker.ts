@@ -93,7 +93,7 @@ export class WorkerAgent extends CoreAgent {
     }
 
     // Extracted handler for reuse
-    private handleSubmitWork = async ({ beadId, summary, output, acceptance_test_result: _acceptance_test_result }: any) => {
+    private handleSubmitWork = async ({ beadId, summary, output, acceptance_test_result: _acceptance_test_result }: { beadId: string, summary: string, output?: unknown, acceptance_test_result?: string }) => {
         // 1. Update Bead Status
         await getBeads().update(beadId, {
             status: 'verify',
@@ -111,31 +111,34 @@ export class WorkerAgent extends CoreAgent {
         return { success: true, status: 'verify', summary };
     }
 
-    async run(prompt: string, context?: any): Promise<string> {
+    override async run(prompt: string, context?: Record<string, unknown>): Promise<string> {
         let outputSchema: z.ZodTypeAny = z.string().describe('Unstructured output data (default)');
 
         // Dynamic Schema Lookup
         if (context?.beadId) {
             try {
-                const bead = await getBeads().get(context.beadId);
+                const bead = await getBeads().get(context.beadId as string);
                 const formulaLabel = bead.labels?.find(l => l.startsWith('formula:'));
                 const stepLabel = bead.labels?.find(l => l.startsWith('step:'));
 
                 if (formulaLabel && stepLabel) {
                     const formulaName = formulaLabel.split(':')[1];
                     const stepId = stepLabel.split(':')[1];
-                    const formula = getFormulaRegistry().get(formulaName);
 
-                    if (formula) {
-                        const step = formula.steps.find(s => s.id === stepId);
-                        if (step?.output_schema) {
-                            outputSchema = jsonSchemaToZod(step.output_schema);
-                            logger.info(`[Worker] Enforcing schema for ${bead.id} (step: ${stepId})`);
+                    if (formulaName && stepId) {
+                        const formula = getFormulaRegistry().get(formulaName);
+
+                        if (formula) {
+                            const step = formula.steps.find(s => s.id === stepId);
+                            if (step?.output_schema) {
+                                outputSchema = jsonSchemaToZod(step.output_schema);
+                                logger.info(`[Worker] Enforcing schema for ${bead.id} (step: ${stepId})`);
+                            }
                         }
                     }
                 }
-            } catch (err) {
-                logger.warn(`[Worker] Failed to resolve dynamic schema:`, err);
+            } catch (err: unknown) {
+                logger.warn(`[Worker] Failed to resolve dynamic schema:`, err as Record<string, unknown> | undefined);
             }
         }
 

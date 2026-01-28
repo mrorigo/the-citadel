@@ -50,7 +50,7 @@ export const BeadSchema = z.object({
     acceptance_test: z.string().optional(),
     parent: z.string().optional(),
     description: z.string().optional(),
-    context: z.record(z.string(), z.any()).optional(),
+    context: z.record(z.string(), z.unknown()).optional(),
     created_at: z.string(),
     updated_at: z.string(),
 });
@@ -65,7 +65,7 @@ export interface CreateOptions {
     description?: string;
     parent?: string; // Parent ID for molecules
     type?: string; // bead type (epic, story, task, convoy, etc)
-    context?: Record<string, any>;
+    context?: Record<string, unknown>;
 }
 
 // --- Client ---
@@ -156,13 +156,13 @@ export class BeadsClient {
         }
 
         // Parse context from description
-        let context: Record<string, any> | undefined;
+        let context: Record<string, unknown> | undefined;
         let description = raw.description || undefined; // Normalizing null/undefined to undefined
 
         if (description) {
             // We use a temp variable to help TS narrowing if needed, but description is string here
             const match = description.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-            if (match && match[1] && match[2]) {
+            if (match?.[1] && match[2]) {
                 try {
                     const parsed = JSON.parse(match[1]);
                     if (parsed && typeof parsed === 'object') {
@@ -311,7 +311,7 @@ export class BeadsClient {
 
             // Strip existing frontmatter
             const match = descText.match(/^---\n[\s\S]*?\n---\n([\s\S]*)$/);
-            if (match && match[1]) {
+            if (match?.[1]) {
                 descText = match[1];
             }
 

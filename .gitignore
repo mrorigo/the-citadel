@@ -38,3 +38,5 @@ tests/temp_e2e_env*
 .*.bun-build
 docs/INFORMATION_FLOW.md
 docs/DYNAMIC_DATA_PIPING.md
+docs/assets/forge-*
+citadel-forge

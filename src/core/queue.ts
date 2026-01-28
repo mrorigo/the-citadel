@@ -22,7 +22,7 @@ export const TicketSchema = z.object({
     completed_at: z.number().nullable(),
     heartbeat_at: z.number().nullable(),
     retry_count: z.number(),
-    output: z.any().optional(),
+    output: z.unknown().optional(),
 });
 
 export type Ticket = z.infer<typeof TicketSchema>;
@@ -127,7 +127,7 @@ export class WorkQueue {
     /**
      * Mark ticket as complete with optional output
      */
-    complete(ticketId: string, output?: any): void {
+    complete(ticketId: string, output?: unknown): void {
         const outputJson = output ? JSON.stringify(output) : null;
         this.db.run(`
         UPDATE tickets 
@@ -139,13 +139,13 @@ export class WorkQueue {
     /**
      * Get output of a completed ticket by Bead ID
      */
-    getOutput(beadId: string): any {
+    getOutput(beadId: string): unknown {
         const result = this.db.query(`
             SELECT output FROM tickets 
             WHERE bead_id = ? AND status = 'completed'
         `).get(beadId) as { output: string | null } | null;
 
-        if (result && result.output) {
+        if (result?.output) {
             return JSON.parse(result.output);
         }
         return null;

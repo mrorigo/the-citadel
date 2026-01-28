@@ -1,6 +1,15 @@
 import { z } from 'zod';
 
-export function jsonSchemaToZod(schema: any): z.ZodTypeAny {
+interface JsonSchema {
+    type?: string;
+    description?: string;
+    properties?: Record<string, unknown>;
+    required?: string[];
+    items?: unknown;
+    additionalProperties?: boolean | unknown;
+}
+
+export function jsonSchemaToZod(schema: JsonSchema | string): z.ZodTypeAny {
     if (!schema) return z.any();
     if (typeof schema === 'string') {
         // handle shorthand types? "string", "number"
@@ -17,25 +26,25 @@ export function jsonSchemaToZod(schema: any): z.ZodTypeAny {
         if (schema.description) s = s.describe(schema.description);
         return s;
     }
-    if (type === 'number' || type === 'integer') {
+    else if (type === 'number' || type === 'integer') {
         let n = z.number();
         if (schema.description) n = n.describe(schema.description);
         return n;
     }
-    if (type === 'boolean') {
+    else if (type === 'boolean') {
         let b = z.boolean();
         if (schema.description) b = b.describe(schema.description);
         return b;
     }
-    if (type === 'array') {
-        const itemSchema = schema.items ? jsonSchemaToZod(schema.items) : z.any();
+    else if (type === 'array') {
+        const itemSchema = schema.items ? jsonSchemaToZod(schema.items as JsonSchema) : z.any();
         let a = z.array(itemSchema);
         if (schema.description) a = a.describe(schema.description);
         return a;
     }
-    if (type === 'object') {
+    else if (type === 'object') {
         const shape: Record<string, z.ZodTypeAny> = {};
-        const props = schema.properties || {};
+        const props = (schema.properties || {}) as Record<string, JsonSchema>;
         const required = new Set(Array.isArray(schema.required) ? schema.required : []);
 
         for (const [key, propSchema] of Object.entries(props)) {

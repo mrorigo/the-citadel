@@ -21,10 +21,12 @@ const mockQueue = {
 
 const mockRouterAgent = {
     run: mock(async () => 'Mocked Plan'),
+    tools: {},
 };
 
 const mockWorkerAgent = {
     run: mock(async () => 'Mocked Work'),
+    tools: {},
 };
 
 // Mock modules

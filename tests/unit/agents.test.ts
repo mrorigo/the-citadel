@@ -3,6 +3,7 @@ import { describe, it, expect, mock, beforeAll } from 'bun:test';
 // Mock generateText to avoid calling real LLM
 mock.module('ai', () => ({
     generateText: mock(async () => ({ text: 'Mocked Plan' })),
+    jsonSchema: (schema: any) => schema,
     // biome-ignore lint/suspicious/noExplicitAny: Mocking tool arguments
     tool: (args: any) => args, // Return args as the tool for inspection
 }));

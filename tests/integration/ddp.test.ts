@@ -66,6 +66,7 @@ class MockBeadsClient extends BeadsClient {
         // Update
         if (args.startsWith('update')) {
             const idPart = args.split(' ')[1];
+            if (!idPart) throw new Error('Missing ID');
             const bead = this.store.get(idPart);
             if (!bead) throw new Error('Not found');
 
@@ -75,16 +76,14 @@ class MockBeadsClient extends BeadsClient {
                 for (let i = 0; i < parts.length; i++) {
                     if (parts[i] === '--add-label' && parts[i + 1]) {
                         const rawLabel = parts[i + 1];
-                        const label = rawLabel.replace(/^"|"$/g, '');
-                        if (!bead.labels.includes(label)) {
-                            bead.labels.push(label);
+                        if (rawLabel) {
+                            const label = rawLabel.replace(/^"|"$/g, '');
+                            if (!bead.labels.includes(label)) {
+                                bead.labels.push(label);
+                            }
                         }
                     }
                 }
-                // Handle array syntax from workflow engine update? 
-                // It might not use CLI args string for internal calls if mocked?
-                // But BeadsClient always calls runCommand text. 
-                // My mock implementation is fragile to args formatting.
             }
 
             // Handle context/description update
@@ -113,7 +112,9 @@ class MockBeadsClient extends BeadsClient {
             const parts = args.split(' ');
             if (parts.length > 1) {
                 const id = parts[1];
-                return JSON.stringify(this.store.get(id));
+                if (id) {
+                    return JSON.stringify(this.store.get(id));
+                }
             }
         }
 
@@ -123,11 +124,13 @@ class MockBeadsClient extends BeadsClient {
             if (parts.length >= 4) {
                 const child = parts[2];
                 const parent = parts[3];
-                const c = this.store.get(child);
-                if (c) {
-                    c.blockers = c.blockers || [];
-                    c.blockers.push(parent);
-                    this.store.set(child, c);
+                if (child && parent) {
+                    const c = this.store.get(child);
+                    if (c) {
+                        c.blockers = c.blockers || [];
+                        c.blockers.push(parent);
+                        this.store.set(child, c);
+                    }
                 }
                 return 'ok';
             }
@@ -230,6 +233,8 @@ context = { input_num = "{{steps.producer.output.magic_number}}" }
         queue.enqueue(producerId, 1, 'worker');
         queue.claim('w1', 'worker');
 
+        // Use cache-busting dynamic import to bypass potential mock leaks
+        const { WorkerAgent } = await import(`../../src/agents/worker?t=${Date.now()}`);
         const worker = new WorkerAgent();
 
         // Mock Model to return a Tool Call

@@ -1,11 +1,12 @@
 import { getBeads } from '../core/beads';
 import { getQueue } from '../core/queue';
 import { logger } from '../core/logger';
-import { type Bead } from '../core/beads';
+import type { Bead } from '../core/beads';
 
 export class DataPiper {
-    private beads = getBeads();
-    private queue = getQueue();
+    // No longer caching in constructor to avoid singleton leak in tests
+    // private beads = getBeads();
+    // private queue = getQueue();
 
     /**
      * Attempts to pipe data into a Bead's context from its dependencies.
@@ -20,14 +21,15 @@ export class DataPiper {
      */
     async pipeData(beadId: string): Promise<boolean> {
         try {
-            const bead = await this.beads.get(beadId);
-            if (!bead.context) return false;
+            const beads = getBeads();
+            const bead = await beads.get(beadId);
+            if (!bead || !bead.context) return false;
 
             let hasChanges = false;
-            const newContext: Record<string, any> = { ...bead.context };
+            const newContext: Record<string, unknown> = { ...(bead.context as Record<string, unknown>) };
 
             // Helper to traverse object and resolve strings
-            const resolveObject = async (obj: any): Promise<boolean> => {
+            const resolveObject = async (obj: Record<string, unknown>): Promise<boolean> => {
                 let changed = false;
                 for (const key in obj) {
                     const val = obj[key];
@@ -38,7 +40,7 @@ export class DataPiper {
                             changed = true;
                         }
                     } else if (typeof val === 'object' && val !== null) {
-                        if (await resolveObject(val)) changed = true;
+                        if (await resolveObject(val as Record<string, unknown>)) changed = true;
                     }
                 }
                 return changed;
@@ -48,7 +50,7 @@ export class DataPiper {
 
             if (hasChanges) {
                 logger.info(`[Piper] Resolved data for bead ${beadId}`, { newContext });
-                await this.beads.update(beadId, { context: newContext });
+                await getBeads().update(beadId, { context: newContext });
                 return true;
             }
 
@@ -59,13 +61,13 @@ export class DataPiper {
         }
     }
 
-    private async resolveTemplate(template: string, bead: Bead): Promise<any> {
+    private async resolveTemplate(template: string, bead: Bead): Promise<unknown> {
         // Regex for {{steps.ID.output.KEY}}
         // Also support {{steps.ID.output}} (full object)
 
         // Check for full replacement first (if the string is EXACTLY the template)
         // allowing us to inject objects/arrays, not just strings.
-        const fullMatch = template.match(/^{{steps\.([^\.]+)\.output(?:\.(.+))?}}$/);
+        const fullMatch = template.match(/^{{steps\.([^.]+)\.output(?:\.(.+))?}}$/);
         if (fullMatch) {
             const stepId = fullMatch[1];
             const path = fullMatch[2];
@@ -76,7 +78,7 @@ export class DataPiper {
 
         // Partial replacement (string interpolation)
         // "Title: {{steps.foo.output.title}}"
-        return template.replace(/{{steps\.([^\.]+)\.output(?:\.(.+))?}}/g, (_match, stepId, path) => {
+        return template.replace(/{{steps\.([^.]+)\.output(?:\.(.+))?}}/g, (_match, _stepId, _path) => {
             // We can't support async inside replace easily without specific patterns,
             // but since we are doing one pass, we might have to fetch first.
             // Actually, simplest is to use a replacer that returns a placeholder?
@@ -92,7 +94,7 @@ export class DataPiper {
     // "key": "{{steps.foo.output.bar}}"
     // Mixed interpolation "Hello {{...}}" is harder with async resolution and types.
 
-    private async fetchValue(currentBead: Bead, targetStepId: string, outputKey?: string): Promise<any> {
+    private async fetchValue(currentBead: Bead, targetStepId: string, outputKey?: string): Promise<unknown> {
         // 1. Find the target bead ID. 
         // The 'stepId' in the template usually refers to the Formula Step ID, 
         // NOT the Bead ID directly (since Bead IDs are GUIDs).
@@ -128,18 +130,20 @@ export class DataPiper {
             return `{{steps.${targetStepId}.output...}}`; // Unresolved
         }
 
-        const output = await this.queue.getOutput(dependencyId);
+        const queue = getQueue();
+        const output = await queue.getOutput(dependencyId);
         if (!output) return null;
 
         if (!outputKey) return output;
 
         // Deep access
-        return outputKey.split('.').reduce((o: any, k) => (o ? o[k] : null), output);
+        return outputKey.split('.').reduce((o: Record<string, unknown> | null, k) => (o ? (o[k] as Record<string, unknown> | null) : null), output as Record<string, unknown> | null);
     }
 
     private async findDependencyIdByStep(candidateIds: string[], stepId: string): Promise<string | undefined> {
+        const beads = getBeads();
         for (const id of candidateIds) {
-            const bead = await this.beads.get(id);
+            const bead = await beads.get(id);
             if (bead.labels?.includes(`step:${stepId}`)) {
                 return id;
             }

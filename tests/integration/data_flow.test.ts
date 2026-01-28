@@ -86,6 +86,7 @@ class MockBeadsClient extends BeadsClient {
 
         if (args.startsWith('show')) {
             const id = args.split(' ')[1];
+            if (!id) throw new Error('Missing ID');
             const bead = this.beads.get(id);
             if (!bead) throw new Error('Not found');
             return JSON.stringify(bead);
@@ -93,6 +94,7 @@ class MockBeadsClient extends BeadsClient {
 
         if (args.startsWith('update')) {
             const id = args.split(' ')[1];
+            if (!id) throw new Error('Missing ID');
             console.log(`[Mock] Updating bead ${id} with args: ${args}`);
             let bead: any = this.beads.get(id);
             if (!bead) throw new Error('Not found ' + id);
@@ -191,6 +193,8 @@ describe('Data Flow Integration', () => {
         }
 
         // 4. Run Worker Agent Tool (submit_work)
+        // Use cache-busting dynamic import to bypass potential mock leaks
+        const { WorkerAgent } = await import(`../../src/agents/worker?t=${Date.now()}`);
         const agent = new WorkerAgent();
         // Access protected tools via any cast
         const tools = (agent as any).tools;
