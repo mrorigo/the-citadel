@@ -37,7 +37,7 @@ export class RouterAgent extends CoreAgent {
             'Instantiate a named workflow formula (e.g., system_migration)',
             z.object({
                 formulaName: z.string().describe('The name of the formula to run'),
-                variables: z.record(z.string(), z.string()).describe('Variables to inject into the formula (e.g., { target_system: "Auth" })'),
+                variables: z.object({}).passthrough().optional().default({}).describe('Variables to inject into the formula (e.g., { "target_system": "Auth" })'),
                 parentConvoyId: z.string().optional().describe('ID of the Convoy to assign this molecule to (optional)'),
             }),
             async ({ formulaName, variables, parentConvoyId }) => {
