@@ -71,14 +71,18 @@ export class WorkQueue {
         }
     }
 
-    enqueue(beadId: string, priority: number, targetRole: string): void {
+    enqueue(beadId: string, priority?: number, targetRole?: string): void {
         const id = crypto.randomUUID();
         const now = Date.now();
+
+        // Default to worker/priority 1 if mission
+        const finalPriority = priority ?? 1;
+        const finalRole = targetRole ?? 'worker';
 
         this.db.run(`
       INSERT INTO tickets (id, bead_id, status, priority, target_role, created_at, retry_count)
       VALUES (?, ?, 'queued', ?, ?, ?, 0)
-    `, [id, beadId, priority, targetRole, now]);
+    `, [id, beadId, finalPriority, finalRole, now]);
     }
 
     /**

@@ -16,6 +16,7 @@ export abstract class CoreAgent {
     protected role: AgentRole;
     protected model: LanguageModel;
     protected tools: Record<string, Tool> = {};
+    protected schemas: Record<string, z.ZodTypeAny> = {};
 
     constructor(role: AgentRole) {
         this.role = role;
@@ -67,6 +68,7 @@ export abstract class CoreAgent {
         };
         // We use unknown cast as a way to bridge the gap between our generic T and the SDK internal expectations
         this.tools[name] = tool(options as unknown as Parameters<typeof tool>[0]) as Tool;
+        this.schemas[name] = schema;
     }
 
     /**
@@ -207,7 +209,10 @@ export abstract class CoreAgent {
 
                 try {
                     // Internal execution
-                    const output = await tool.execute(tc.input, { toolCallId: tc.toolCallId, messages } as { toolCallId: string, messages: ModelMessage[] });
+                    // Strictly validate input against schema before execution to prevent null/undefined leakage
+                    const schema = this.schemas[tc.toolName];
+                    const validatedInput = schema ? schema.parse(tc.input) : tc.input;
+                    const output = await tool.execute(validatedInput, { toolCallId: tc.toolCallId, messages } as { toolCallId: string, messages: ModelMessage[] });
 
                     // Check for explicit finish signals if tool returns them? 
                     // Not standard, but we can convention.

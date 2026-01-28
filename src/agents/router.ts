@@ -14,9 +14,9 @@ export class RouterAgent extends CoreAgent {
             'Enqueue a bead for execution by a worker',
             z.object({
                 beadId: z.string().describe('The ID of the bead to enqueue'),
-                priority: z.number().min(0).max(3).describe('Priority of the task (0=Highest, 3=Lowest)'),
-                targetRole: z.enum(['worker', 'gatekeeper']).describe('The role that should process this task'),
-                reasoning: z.string().describe('Why this priority was chosen'),
+                priority: z.number().min(0).max(3).optional().describe('Priority of the task (0=Highest, 3=Lowest, default: 2)'),
+                targetRole: z.enum(['worker', 'gatekeeper']).optional().describe('The role that should process this task (default: worker)'),
+                reasoning: z.string().describe('Why this priority and role was chosen'),
             }),
             async ({ beadId, priority, targetRole }) => {
                 // Defensive: Ensure bead actually exists.
