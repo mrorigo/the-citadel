@@ -209,9 +209,11 @@ export abstract class CoreAgent {
 
                 try {
                     // Internal execution
-                    // Strictly validate input against schema before execution to prevent null/undefined leakage
+                    // Strictly validate input against schema if it's a Zod schema
                     const schema = this.schemas[tc.toolName];
-                    const validatedInput = schema ? schema.parse(tc.input) : tc.input;
+                    const validatedInput = (schema && 'parse' in schema && typeof schema.parse === 'function')
+                        ? schema.parse(tc.input)
+                        : tc.input;
                     const output = await tool.execute(validatedInput, { toolCallId: tc.toolCallId, messages } as { toolCallId: string, messages: ModelMessage[] });
 
                     // Check for explicit finish signals if tool returns them? 
