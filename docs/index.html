@@ -1,451 +1,521 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>The Citadel — Deterministic Autonomy for Knowledge Work</title>
-    <meta
-      name="description"
-      content="The Citadel is a deterministic orchestration engine for Knowledge Work. Build formulas, compile them into autonomous workflows, and keep every decision auditable."
-    />
-    <style>
-      :root {
-        color-scheme: dark;
-        --bg: #070a12;
-        --bg-2: #0d1321;
-        --accent: #7cf5ff;
-        --accent-2: #b383ff;
-        --accent-3: #31f0a0;
-        --text: #edf2f8;
-        --muted: #a6b1c2;
-        --card: rgba(10, 15, 28, 0.72);
-        --border: rgba(124, 245, 255, 0.22);
-        --shadow: 0 25px 80px rgba(0, 0, 0, 0.45);
-        --radius: 18px;
-        font-family: "Inter", "SF Pro Text", system-ui, -apple-system, sans-serif;
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Citadel — Deterministic Autonomy for Knowledge Work</title>
+  <meta name="description"
+    content="The Citadel is a deterministic orchestration engine for Knowledge Work. Build formulas, compile them into autonomous workflows, and keep every decision auditable." />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070a12;
+      --bg-2: #0d1321;
+      --accent: #7cf5ff;
+      --accent-2: #b383ff;
+      --accent-3: #31f0a0;
+      --text: #edf2f8;
+      --muted: #a6b1c2;
+      --card: rgba(10, 15, 28, 0.72);
+      --border: rgba(124, 245, 255, 0.22);
+      --shadow: 0 25px 80px rgba(0, 0, 0, 0.45);
+      --radius: 18px;
+      font-family: "Inter", "SF Pro Text", system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      background: radial-gradient(circle at 15% 20%, rgba(124, 245, 255, 0.18), transparent 60%),
+        radial-gradient(circle at 85% 15%, rgba(179, 131, 255, 0.2), transparent 55%),
+        linear-gradient(140deg, var(--bg) 0%, #0a0f1b 50%, #0b1326 100%);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .page {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .halo {
+      position: absolute;
+      width: 420px;
+      height: 420px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(124, 245, 255, 0.2), transparent 70%);
+      filter: blur(10px);
+      opacity: 0.8;
+      z-index: -1;
+      animation: float 12s ease-in-out infinite;
+    }
+
+    .halo.halo-1 {
+      top: -120px;
+      right: -60px;
+    }
+
+    .halo.halo-2 {
+      bottom: -160px;
+      left: -120px;
+      background: radial-gradient(circle, rgba(179, 131, 255, 0.22), transparent 70%);
+      animation-delay: 4s;
+    }
+
+    @keyframes float {
+
+      0%,
+      100% {
+        transform: translate(0, 0) scale(1);
       }
 
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
+      50% {
+        transform: translate(25px, -35px) scale(1.06);
+      }
+    }
+
+    header {
+      padding: 28px clamp(22px, 5vw, 90px) 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      border: 1px solid rgba(124, 245, 255, 0.4);
+      background: linear-gradient(135deg, rgba(124, 245, 255, 0.2), rgba(179, 131, 255, 0.28));
+      display: grid;
+      place-items: center;
+      font-size: 20px;
+      box-shadow: 0 0 30px rgba(124, 245, 255, 0.2);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .nav-links a:hover {
+      color: var(--text);
+    }
+
+    .hero {
+      padding: 80px clamp(22px, 6vw, 90px) 60px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 50px;
+      align-items: center;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.6rem, 5vw, 4.4rem);
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      margin-bottom: 18px;
+    }
+
+    .hero p {
+      color: var(--muted);
+      font-size: 1.05rem;
+      margin-bottom: 26px;
+      max-width: 560px;
+    }
+
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .button {
+      padding: 14px 26px;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      border: 1px solid transparent;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border 0.2s ease;
+    }
+
+    .button.primary {
+      background: linear-gradient(135deg, rgba(124, 245, 255, 0.2), rgba(49, 240, 160, 0.2));
+      border-color: rgba(124, 245, 255, 0.5);
+      box-shadow: 0 0 40px rgba(124, 245, 255, 0.2);
+    }
+
+    .button.secondary {
+      background: rgba(12, 18, 32, 0.7);
+      border-color: rgba(179, 131, 255, 0.4);
+      color: var(--muted);
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+    }
+
+    .hero-visual {
+      padding: 28px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: radial-gradient(circle at 20% 20%, rgba(124, 245, 255, 0.12), transparent 55%),
+        rgba(10, 15, 28, 0.85);
+      box-shadow: var(--shadow);
+    }
+
+    .hero-image-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1200 / 900;
+      border-radius: 12px;
+      overflow: hidden;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .hero-img {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      animation: crossfade 10s infinite;
+    }
+
+    .hero-img:nth-child(1) {
+      animation-delay: 0s;
+    }
+
+    .hero-img:nth-child(2) {
+      animation-delay: 5s;
+    }
+
+    @keyframes crossfade {
+      0% {
+        opacity: 0;
       }
 
-      body {
-        min-height: 100vh;
-        background: radial-gradient(circle at 15% 20%, rgba(124, 245, 255, 0.18), transparent 60%),
-          radial-gradient(circle at 85% 15%, rgba(179, 131, 255, 0.2), transparent 55%),
-          linear-gradient(140deg, var(--bg) 0%, #0a0f1b 50%, #0b1326 100%);
-        color: var(--text);
-        line-height: 1.6;
+      8% {
+        opacity: 1;
       }
 
-      a {
-        color: inherit;
-        text-decoration: none;
+      42% {
+        opacity: 1;
       }
 
-      .page {
-        position: relative;
-        overflow: hidden;
+      50% {
+        opacity: 0.5;
       }
 
-      .halo {
-        position: absolute;
-        width: 420px;
-        height: 420px;
-        border-radius: 50%;
-        background: radial-gradient(circle, rgba(124, 245, 255, 0.2), transparent 70%);
-        filter: blur(10px);
-        opacity: 0.8;
-        z-index: -1;
-        animation: float 12s ease-in-out infinite;
+      100% {
+        opacity: 0;
       }
+    }
 
-      .halo.halo-1 {
-        top: -120px;
-        right: -60px;
-      }
+    .hero-visual .caption {
+      margin-top: 16px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
 
-      .halo.halo-2 {
-        bottom: -160px;
-        left: -120px;
-        background: radial-gradient(circle, rgba(179, 131, 255, 0.22), transparent 70%);
-        animation-delay: 4s;
-      }
+    .pillars {
+      margin-top: 28px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 16px;
+    }
 
-      @keyframes float {
-        0%,
-        100% {
-          transform: translate(0, 0) scale(1);
-        }
-        50% {
-          transform: translate(25px, -35px) scale(1.06);
-        }
-      }
+    .pillar {
+      padding: 16px 18px;
+      border-radius: 14px;
+      background: rgba(9, 13, 24, 0.6);
+      border: 1px solid rgba(124, 245, 255, 0.18);
+      font-size: 0.9rem;
+    }
 
-      header {
-        padding: 28px clamp(22px, 5vw, 90px) 0;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
+    .pillar strong {
+      display: block;
+      font-size: 1.2rem;
+      color: var(--accent);
+    }
 
-      .brand {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
+    section {
+      padding: 40px clamp(22px, 6vw, 90px) 80px;
+    }
 
-      .brand-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 12px;
-        border: 1px solid rgba(124, 245, 255, 0.4);
-        background: linear-gradient(135deg, rgba(124, 245, 255, 0.2), rgba(179, 131, 255, 0.28));
-        display: grid;
-        place-items: center;
-        font-size: 20px;
-        box-shadow: 0 0 30px rgba(124, 245, 255, 0.2);
-      }
+    .section-title {
+      font-size: 2rem;
+      margin-bottom: 14px;
+    }
 
-      .nav-links {
-        display: flex;
-        gap: 24px;
-        font-size: 14px;
-        color: var(--muted);
-      }
+    .section-subtitle {
+      color: var(--muted);
+      margin-bottom: 32px;
+      max-width: 720px;
+    }
 
-      .nav-links a:hover {
-        color: var(--text);
-      }
+    .grid {
+      display: grid;
+      gap: 24px;
+      grid-template-columns: 1fr;
+    }
 
-      .hero {
-        padding: 80px clamp(22px, 6vw, 90px) 60px;
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 50px;
-        align-items: center;
-      }
-
-      .hero h1 {
-        font-size: clamp(2.6rem, 5vw, 4.4rem);
-        line-height: 1.05;
-        letter-spacing: -0.02em;
-        margin-bottom: 18px;
-      }
-
-      .hero p {
-        color: var(--muted);
-        font-size: 1.05rem;
-        margin-bottom: 26px;
-        max-width: 560px;
-      }
-
-      .cta-row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 16px;
-      }
-
-      .button {
-        padding: 14px 26px;
-        border-radius: 999px;
-        font-weight: 600;
-        font-size: 0.95rem;
-        border: 1px solid transparent;
-        transition: transform 0.2s ease, box-shadow 0.2s ease, border 0.2s ease;
-      }
-
-      .button.primary {
-        background: linear-gradient(135deg, rgba(124, 245, 255, 0.2), rgba(49, 240, 160, 0.2));
-        border-color: rgba(124, 245, 255, 0.5);
-        box-shadow: 0 0 40px rgba(124, 245, 255, 0.2);
-      }
-
-      .button.secondary {
-        background: rgba(12, 18, 32, 0.7);
-        border-color: rgba(179, 131, 255, 0.4);
-        color: var(--muted);
-      }
-
-      .button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
-      }
-
-      .hero-visual {
-        padding: 28px;
-        border-radius: var(--radius);
-        border: 1px solid var(--border);
-        background: radial-gradient(circle at 20% 20%, rgba(124, 245, 255, 0.12), transparent 55%),
-          rgba(10, 15, 28, 0.85);
-        box-shadow: var(--shadow);
-      }
-
-      .hero-visual canvas {
-        width: 100%;
-        height: 240px;
-        display: block;
-      }
-
-      .hero-visual .caption {
-        margin-top: 16px;
-        color: var(--muted);
-        font-size: 0.9rem;
-      }
-
-      .pillars {
-        margin-top: 28px;
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-        gap: 16px;
-      }
-
-      .pillar {
-        padding: 16px 18px;
-        border-radius: 14px;
-        background: rgba(9, 13, 24, 0.6);
-        border: 1px solid rgba(124, 245, 255, 0.18);
-        font-size: 0.9rem;
-      }
-
-      .pillar strong {
-        display: block;
-        font-size: 1.2rem;
-        color: var(--accent);
-      }
-
-      section {
-        padding: 40px clamp(22px, 6vw, 90px) 80px;
-      }
-
-      .section-title {
-        font-size: 2rem;
-        margin-bottom: 14px;
-      }
-
-      .section-subtitle {
-        color: var(--muted);
-        margin-bottom: 32px;
-        max-width: 720px;
-      }
-
+    @media (min-width: 640px) {
       .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 24px;
+        grid-template-columns: repeat(2, 1fr);
       }
+    }
 
-      .card {
-        padding: 22px;
-        border-radius: 18px;
-        border: 1px solid rgba(124, 245, 255, 0.2);
-        background: var(--card);
-        backdrop-filter: blur(10px);
-        transition: transform 0.2s ease, border 0.2s ease;
+    @media (min-width: 1024px) {
+      .grid {
+        grid-template-columns: repeat(3, 1fr);
       }
+    }
 
-      .card:hover {
-        transform: translateY(-5px);
-        border-color: rgba(49, 240, 160, 0.45);
+    .card {
+      padding: 22px;
+      border-radius: 18px;
+      border: 1px solid rgba(124, 245, 255, 0.2);
+      background: var(--card);
+      backdrop-filter: blur(10px);
+      transition: transform 0.2s ease, border 0.2s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(49, 240, 160, 0.45);
+    }
+
+    .card h3 {
+      margin-bottom: 10px;
+    }
+
+    .card p {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .formula-showcase {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+
+    .formula-panel {
+      padding: 24px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(179, 131, 255, 0.35);
+      background: linear-gradient(135deg, rgba(179, 131, 255, 0.1), rgba(9, 13, 24, 0.55));
+    }
+
+    .formula-panel code {
+      display: block;
+      margin-top: 14px;
+      font-family: "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.85rem;
+      background: rgba(8, 12, 22, 0.8);
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(124, 245, 255, 0.2);
+      color: #cfe5ff;
+      white-space: pre-wrap;
+    }
+
+    .workflow {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+    }
+
+    .workflow-step {
+      padding: 20px;
+      border-radius: 16px;
+      border: 1px dashed rgba(124, 245, 255, 0.45);
+      background: rgba(9, 13, 24, 0.45);
+    }
+
+    .workflow-step span {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--accent-3);
+    }
+
+    .workflow-step h4 {
+      margin: 10px 0 8px;
+    }
+
+    .workflow-step p {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .domains {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .domains .chip {
+      padding: 12px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(124, 245, 255, 0.28);
+      background: rgba(10, 15, 28, 0.6);
+      font-size: 0.9rem;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    footer {
+      padding: 30px clamp(22px, 6vw, 90px) 50px;
+      border-top: 1px solid rgba(124, 245, 255, 0.16);
+      color: var(--muted);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 720px) {
+      .nav-links {
+        display: none;
       }
+    }
+  </style>
+</head>
 
-      .card h3 {
-        margin-bottom: 10px;
-      }
+<body>
+  <div class="page">
+    <div class="halo halo-1"></div>
+    <div class="halo halo-2"></div>
 
-      .card p {
-        color: var(--muted);
-        font-size: 0.95rem;
-      }
+    <header>
+      <div class="brand">
+        <div class="brand-icon">⟁</div>
+        <span>The Citadel</span>
+      </div>
+      <nav class="nav-links">
+        <a href="#concepts">Concepts</a>
+        <a href="#formulas">Formulas</a>
+        <a href="#workflow">Workflow</a>
+      </nav>
+    </header>
 
-      .formula-showcase {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 24px;
-      }
-
-      .formula-panel {
-        padding: 24px;
-        border-radius: var(--radius);
-        border: 1px solid rgba(179, 131, 255, 0.35);
-        background: linear-gradient(135deg, rgba(179, 131, 255, 0.1), rgba(9, 13, 24, 0.55));
-      }
-
-      .formula-panel code {
-        display: block;
-        margin-top: 14px;
-        font-family: "JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-        font-size: 0.85rem;
-        background: rgba(8, 12, 22, 0.8);
-        padding: 12px;
-        border-radius: 12px;
-        border: 1px solid rgba(124, 245, 255, 0.2);
-        color: #cfe5ff;
-        white-space: pre-wrap;
-      }
-
-      .workflow {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 24px;
-      }
-
-      .workflow-step {
-        padding: 20px;
-        border-radius: 16px;
-        border: 1px dashed rgba(124, 245, 255, 0.45);
-        background: rgba(9, 13, 24, 0.45);
-      }
-
-      .workflow-step span {
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.16em;
-        color: var(--accent-3);
-      }
-
-      .workflow-step h4 {
-        margin: 10px 0 8px;
-      }
-
-      .workflow-step p {
-        color: var(--muted);
-        font-size: 0.95rem;
-      }
-
-      .domains {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
-      }
-
-      .domains .chip {
-        padding: 12px 14px;
-        border-radius: 999px;
-        border: 1px solid rgba(124, 245, 255, 0.28);
-        background: rgba(10, 15, 28, 0.6);
-        font-size: 0.9rem;
-        text-align: center;
-        color: var(--muted);
-      }
-
-      footer {
-        padding: 30px clamp(22px, 6vw, 90px) 50px;
-        border-top: 1px solid rgba(124, 245, 255, 0.16);
-        color: var(--muted);
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: space-between;
-        gap: 12px;
-        font-size: 0.9rem;
-      }
-
-      @media (max-width: 720px) {
-        .nav-links {
-          display: none;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <div class="page">
-      <div class="halo halo-1"></div>
-      <div class="halo halo-2"></div>
-
-      <header>
-        <div class="brand">
-          <div class="brand-icon">⟁</div>
-          <span>The Citadel</span>
+    <main>
+      <section class="hero">
+        <div>
+          <h1>Deterministic autonomy for Knowledge Work.</h1>
+          <p>
+            The Citadel transforms agent swarms into a repeatable, auditable workflow engine.
+            Define SOPs as formulas, compile them into graphs of Beads, and let autonomous agents
+            execute with built-in guardrails.
+          </p>
+          <div class="cta-row">
+            <a class="button primary" href="#formulas">Explore formulas</a>
+            <a class="button secondary" href="../wiki/USER-GUIDE.md">Read the guide</a>
+          </div>
+          <div class="pillars">
+            <div class="pillar">
+              <strong>Beads</strong>
+              Immutable, Git-backed state.
+            </div>
+            <div class="pillar">
+              <strong>Foundry</strong>
+              Workflow engine for SOPs.
+            </div>
+            <div class="pillar">
+              <strong>Molecules</strong>
+              DAGs compiled from formulas.
+            </div>
+            <div class="pillar">
+              <strong>Convoys</strong>
+              Meta-epics for long missions.
+            </div>
+          </div>
         </div>
-        <nav class="nav-links">
-          <a href="#concepts">Concepts</a>
-          <a href="#formulas">Formulas</a>
-          <a href="#workflow">Workflow</a>
-        </nav>
-      </header>
-
-      <main>
-        <section class="hero">
-          <div>
-            <h1>Deterministic autonomy for Knowledge Work.</h1>
-            <p>
-              The Citadel transforms agent swarms into a repeatable, auditable workflow engine.
-              Define SOPs as formulas, compile them into graphs of Beads, and let autonomous agents
-              execute with built-in guardrails.
-            </p>
-            <div class="cta-row">
-              <a class="button primary" href="#formulas">Explore formulas</a>
-              <a class="button secondary" href="../wiki/USER-GUIDE.md">Read the guide</a>
-            </div>
-            <div class="pillars">
-              <div class="pillar">
-                <strong>Beads</strong>
-                Immutable, Git-backed state.
-              </div>
-              <div class="pillar">
-                <strong>Foundry</strong>
-                Workflow engine for SOPs.
-              </div>
-              <div class="pillar">
-                <strong>Molecules</strong>
-                DAGs compiled from formulas.
-              </div>
-              <div class="pillar">
-                <strong>Convoys</strong>
-                Meta-epics for long missions.
-              </div>
-            </div>
+        <div class="hero-visual">
+          <div class="hero-image-container">
+            <img src="assets/hero.png" class="hero-img" alt="Citadel Dashboard" />
+            <img src="assets/hero2.png" class="hero-img" alt="Citadel Graph View" />
           </div>
-          <div class="hero-visual">
-            <canvas id="mesh" aria-hidden="true"></canvas>
-            <p class="caption">
-              Autonomous agents act as interchangeable compute units while every decision is tracked
-              as a Bead, ensuring deterministic outcomes and transparent recovery.
-            </p>
-          </div>
-        </section>
-
-        <section id="concepts">
-          <h2 class="section-title">Core concepts from the User Guide.</h2>
-          <p class="section-subtitle">
-            The Citadel treats complex objectives as deterministic pipelines. Every task is a Bead,
-            every workflow is a Molecule, and every mission can scale across autonomous agents.
+          <p class="caption">
+            Autonomous agents act as interchangeable compute units while every decision is tracked
+            as a Bead, ensuring deterministic outcomes and transparent recovery.
           </p>
-          <div class="grid">
-            <div class="card">
-              <h3>Beads: the atomic ledger</h3>
-              <p>Each task is a Bead with strict state transitions: open → in_progress → verify → done.</p>
-            </div>
-            <div class="card">
-              <h3>Agents: specialized workforce</h3>
-              <p>Router, Worker, and Evaluator roles keep planning, execution, and verification distinct.</p>
-            </div>
-            <div class="card">
-              <h3>Dynamic bonding</h3>
-              <p>Workers can spawn new Beads to fan out work while staying accountable.</p>
-            </div>
-            <div class="card">
-              <h3>Project awareness</h3>
-              <p>AGENTS.md rules merge automatically to keep outputs aligned with local standards.</p>
-            </div>
-          </div>
-        </section>
+        </div>
+      </section>
 
-        <section id="formulas">
-          <h2 class="section-title">Formulas are the autonomy control plane.</h2>
-          <p class="section-subtitle">
-            Formulas define repeatable processes in TOML. Add variables, dependencies, loops, and
-            recovery logic. The Router compiles them into executable Molecules.
-          </p>
-          <div class="formula-showcase">
-            <div class="formula-panel">
-              <h3>Inputs + dependencies</h3>
-              <code>
+      <section id="concepts">
+        <h2 class="section-title">The Foundation.</h2>
+        <p class="section-subtitle">
+          The Citadel treats complex objectives as deterministic pipelines. Every task is a Bead,
+          every workflow is a Molecule, and every mission can scale across autonomous agents.
+        </p>
+        <div class="grid">
+          <div class="card">
+            <h3>Beads: the atomic ledger</h3>
+            <p>Each task is a Bead with strict state transitions: open → in_progress → verify → done.</p>
+          </div>
+          <div class="card">
+            <h3>Agents: specialized workforce</h3>
+            <p>Router, Worker, and Evaluator roles keep planning, execution, and verification distinct.</p>
+          </div>
+          <div class="card">
+            <h3>Dynamic bonding</h3>
+            <p>Workers can spawn new Beads to fan out work while staying accountable.</p>
+          </div>
+          <div class="card">
+
+            <h3>Project awareness</h3>
+            <p>AGENTS.md rules merge automatically to keep outputs aligned with local standards.</p>
+          </div>
+          <div class="card">
+            <h3>Data piping</h3>
+            <p>Chain tasks dynamically by piping structured output from one Bead to the next.</p>
+          </div>
+          <div class="card">
+            <h3>Schema contracts</h3>
+            <p>Enforce strict JSON output schemas (via Zod) to guarantee reliable agent handoffs.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="formulas">
+        <h2 class="section-title">Formulas are the autonomy control plane.</h2>
+        <p class="section-subtitle">
+          Formulas define repeatable processes in TOML. Add variables, dependencies, loops, and
+          recovery logic. The Router compiles them into executable Molecules.
+        </p>
+        <div class="formula-showcase">
+          <div class="formula-panel">
+            <h3>Inputs + dependencies</h3>
+            <code>
 formula = "deploy_app"
 description = "Deploys the app"
 
@@ -462,10 +532,10 @@ id = "deploy"
 title = "Deploy to {{env}}"
 needs = ["build"]
               </code>
-            </div>
-            <div class="formula-panel">
-              <h3>Loops + recovery</h3>
-              <code>
+          </div>
+          <div class="formula-panel">
+            <h3>Loops + recovery</h3>
+            <code>
 [[steps]]
 id = "deploy_svc"
 title = "Deploy {{svc}}"
@@ -476,109 +546,80 @@ id = "migrate"
 title = "Run Migration"
 on_failure = "rollback"
               </code>
-            </div>
           </div>
-        </section>
+          <div class="formula-panel">
+            <h3>Piping + schemas</h3>
+            <code>
+[[steps]]
+id = "analyze"
+title = "Analyze Data"
+  [steps.output_schema]
+  required = ["score"]
 
-        <section id="workflow">
-          <h2 class="section-title">From request to execution.</h2>
-          <p class="section-subtitle">
-            Whether you use natural-language Beads or explicit CLI triggers, The Citadel turns intent
-            into autonomous execution with deterministic checkpoints.
-          </p>
-          <div class="workflow">
-            <div class="workflow-step">
-              <span>01 — Initiate</span>
-              <h4>Submit a request</h4>
-              <p>Create a Bead or run <strong>citadel create</strong> to select a formula.</p>
-            </div>
-            <div class="workflow-step">
-              <span>02 — Compile</span>
-              <h4>Router builds a Molecule</h4>
-              <p>Variables are resolved and steps are wired into a DAG automatically.</p>
-            </div>
-            <div class="workflow-step">
-              <span>03 — Execute</span>
-              <h4>Agents run with guardrails</h4>
-              <p>Workers claim open steps, Evaluators verify, recovery steps trigger if needed.</p>
-            </div>
+[[steps]]
+id = "decision"
+title = "Act on Score"
+needs = ["analyze"]
+context = { score = "{{steps.analyze.output.score}}" }
+            </code>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <section>
-          <h2 class="section-title">Built for any domain of work.</h2>
-          <p class="section-subtitle">
-            The User Guide highlights where The Citadel shines: consistent, high-quality output
-            across diverse knowledge workflows.
-          </p>
-          <div class="domains">
-            <div class="chip">Software Engineering</div>
-            <div class="chip">Research & Analysis</div>
-            <div class="chip">Content Operations</div>
-            <div class="chip">Business Reviews</div>
-            <div class="chip">Release Management</div>
-            <div class="chip">Data Synthesis</div>
+      <section id="workflow">
+        <h2 class="section-title">From intent to immutable record.</h2>
+        <p class="section-subtitle">
+          Whether you use natural-language Beads or explicit CLI triggers, The Citadel turns intent
+          into autonomous execution with deterministic checkpoints.
+        </p>
+        <div class="workflow">
+          <div class="workflow-step">
+            <span>01 — Initiate</span>
+            <h4>Submit a request</h4>
+            <p>Create a Bead or run <strong>citadel create</strong> to select a formula.</p>
           </div>
-        </section>
-      </main>
+          <div class="workflow-step">
+            <span>02 — Compile</span>
+            <h4>Router builds a Molecule</h4>
+            <p>Variables are resolved and steps are wired into a DAG automatically.</p>
+          </div>
+          <div class="workflow-step">
+            <span>03 — Execute</span>
+            <h4>Agents run with guardrails</h4>
+            <p>Workers claim open steps, Evaluators verify, recovery steps trigger if needed.</p>
+          </div>
+          <div class="workflow-step">
+            <span>04 — Result</span>
+            <h4>Permanent, auditable record</h4>
+            <p>Every output is committed to the Bead ledger. History is immutable and verifiable.</p>
+          </div>
+        </div>
+      </section>
 
-      <footer>
-        <span>© 2026 The Citadel. Deterministic orchestration for autonomous work.</span>
-        <span>Formulas, Beads, and guardrails — built to scale.</span>
-      </footer>
-    </div>
+      <section>
+        <h2 class="section-title">Built for any domain of work.</h2>
+        <p class="section-subtitle">
+          The Citadel shines where consistency matters: producing high-quality output
+          across diverse knowledge workflows.
+        </p>
+        <div class="domains">
+          <div class="chip">Software Engineering</div>
+          <div class="chip">Research & Analysis</div>
+          <div class="chip">Content Operations</div>
+          <div class="chip">Business Reviews</div>
+          <div class="chip">Release Management</div>
+          <div class="chip">Data Synthesis</div>
+        </div>
+      </section>
+    </main>
 
-    <script>
-      const canvas = document.getElementById("mesh");
-      const ctx = canvas.getContext("2d");
-      const dpi = window.devicePixelRatio || 1;
+    <footer>
+      <span>© 2026 The Citadel. Deterministic orchestration for autonomous work.</span>
+      <span>Formulas, Beads, and guardrails — built to scale.</span>
+    </footer>
+  </div>
 
-      function resize() {
-        const { width, height } = canvas.getBoundingClientRect();
-        canvas.width = width * dpi;
-        canvas.height = height * dpi;
-        ctx.setTransform(dpi, 0, 0, dpi, 0, 0);
-      }
 
-      function drawMesh() {
-        const { width, height } = canvas.getBoundingClientRect();
-        ctx.clearRect(0, 0, width, height);
-        const columns = 9;
-        const rows = 4;
-        const xGap = width / (columns - 1);
-        const yGap = height / (rows - 1);
-        const time = Date.now() / 1400;
+</body>
 
-        for (let row = 0; row < rows; row += 1) {
-          for (let col = 0; col < columns; col += 1) {
-            const x = col * xGap + Math.sin(time + col * 0.8) * 7;
-            const y = row * yGap + Math.cos(time + row * 0.9) * 7;
-            ctx.beginPath();
-            ctx.arc(x, y, 3.2, 0, Math.PI * 2);
-            ctx.fillStyle = "rgba(124, 245, 255, 0.85)";
-            ctx.fill();
-
-            if (col < columns - 1) {
-              const nx = (col + 1) * xGap + Math.sin(time + (col + 1) * 0.8) * 7;
-              ctx.strokeStyle = "rgba(179, 131, 255, 0.3)";
-              ctx.lineWidth = 1;
-              ctx.beginPath();
-              ctx.moveTo(x, y);
-              ctx.lineTo(nx, y);
-              ctx.stroke();
-            }
-          }
-        }
-      }
-
-      function tick() {
-        drawMesh();
-        window.requestAnimationFrame(tick);
-      }
-
-      resize();
-      window.addEventListener("resize", resize);
-      tick();
-    </script>
-  </body>
 </html>
