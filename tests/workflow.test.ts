@@ -5,6 +5,7 @@ import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { FormulaRegistry } from '../src/core/formula';
 import { WorkflowEngine } from '../src/services/workflow-engine';
 import { setBeadsInstance } from '../src/core/beads';
+import { clearGlobalSingleton } from '../src/core/registry';
 import { getFormulaRegistry } from '../src/core/formula';
 
 describe('Workflow Engine', () => {
@@ -63,7 +64,8 @@ needs = ["prep"]
             }),
             update: mock(async (id: string, _changes: any) => {
                 return { id, status: 'updated' };
-            })
+            }),
+            get: mock(async (id: string) => ({ id, title: 'mock', status: 'open', created_at: '', updated_at: '', priority: 2 }))
         };
 
         // Inject Mock
@@ -86,6 +88,7 @@ needs = ["prep"]
 
     afterEach(async () => {
         await rm(testRoot, { recursive: true, force: true });
+        clearGlobalSingleton('beads_client');
     });
 
     it('should instantiate a formula correctly', async () => {

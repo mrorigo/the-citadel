@@ -10,7 +10,7 @@ import { rmSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { setQueueInstance } from '../../src/core/queue';
 import { setBeadsInstance } from '../../src/core/beads';
-import { setGlobalSingleton } from '../../src/core/registry';
+import { setGlobalSingleton, clearGlobalSingleton } from '../../src/core/registry';
 import { CONFIG_KEY } from '../../src/config';
 import type { CitadelConfig } from '../../src/config/schema';
 
@@ -174,6 +174,9 @@ describe('Dynamic Data Piping', () => {
 
     afterEach(() => {
         if (existsSync(TEST_DIR)) rmSync(TEST_DIR, { recursive: true, force: true });
+        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('work_queue');
+        clearGlobalSingleton('formula_registry');
     });
 
     it('should enforce schema and pipe data between steps', async () => {
