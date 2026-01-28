@@ -18,9 +18,9 @@ export abstract class CoreAgent {
     protected tools: Record<string, Tool> = {};
     protected schemas: Record<string, z.ZodTypeAny> = {};
 
-    constructor(role: AgentRole) {
+    constructor(role: AgentRole, model?: LanguageModel) {
         this.role = role;
-        this.model = getAgentModel(role);
+        this.model = model || getAgentModel(role);
     }
 
     private mcpLoaded = false;

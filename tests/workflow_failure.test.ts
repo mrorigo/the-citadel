@@ -9,11 +9,26 @@ import { setBeadsInstance } from '../src/core/beads';
 import { setConfig } from '../src/config';
 import { EvaluatorAgent } from '../src/agents/evaluator';
 
-mock.module('../src/agents/router', () => ({
-    RouterAgent: class {
-        run = mock(async () => { });
+// Mock getAgentModel to return dummy models
+mock.module('../src/core/llm', () => ({
+    getAgentModel: (role: string) => {
+        if (!['router', 'worker', 'gatekeeper', 'supervisor'].includes(role)) {
+            throw new Error(`Invalid role: ${role}`);
+        }
+        return {
+            specificationVersion: 'v2',
+            provider: 'mock',
+            modelId: 'mock-model',
+            doGenerate: async () => ({
+                content: [{ type: 'text', text: 'Mocked Plan' }],
+                finishReason: 'stop',
+                usage: { promptTokens: 0, completionTokens: 0 }
+            })
+        };
     }
 }));
+
+
 
 describe('Workflow Failure Handling', () => {
     const testRoot = join(process.cwd(), '.test_workflow_failure');

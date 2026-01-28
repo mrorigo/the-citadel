@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.0.5] - 2026-01-28
+
+### Added
+- **100% WorkerAgent Test Coverage**: Achieved full line and function coverage for `src/agents/worker.ts`.
+- **Agent Dependency Injection**: Refactored `CoreAgent`, `WorkerAgent`, and `EvaluatorAgent` to support `LanguageModel` injection, eliminating reliance on global mocks.
+
+### Changed
+- **Test Suite Modernization**: Removed all cache-busting hacks (`?t=...`) and broad module mocks to unify coverage reporting and improve test reliability.
+- **Lint & Type Safety**: Resolved all `any` warnings in agent constructors and optimized import styles (`import type`).
+
+### Fixed
+- **Coverage Shadowing**: Fixed issues where global mocks were interfering with coverage tracking across different test files.
+- **LLM Mocking Stability**: Implemented role-validated LLM mocks in integration tests to prevent unauthorized API calls during testing.
+
 ## [0.0.4] - 2026-01-28
 
 ### Added

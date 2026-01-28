@@ -237,7 +237,7 @@ context = { input_num = "{{steps.producer.output.magic_number}}" }
         queue.claim('w1', 'worker');
 
         // Use cache-busting dynamic import to bypass potential mock leaks
-        const { WorkerAgent } = await import(`../../src/agents/worker?t=${Date.now()}`);
+        const { WorkerAgent } = await import('../../src/agents/worker');
         const worker = new WorkerAgent();
 
         // Mock Model to return a Tool Call

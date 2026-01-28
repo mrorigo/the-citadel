@@ -198,7 +198,7 @@ describe('Data Flow Integration', () => {
 
         // 4. Run Worker Agent Tool (submit_work)
         // Use cache-busting dynamic import to bypass potential mock leaks
-        const { WorkerAgent } = await import(`../../src/agents/worker?t=${Date.now()}`);
+        const { WorkerAgent } = await import('../../src/agents/worker');
         const agent = new WorkerAgent();
         // Access protected tools via any cast
         const tools = (agent as any).tools;

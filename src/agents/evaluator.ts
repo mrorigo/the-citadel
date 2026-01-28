@@ -1,3 +1,4 @@
+import type { LanguageModel } from 'ai';
 import { CoreAgent } from '../core/agent';
 import { getBeads } from '../core/beads';
 import { z } from 'zod';
@@ -7,8 +8,8 @@ import { promisify } from 'node:util';
 const execAsync = promisify(exec);
 
 export class EvaluatorAgent extends CoreAgent {
-    constructor() {
-        super('gatekeeper');
+    constructor(model?: LanguageModel) {
+        super('gatekeeper', model);
 
         // Approve
         this.registerTool(

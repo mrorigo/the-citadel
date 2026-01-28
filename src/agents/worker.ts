@@ -1,3 +1,4 @@
+import type { LanguageModel } from 'ai';
 import { CoreAgent } from '../core/agent';
 import { getBeads } from '../core/beads';
 import { z } from 'zod';
@@ -11,8 +12,8 @@ import { jsonSchemaToZod } from '../core/schema-utils';
 const execAsync = promisify(exec);
 
 export class WorkerAgent extends CoreAgent {
-    constructor() {
-        super('worker');
+    constructor(model?: LanguageModel) {
+        super('worker', model);
 
         // Report Progress
         this.registerTool(
