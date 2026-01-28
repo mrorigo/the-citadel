@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.1.0] - 2026-01-28
+
+### Fixed
+- **CRITICAL: Tool Execution Context Shadowing**: Fixed a major bug where `AgentContext` (including `beadId`) was being ignored during tool execution. This now correctly passes the agent's run-time context to all tools, enabling `enqueue_task`, `submit_work`, and `report_progress` to function correctly without explicit `beadId` parameters.
+- **WorkerAgent Typo**: Fixed a minor syntax typo in the `run_command` handler.
+
 ## [0.0.9] - 2026-01-28
 
 ### Improved

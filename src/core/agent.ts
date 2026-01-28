@@ -214,7 +214,13 @@ export abstract class CoreAgent {
                     const validatedInput = (schema && 'parse' in schema && typeof schema.parse === 'function')
                         ? schema.parse(tc.input)
                         : tc.input;
-                    const output = await tool.execute(validatedInput, { toolCallId: tc.toolCallId, messages } as { toolCallId: string, messages: ModelMessage[] });
+                    const toolContext = {
+                        toolCallId: tc.toolCallId,
+                        messages,
+                        ...(context || {})
+                    };
+                    // biome-ignore lint/suspicious/noExplicitAny: Context is dynamic
+                    const output = await tool.execute(validatedInput, toolContext as any);
 
                     // Check for explicit finish signals if tool returns them? 
                     // Not standard, but we can convention.
