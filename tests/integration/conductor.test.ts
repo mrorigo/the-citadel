@@ -1,7 +1,10 @@
 import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
 import { Conductor } from '../../src/services/conductor';
 import type { Bead, BeadsClient } from '../../src/core/beads';
+import { setBeadsInstance } from '../../src/core/beads';
 import type { WorkQueue } from '../../src/core/queue';
+import { setQueueInstance } from '../../src/core/queue';
+import { clearGlobalSingleton } from '../../src/core/registry';
 
 // Mock dependencies
 const mockBeads = {
@@ -51,10 +54,14 @@ describe('Conductor Service Integration', () => {
 
     beforeEach(() => {
         conductor = new Conductor(mockBeads as unknown as BeadsClient, mockQueue as unknown as WorkQueue);
+        setBeadsInstance(mockBeads as unknown as BeadsClient);
+        setQueueInstance(mockQueue as unknown as WorkQueue);
     });
 
     afterEach(() => {
         conductor.stop();
+        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('work_queue');
         mock.restore(); // Restore mocks if needed, though module mocks persist
     });
 

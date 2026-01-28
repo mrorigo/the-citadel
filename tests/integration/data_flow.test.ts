@@ -1,8 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { BeadsClient, type Bead, type BeadStatus } from '../../src/core/beads';
 import { WorkQueue } from '../../src/core/queue';
-import { WorkerAgent } from '../../src/agents/worker';
-import { rmSync, existsSync } from 'node:fs';
+import { setFormulaRegistry } from '../../src/core/formula';
+import { clearGlobalSingleton } from '../../src/core/registry';
+import { rmSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { setQueueInstance } from '../../src/core/queue';
 import { setBeadsInstance } from '../../src/core/beads';
@@ -154,6 +155,9 @@ describe('Data Flow Integration', () => {
         if (existsSync(TEST_DIR)) {
             rmSync(TEST_DIR, { recursive: true, force: true });
         }
+        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('work_queue');
+        clearGlobalSingleton('formula_registry');
     });
 
     it('should persist context in bead description and parse it back', async () => {
