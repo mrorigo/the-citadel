@@ -15,6 +15,7 @@ The Citadel is agnostic to the domain of work. It shines whenever you need to ma
 **Beads** are the fundamental unit of work and state. Every task, issue, or decision is captured as a Bead in a Git-backed SQLite database.
 - **Intent**: What needs to be done.
 - **State**: Strictly tracked (`open` -> `in_progress` -> `verify` -> `done`).
+- **Context**: Structured input data (JSON) required for the task.
 - **History**: An immutable log of all agent actions.
 
 👉 **reference: [steveyegge/beads](https://github.com/steveyegge/beads)**
@@ -218,6 +219,47 @@ You can "teach" agents about your specific project by placing `AGENTS.md` files 
 ```
 
 When a Worker enters a directory, it automatically merges the instructions from the nearest `AGENTS.md`.
+
+When a Worker enters a directory, it automatically merges the instructions from the nearest `AGENTS.md`.
+
+### 6. Structured Data Flow
+The Citadel supports passing rich data between steps, enabling complex chaining and branching.
+
+**Input (Context):**
+Pass structured data to any task using the `context` field.
+
+```bash
+# Define context in bead description using JSON frontmatter
+bd create "Analyze Data" --description "---
+{
+  \"dataset_url\": \"s3://...\",
+  \"parameters\": { \"depth\": 5 }
+}
+---
+Analyze the dataset..."
+```
+
+**Output (Structured Results):**
+Workers can return structured JSON outputs instead of just text summaries. These outputs are stored in the queue and can be used by subsequent steps or for automated verification.
+
+**Dynamic Piping:**
+Chain steps together by referencing outputs from previous steps.
+
+```toml
+[[steps]]
+id = "scout"
+title = "Scout Location"
+[steps.output_schema]
+type = "object"
+required = ["coordinates"]
+properties = { coordinates = { type = "string" } }
+
+[[steps]]
+id = "deploy"
+title = "Deploy Unit"
+needs = ["scout"]
+context = { target = "{{steps.scout.output.coordinates}}" }
+```
 
 ---
 

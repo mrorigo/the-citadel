@@ -31,6 +31,7 @@ const RawBeadSchema = z.object({
     parent: z.string().optional(),
     blockers: z.array(z.string()).optional(),
     acceptance_criteria: z.string().optional(), // Maps to acceptance_test in domain
+    description: z.string().optional(),
     created_at: z.string(),
     updated_at: z.string(),
 });
@@ -48,6 +49,8 @@ export const BeadSchema = z.object({
     blockers: z.array(z.string()).optional(),
     acceptance_test: z.string().optional(),
     parent: z.string().optional(),
+    description: z.string().optional(),
+    context: z.record(z.string(), z.any()).optional(),
     created_at: z.string(),
     updated_at: z.string(),
 });
@@ -62,6 +65,7 @@ export interface CreateOptions {
     description?: string;
     parent?: string; // Parent ID for molecules
     type?: string; // bead type (epic, story, task, convoy, etc)
+    context?: Record<string, any>;
 }
 
 // --- Client ---
@@ -81,7 +85,7 @@ export class BeadsClient {
         this.binary = binary || config?.beads.binary || 'bd';
     }
 
-    private async runCommand(args: string): Promise<string> {
+    protected async runCommand(args: string): Promise<string> {
         // Use system bd binary or configured override
         const command = `${this.binary} ${args}`;
 
@@ -151,11 +155,32 @@ export class BeadsClient {
             status = 'open'; // Default fallback, or map correctly if other statuses exist
         }
 
-        // logger.debug(`[BeadsClient] MapToDomain ${raw.id}: criteria=${raw.acceptance_criteria}`);
+        // Parse context from description
+        let context: Record<string, any> | undefined;
+        let description = raw.description || undefined; // Normalizing null/undefined to undefined
+
+        if (description) {
+            // We use a temp variable to help TS narrowing if needed, but description is string here
+            const match = description.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+            if (match && match[1] && match[2]) {
+                try {
+                    const parsed = JSON.parse(match[1]);
+                    if (parsed && typeof parsed === 'object') {
+                        context = parsed;
+                        description = match[2];
+                    }
+                } catch {
+                    // Ignore parse error, treat as plain description
+                }
+            }
+        }
+
         return {
             ...raw,
             status,
-            acceptance_test: raw.acceptance_criteria
+            acceptance_test: raw.acceptance_criteria,
+            description,
+            context
         };
     }
 
@@ -202,9 +227,20 @@ export class BeadsClient {
     async create(title: string, options: CreateOptions = {}): Promise<Bead> {
         let args = `create "${title}" --json`;
         if (options.priority !== undefined) args += ` -p ${options.priority}`;
-        if (options.description) args += ` --description "${options.description}"`;
         if (options.parent) args += ` --parent ${options.parent}`;
         if (options.type) args += ` --type ${options.type}`;
+
+        let description = options.description || '';
+        if (options.context) {
+            const frontmatter = JSON.stringify(options.context, null, 2);
+            description = `---\n${frontmatter}\n---\n${description}`;
+        }
+
+        if (description) {
+            // Escape double quotes for CLI
+            const escaped = description.replace(/"/g, '\\"');
+            args += ` --description "${escaped}"`;
+        }
 
         // Note: bd CLI might not support setting everything at create time yet,
 
@@ -257,6 +293,35 @@ export class BeadsClient {
         if (changes.acceptance_test) {
             args += ` --acceptance "${changes.acceptance_test}"`;
         }
+
+        if (changes.labels) {
+            // Append labels using --add-label
+            for (const label of changes.labels) {
+                args += ` --add-label "${label}"`;
+            }
+        }
+
+        if (changes.context) {
+            // Context is stored in description frontmatter.
+            // We need to preserve the text body of description.
+            // If we didn't fetch 'current' yet, we must.
+            // (changes.status logic fetches it, but scoped)
+            const current = await this.get(id);
+            let descText = current.description || '';
+
+            // Strip existing frontmatter
+            const match = descText.match(/^---\n[\s\S]*?\n---\n([\s\S]*)$/);
+            if (match && match[1]) {
+                descText = match[1];
+            }
+
+            const frontmatter = JSON.stringify(changes.context, null, 2);
+            const newDesc = `---\n${frontmatter}\n---\n${descText}`;
+
+            const escaped = newDesc.replace(/"/g, '\\"');
+            args += ` --description "${escaped}"`;
+        }
+
         // ... other fields
         args += ` --json`;
 

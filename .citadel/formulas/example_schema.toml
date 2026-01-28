@@ -1,0 +1,24 @@
+formula = "example_schema"
+description = "Demonstrates strict output schema enforcement and data piping"
+
+[[steps]]
+id = "extract_user"
+title = "Extract User Data"
+description = "Extract user information from the provided text"
+context = { text = "John Doe is a 30 year old software engineer." }
+
+  [steps.output_schema]
+  type = "object"
+  required = ["user"]
+  
+  [steps.output_schema.properties.user]
+  type = "object"
+  required = ["name", "age", "role"]
+  properties = { name = { type = "string" }, age = { type = "number" }, role = { type = "string" } }
+
+[[steps]]
+id = "greet_user"
+title = "Greet User"
+needs = ["extract_user"]
+description = "Send a greeting to the extracted user"
+context = { message = "Hello {{steps.extract_user.output.user.name}}, I see you are a {{steps.extract_user.output.user.role}}!" }

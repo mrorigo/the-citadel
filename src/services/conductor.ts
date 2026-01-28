@@ -8,6 +8,7 @@ import { getConfig } from '../config';
 import { getBeads, type BeadsClient } from '../core/beads';
 import { logger } from '../core/logger';
 import { getMCPService } from './mcp';
+import { getPiper } from './piper';
 
 export class Conductor {
     private isRunning = false;
@@ -146,6 +147,24 @@ export class Conductor {
                             // But usually `open` status implies blockers ARE done.
                             // If they are done and none failed, we skip.
                         }
+                    }
+                }
+
+                // --- Data Piping ---
+                // Try to resolve dynamic context dependencies
+                // If context still has unresolved references, we wait.
+                const piped = await getPiper().pipeData(bead.id);
+                if (piped) {
+                    logger.info(`[Router] Piped data for ${bead.id}`);
+                }
+
+                // Re-fetch to check context state
+                const currentBead = await beadsClient.get(bead.id);
+                if (currentBead.context) {
+                    const ctxString = JSON.stringify(currentBead.context);
+                    if (ctxString.includes('{{steps.')) {
+                        logger.info(`[Router] Skipping ${bead.id} (waiting for dependency data)`, { beadId: bead.id });
+                        continue;
                     }
                 }
 

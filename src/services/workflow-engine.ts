@@ -121,9 +121,17 @@ export class WorkflowEngine {
                 const title = resolveTemplate(step.title, iterContext);
                 const description = resolveTemplate(step.description, iterContext);
 
+                const finalContext = { ...(step.context || {}), ...iterContext };
+
                 const bead = await beads.create(title, {
                     parent: rootBead.id,
-                    description: description
+                    description: description,
+                    context: finalContext, // Merged context
+                });
+
+                // tag with step ID for piping
+                await beads.update(bead.id, {
+                    labels: [`step:${step.id}`, `formula:${formulaName}`]
                 });
 
                 createdIds.push(bead.id);

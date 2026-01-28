@@ -1,0 +1,118 @@
+formula = "advanced_deep_researcher"
+description = "An autonomous agentic workflow that takes a high-level NLP prompt, breaks it down into sub-research tasks, performs iterative web searches, analyzes content, and synthesizes a comprehensive report."
+
+[vars.research_topic]
+description = "The natural language prompt or question to research (e.g., 'Current state of Solid State Battery technology')."
+required = true
+default = ""
+
+[vars.depth_mode]
+description = "The depth of research required. Options: 'standard', 'deep'."
+required = false
+default = "standard"
+
+[vars.max_iterations]
+description = "Maximum number of search refinement loops."
+required = false
+default = "3"
+
+[vars.citation_style]
+description = "Format for citations in the final report (e.g., APA, MLA, IEEE)."
+required = false
+default = "APA"
+
+# -----------------------------------------------------------------------------
+# Phase 1: Intent Understanding & Planning
+# -----------------------------------------------------------------------------
+
+[[steps]]
+id = "semantic_analysis"
+title = "Analyze Research Intent"
+description = "Deconstructs the user prompt to identify core entities, temporal constraints, and specific information requirements."
+on_failure = "log_error"
+
+[[steps]]
+id = "generate_research_plan"
+title = "Generate Search Strategy"
+description = "Creates a list of specific sub-questions and search queries based on the semantic analysis."
+needs = ["semantic_analysis"]
+on_failure = "log_error"
+
+# -----------------------------------------------------------------------------
+# Phase 2: Data Gathering (Iterative)
+# -----------------------------------------------------------------------------
+
+[[steps]]
+id = "execute_search_queries"
+title = "Perform Web Searches"
+description = "Executes search queries for each sub-topic identified in the research plan."
+needs = ["generate_research_plan"]
+for = { items = "{{generate_research_plan.output.sub_queries}}", as = "query" }
+on_failure = "log_warning"
+
+[[steps]]
+id = "scrape_and_parse"
+title = "Extract Content"
+description = "Visits high-relevance URLs found in search results, scrapes text, and parses for readability."
+needs = ["execute_search_queries"]
+on_failure = "log_warning"
+
+# -----------------------------------------------------------------------------
+# Phase 3: Analysis & Refinement
+# -----------------------------------------------------------------------------
+
+[[steps]]
+id = "initial_synthesis"
+title = "Synthesize Preliminary Findings"
+description = "Aggregates scraped data to form a baseline understanding and identify information gaps."
+needs = ["scrape_and_parse"]
+
+[[steps]]
+id = "gap_analysis"
+title = "Identify Missing Information"
+description = "Analyzes the preliminary synthesis against the original prompt to find unanswered questions."
+needs = ["initial_synthesis"]
+
+[[steps]]
+id = "deep_dive_iteration"
+title = "Secondary Deep Dive Search"
+description = "Performs targeted searches specifically for the identified gaps. Only runs if depth_mode is 'deep'."
+needs = ["gap_analysis"]
+if = "{{vars.depth_mode}} == 'deep'"
+on_failure = "log_warning"
+
+# -----------------------------------------------------------------------------
+# Phase 4: Final Compilation & QA
+# -----------------------------------------------------------------------------
+
+[[steps]]
+id = "compile_draft"
+title = "Draft Comprehensive Report"
+description = "Combines initial findings and deep dive results into a structured narrative."
+needs = ["initial_synthesis", "deep_dive_iteration"]
+
+[[steps]]
+id = "fact_check_and_cite"
+title = "Verify Facts and Citations"
+description = "Cross-references claims in the draft against source URLs and formats citations."
+needs = ["compile_draft"]
+
+[[steps]]
+id = "final_polish"
+title = "Final Polish & Formatting"
+description = "Applies formatting rules and generates the final output document."
+needs = ["fact_check_and_cite"]
+
+# -----------------------------------------------------------------------------
+# Exception Handling
+# -----------------------------------------------------------------------------
+
+[[steps]]
+id = "log_warning"
+title = "Log Non-Critical Failure"
+description = "Logs a warning if a specific search or scrape fails, allowing the workflow to continue with partial data."
+
+[[steps]]
+id = "log_error"
+title = "Critical Failure Alert"
+description = "Stops the workflow and notifies the user if the prompt cannot be analyzed."

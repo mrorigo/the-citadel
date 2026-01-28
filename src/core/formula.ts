@@ -25,6 +25,9 @@ export const FormulaStepSchema = z.object({
         as: z.string(), // Variable name for iteration
     }).optional(),
     on_failure: z.string().optional(), // Step ID to trigger if this step fails
+    // Dynamic Data Piping
+    output_schema: z.any().optional(), // Zod definition or JSON schema
+    context: z.record(z.string(), z.string()).optional(), // Input context with {{ref}} support
 });
 
 export const FormulaSchema = z.object({
@@ -89,4 +92,8 @@ export function getFormulaRegistry(basePath?: string): FormulaRegistry {
         _registry = new FormulaRegistry(basePath);
     }
     return _registry;
+}
+
+export function setFormulaRegistry(registry: FormulaRegistry) {
+    _registry = registry;
 }

@@ -182,7 +182,7 @@ export abstract class CoreAgent {
             let finished = false;
 
             for (const tc of toolCalls) {
-                logger.info(`[${this.role}] Executing tool: ${tc.toolName}`, { tool: tc.toolName, params: tc.input });
+                logger.info(`[${this.role}] Executing tool: ${tc.toolName}`, { tool: tc.toolName, full_tc: tc });
 
                 const tool = this.tools[tc.toolName];
                 if (!tool) {
@@ -228,6 +228,7 @@ export abstract class CoreAgent {
                     } as ToolResultPart);
                 } catch (error: unknown) {
                     const errorMessage = error instanceof Error ? error.message : String(error);
+                    logger.error(`[${this.role}] Tool execution failed: ${tc.toolName}`, { error: errorMessage });
                     toolResults.push({
                         type: 'tool-result',
                         toolCallId: tc.toolCallId,

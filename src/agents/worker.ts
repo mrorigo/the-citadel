@@ -4,6 +4,9 @@ import { z } from 'zod';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { logger } from '../core/logger';
+import { getQueue } from '../core/queue';
+import { getFormulaRegistry } from '../core/formula';
+import { jsonSchemaToZod } from '../core/schema-utils';
 
 const execAsync = promisify(exec);
 
@@ -27,21 +30,17 @@ export class WorkerAgent extends CoreAgent {
             }
         );
 
-        // Submit Work
+        // Submit Work - Initial Registration (Default)
         this.registerTool(
             'submit_work',
             'Submit the completed work for verification',
             z.object({
                 beadId: z.string().describe('The ID of the bead being worked on (from context)'),
                 summary: z.string().describe('Summary of work done'),
+                output: z.string().optional().describe('Unstructured output data (default)'),
                 acceptance_test_result: z.optional(z.string().describe('Result of running the acceptance test')),
             }),
-            async ({ beadId, summary, acceptance_test_result: _acceptance_test_result }) => {
-                await getBeads().update(beadId, {
-                    status: 'verify',
-                });
-                return { success: true, status: 'verify', summary };
-            }
+            this.handleSubmitWork
         );
 
         // Delegate / Subdivide Task
@@ -69,7 +68,6 @@ export class WorkerAgent extends CoreAgent {
         );
 
         // --- Shell Execution ---
-
         this.registerTool(
             'run_command',
             'Execute a shell command',
@@ -92,6 +90,69 @@ export class WorkerAgent extends CoreAgent {
                 }
             }
         );
+    }
+
+    // Extracted handler for reuse
+    private handleSubmitWork = async ({ beadId, summary, output, acceptance_test_result: _acceptance_test_result }: any) => {
+        // 1. Update Bead Status
+        await getBeads().update(beadId, {
+            status: 'verify',
+        });
+
+        // 2. Save Structured Output to Ticket in Queue
+        const ticket = getQueue().getActiveTicket(beadId);
+        if (ticket) {
+            getQueue().complete(ticket.id, output || { summary });
+            logger.info(`[Worker] Submitted work for ${beadId} with output`, { beadId, hasOutput: !!output });
+        } else {
+            logger.warn(`[Worker] Could not find active ticket for ${beadId} to save output`, { beadId });
+        }
+
+        return { success: true, status: 'verify', summary };
+    }
+
+    async run(prompt: string, context?: any): Promise<string> {
+        let outputSchema: z.ZodTypeAny = z.string().describe('Unstructured output data (default)');
+
+        // Dynamic Schema Lookup
+        if (context?.beadId) {
+            try {
+                const bead = await getBeads().get(context.beadId);
+                const formulaLabel = bead.labels?.find(l => l.startsWith('formula:'));
+                const stepLabel = bead.labels?.find(l => l.startsWith('step:'));
+
+                if (formulaLabel && stepLabel) {
+                    const formulaName = formulaLabel.split(':')[1];
+                    const stepId = stepLabel.split(':')[1];
+                    const formula = getFormulaRegistry().get(formulaName);
+
+                    if (formula) {
+                        const step = formula.steps.find(s => s.id === stepId);
+                        if (step?.output_schema) {
+                            outputSchema = jsonSchemaToZod(step.output_schema);
+                            logger.info(`[Worker] Enforcing schema for ${bead.id} (step: ${stepId})`);
+                        }
+                    }
+                }
+            } catch (err) {
+                logger.warn(`[Worker] Failed to resolve dynamic schema:`, err);
+            }
+        }
+
+        // Re-register tool with specific schema for this run
+        this.registerTool(
+            'submit_work',
+            'Submit the completed work for verification',
+            z.object({
+                beadId: z.string().describe('The ID of the bead being worked on (from context)'),
+                summary: z.string().describe('Summary of work done'),
+                output: outputSchema.optional().describe('Output data matching the required schema'),
+                acceptance_test_result: z.optional(z.string().describe('Result of running the acceptance test')),
+            }),
+            this.handleSubmitWork
+        );
+
+        return super.run(prompt, context);
     }
 
     protected override getSystemPrompt(defaultPrompt: string): string {

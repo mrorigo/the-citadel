@@ -9,7 +9,7 @@ import { getGlobalSingleton, setGlobalSingleton, clearGlobalSingleton } from '..
 // Load .env immediately
 dotenv.config();
 
-const CONFIG_KEY = 'config_cache';
+export const CONFIG_KEY = 'config_cache';
 
 export async function loadConfig(): Promise<CitadelConfig> {
     const existing = getGlobalSingleton<CitadelConfig | null>(CONFIG_KEY, () => null);

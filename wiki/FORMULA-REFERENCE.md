@@ -102,7 +102,69 @@ description = "Run if migration fails"
 - If the main step finishes with a terminal failure (Gatekeeper uses `fail_work` to add the `failed` label), the recovery step is **executed**.
 - Recovery steps are tagged with `recovers:<main_bead_id>` for traceability.
 
-## 4. Dependencies
+## 4. Dynamic Data Piping
+
+Pass structured data between steps to create intelligent, chained workflows.
+
+### Output Schema (`output_schema`)
+Define the expected JSON structure of a step's output. Workers use this to validate their work.
+
+```toml
+[[steps]]
+id = "analyze"
+title = "Analyze Sentiment"
+  [steps.output_schema]
+  type = "object"
+  properties = { sentiment = { type = "string" }, score = { type = "number" } }
+  required = ["sentiment", "score"]
+```
+
+### Complex Schema Example
+You can model complex nested structures, arrays, and enums.
+
+```toml
+[[steps]]
+id = "analyze_repo"
+title = "Analyze Repository"
+
+  [steps.output_schema]
+  type = "object"
+  required = ["summary", "issues"]
+
+  # Nested Object
+  [steps.output_schema.properties.summary]
+  type = "object"
+  required = ["risk_score", "language"]
+  properties = { risk_score = { type = "number" }, language = { type = "string" } }
+
+  # Array of Objects
+  [steps.output_schema.properties.issues]
+  type = "array"
+  items = { type = "object", required = ["file", "severity"], properties = { file = { type = "string" }, severity = { type = "string", enum = ["low", "medium", "critical"] } } }
+```
+
+### Context Injection (`context`)
+Pass strict inputs to a step. This context is available to the Worker Agent.
+
+```toml
+[[steps]]
+id = "report"
+title = "Write Report"
+context = { topic = "AI Trends", depth = "deep" }
+```
+
+### Piping (`{{steps...}}`)
+Reference outputs from previous steps in the `context` of downstream steps.
+
+```toml
+[[steps]]
+id = "decision"
+title = "Make Decision"
+needs = ["analyze"] # Must rely on the source step
+context = { score = "{{steps.analyze.output.score}}" }
+```
+
+## 5. Dependencies
 
 Use the `needs` array to define the Directed Acyclic Graph (DAG).
 

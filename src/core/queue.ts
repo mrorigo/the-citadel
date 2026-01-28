@@ -22,6 +22,7 @@ export const TicketSchema = z.object({
     completed_at: z.number().nullable(),
     heartbeat_at: z.number().nullable(),
     retry_count: z.number(),
+    output: z.any().optional(),
 });
 
 export type Ticket = z.infer<typeof TicketSchema>;
@@ -61,6 +62,13 @@ export class WorkQueue {
         // Indexes for speed
         this.db.run(`CREATE INDEX IF NOT EXISTS idx_status_priority ON tickets(status, priority ASC, created_at ASC)`);
         this.db.run(`CREATE INDEX IF NOT EXISTS idx_bead_id ON tickets(bead_id)`);
+
+        // Migration: Add output column if not exists
+        try {
+            this.db.run(`ALTER TABLE tickets ADD COLUMN output TEXT`);
+        } catch {
+            // Ignore if column exists
+        }
     }
 
     enqueue(beadId: string, priority: number, targetRole: string): void {
@@ -117,14 +125,30 @@ export class WorkQueue {
     }
 
     /**
-     * Mark ticket as complete
+     * Mark ticket as complete with optional output
      */
-    complete(ticketId: string): void {
+    complete(ticketId: string, output?: any): void {
+        const outputJson = output ? JSON.stringify(output) : null;
         this.db.run(`
         UPDATE tickets 
-        SET status = 'completed', completed_at = ? 
+        SET status = 'completed', completed_at = ?, output = ? 
         WHERE id = ?
-    `, [Date.now(), ticketId]);
+    `, [Date.now(), outputJson, ticketId]);
+    }
+
+    /**
+     * Get output of a completed ticket by Bead ID
+     */
+    getOutput(beadId: string): any {
+        const result = this.db.query(`
+            SELECT output FROM tickets 
+            WHERE bead_id = ? AND status = 'completed'
+        `).get(beadId) as { output: string | null } | null;
+
+        if (result && result.output) {
+            return JSON.parse(result.output);
+        }
+        return null;
     }
 
     /**
