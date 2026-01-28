@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.0.8] - 2026-01-28
+
+### Fixed
+- **Bug #1 - Invalid State Transition**: Fixed the Conductor to properly move beads to `in_progress` status when workers **start** processing tasks, not when they finish. This prevents the invalid `open` → `verify` transition that was occurring in `submit_work`.
+- **Bug #2 - Output Schema Mismatch**: Updated `submit_work` to accept both string and object types for the `output` parameter, allowing agents to submit structured data naturally without manual stringification.
+- **Bug #3 - Tool Schema Ambiguity**: Improved `run_command` tool description to explicitly clarify that `command` must be a single string, not an array, reducing agent confusion and wasted API calls.
+
 ## [0.0.7] - 2026-01-28
 
 ### Fixed

@@ -73,7 +73,7 @@ export class WorkerAgent extends CoreAgent {
             'run_command',
             'Execute a shell command',
             z.object({
-                command: z.string().describe('The command to execute (e.g., "ls -la", "npm test")'),
+                command: z.string().describe('The shell command to execute as a single string (e.g., "ls -la", "npm test"). Do NOT use an array - use a single command string.'),
             }),
             async ({ command }) => {
                 logger.debug(`[Worker] Running command: ${command}`);
@@ -95,12 +95,12 @@ export class WorkerAgent extends CoreAgent {
 
     // Extracted handler for reuse
     private handleSubmitWork = async ({ beadId, summary, output, acceptance_test_result: _acceptance_test_result }: { beadId: string, summary: string, output?: unknown, acceptance_test_result?: string }) => {
-        // 1. Update Bead Status
+        // Update Bead Status to verify
         await getBeads().update(beadId, {
             status: 'verify',
         });
 
-        // 2. Save Structured Output to Ticket in Queue
+        // Save Structured Output to Ticket in Queue
         const ticket = getQueue().getActiveTicket(beadId);
         if (ticket) {
             getQueue().complete(ticket.id, output || { summary });
@@ -144,13 +144,16 @@ export class WorkerAgent extends CoreAgent {
         }
 
         // Re-register tool with specific schema for this run
+        // Bug #2 fix: Accept both string and object for output
+        const outputParamSchema = z.union([z.string(), outputSchema]).optional().describe('Output data - can be a string or match the required schema');
+
         this.registerTool(
             'submit_work',
             'Submit the completed work for verification',
             z.object({
                 beadId: z.string().describe('The ID of the bead being worked on (from context)'),
                 summary: z.string().describe('Summary of work done'),
-                output: outputSchema.optional().describe('Output data matching the required schema'),
+                output: outputParamSchema,
                 acceptance_test_result: z.optional(z.string().describe('Result of running the acceptance test')),
             }),
             this.handleSubmitWork

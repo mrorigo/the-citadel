@@ -33,6 +33,10 @@ export class Conductor {
             'worker',
             (id) => new Hook(id, 'worker', async (ticket) => {
                 logger.info(`[Worker] Processing ${ticket.bead_id}`, { beadId: ticket.bead_id });
+
+                // Move bead to in_progress when we start processing
+                await this.beads.update(ticket.bead_id, { status: 'in_progress' });
+
                 const agent = new WorkerAgent();
                 const bead = await this.beads.get(ticket.bead_id);
                 await agent.run(`Process this task: ${bead.title}`, { beadId: ticket.bead_id, bead });

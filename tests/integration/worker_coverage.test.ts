@@ -132,8 +132,8 @@ describe('WorkerAgent Integration Coverage', () => {
 
         expect(outputField instanceof z.ZodOptional).toBe(true);
         const inner = (outputField as z.ZodOptional<any>).unwrap();
-        expect(inner instanceof z.ZodObject).toBe(true);
-        expect(inner.shape).toHaveProperty('foo');
+        // Now it's a union of string and object
+        expect(inner instanceof z.ZodUnion).toBe(true);
     });
 
     it('should fallback to default schema when bead/formula is missing', async () => {
@@ -144,7 +144,8 @@ describe('WorkerAgent Integration Coverage', () => {
         const outputField = (submitWork.parameters as any).shape.output;
 
         expect(outputField instanceof z.ZodOptional).toBe(true);
-        expect(outputField.unwrap() instanceof z.ZodString).toBe(true);
+        // Default schema is union of string and string (since outputSchema defaults to z.string())
+        expect(outputField.unwrap() instanceof z.ZodUnion).toBe(true);
     });
 
     it('should provide custom system prompt', () => {
