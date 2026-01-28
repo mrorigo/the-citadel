@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.0.4] - 2026-01-28
+
+### Added
+- **100% Biome Lint Compliance**: Achieved full compliance across `src/` directory, resolving 18 warnings without ignore comments.
+- **Strict Tool Validation**: `CoreAgent` now performs explicit Zod schema validation on all tool inputs.
+- **Improved Test Isolation**: Switched to dynamic imports for `WorkerAgent` in integration tests to prevent singleton leakage.
+
+### Fixed
+- **enqueue_task Constraint Failure**: Resolved `NOT NULL` constraint errors by providing default values in `WorkQueue` and marking `RouterAgent` parameters as optional.
+- **Build Compilation Errors**: Fixed several TypeScript "possibly undefined" and type mismatch errors in core logic and tests.
+- **AI Mocking**: Repaired incomplete `ai` module mocks in unit tests.
+
 ## [0.0.3] - 2026-01-28
 
 ### Added
