@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.0.9] - 2026-01-28
+
+### Improved
+- **Tool Parameter Tolerance**: Made tools more forgiving of LLM variations:
+  - `run_command` now accepts both `command` (string) and `cmd` (string or array), automatically converting arrays to space-separated strings
+  - `run_command` uses `.passthrough()` to allow extra parameters like `timeout` that LLMs might add
+  - `enqueue_task` now makes `beadId` optional, falling back to context if not provided
+  - Reduces wasted API calls from agents learning tool schemas through trial and error
+
 ## [0.0.8] - 2026-01-28
 
 ### Fixed

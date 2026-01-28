@@ -73,9 +73,22 @@ export class WorkerAgent extends CoreAgent {
             'run_command',
             'Execute a shell command',
             z.object({
-                command: z.string().describe('The shell command to execute as a single string (e.g., "ls -la", "npm test"). Do NOT use an array - use a single command string.'),
-            }),
-            async ({ command }) => {
+                command: z.string().optional().describe('The shell command to execute as a single string (e.g., "ls -la", "npm test")'),
+                cmd: z.union([z.string(), z.array(z.string())]).optional().describe('Alternative: command as string or array of arguments'),
+            }).passthrough(), // Allow extra params like timeout
+            async (args: { command?: string; cmd?: string | string[];[key: string]: unknown }) => {
+                // Normalize: accept both 'command' and 'cmd', convert arrays to strings
+                let command: string | undefined;
+                if (args.command) {
+                    command = args.command;
+                } else if (args.cmd) {
+                    command = Array.isArray(args.cmd) ? args.cmd.join(' ') : args.cmd;
+                }
+
+                if (!command) {
+                    return { success: false, error: 'Either "command" or "cmd" parameter must be provided' };
+                }
+
                 logger.debug(`[Worker] Running command: ${command}`);
                 try {
                     const { stdout, stderr } = await execAsync(command);

@@ -2,7 +2,6 @@ import { CoreAgent } from '../core/agent';
 import { getQueue } from '../core/queue';
 import { z } from 'zod';
 import { getWorkflowEngine } from '../services/workflow-engine';
-import { getBeads } from '../core/beads';
 
 export class RouterAgent extends CoreAgent {
     constructor() {
@@ -13,22 +12,25 @@ export class RouterAgent extends CoreAgent {
             'enqueue_task',
             'Enqueue a bead for execution by a worker',
             z.object({
-                beadId: z.string().describe('The ID of the bead to enqueue'),
-                priority: z.number().min(0).max(3).optional().describe('Priority of the task (0=Highest, 3=Lowest, default: 2)'),
-                targetRole: z.enum(['worker', 'gatekeeper']).optional().describe('The role that should process this task (default: worker)'),
-                reasoning: z.string().describe('Why this priority and role was chosen'),
+                beadId: z.string().optional().describe('The ID of the bead to enqueue (defaults to current bead from context)'),
+                reasoning: z.string().describe('Why this task should be enqueued'),
+                queue: z.enum(['worker', 'gatekeeper']).default('worker').describe('Which queue to use'),
+                priority: z.number().min(0).max(3).optional().describe('Priority (0-3, default 2)'),
             }),
-            async ({ beadId, priority, targetRole }) => {
-                // Defensive: Ensure bead actually exists.
-                // This prevents hallucinations like 'thec-citadel-123' caused by LLM typos.
-                try {
-                    await getBeads().get(beadId);
-                } catch {
-                    return { success: false, error: `Bead ${beadId} does not exist.` };
+            async (args: { beadId?: string; reasoning: string; queue: 'worker' | 'gatekeeper'; priority?: number }, context?: { beadId?: string }) => {
+                // Use beadId from args, or fall back to context
+                const beadId = args.beadId || context?.beadId;
+                if (!beadId) {
+                    return { success: false, error: 'beadId must be provided either as parameter or in context' };
                 }
 
-                getQueue().enqueue(beadId, priority, targetRole);
-                return { success: true, beadId, status: 'queued', priority, targetRole };
+                try {
+                    getQueue().enqueue(beadId, args.priority ?? 2, args.queue);
+                    return { success: true, message: `Enqueued ${beadId} to ${args.queue}` };
+                } catch (error: unknown) {
+                    const err = error as Error;
+                    return { success: false, error: err.message };
+                }
             }
         );
 
