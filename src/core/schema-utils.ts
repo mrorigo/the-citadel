@@ -55,10 +55,10 @@ export function jsonSchemaToZod(schema: JsonSchema | string): z.ZodTypeAny {
             shape[key] = zodProp;
         }
 
-        // Handle record (additionalProperties) if no properties defined?
-        // simple map support
+        // Handle record (additionalProperties) if no properties defined
+        // Use passthrough instead of z.record to avoid empty schema generation issues
         if (Object.keys(props).length === 0 && schema.additionalProperties !== false) {
-            return z.record(z.string(), z.any());
+            return z.object({}).passthrough();
         }
 
         let o = z.object(shape);

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.0.7] - 2026-01-28
+
+### Fixed
+- **JSON Schema Validation Error (Complete Fix)**: Fixed the root cause in `jsonSchemaToZod` function that was converting empty JSON Schema objects to `z.record()`, which generates invalid schemas. Now uses `z.object({}).passthrough()` for dynamic objects. This resolves production errors when using workflow formulas with output schemas.
+- **RouterAgent Schema**: Also fixed `instantiate_formula` tool's `variables` parameter (from v0.0.6).
+
 ## [0.0.6] - 2026-01-28
 
 ### Fixed
