@@ -115,7 +115,7 @@ export class BeadsClient {
             const output = await this.runCommand('doctor --json');
             const result = JSON.parse(output);
             return result.overall_ok === true;
-        } catch (error) {
+        } catch (_error) {
             // If bd doctor fails completely, it's not healthy
             return false;
         }

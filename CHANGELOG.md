@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.5] - 2026-01-29
+
+### Fixed
+- **Router Queue Assignment**: Removed default value from `queue` parameter in `enqueue_task` to prevent infinite loops where verify beads were incorrectly routed to worker queue instead of gatekeeper queue.
+
+### Added
+- **Smart Tool Name Matching**: Agents can now call tools by suffix (e.g., `list_skills` instead of `mcp_list_skills`). Auto-resolves if exactly one match is found and name is >= 5 characters.
+
 ## [0.1.4] - 2026-01-29
 
 ### Fixed

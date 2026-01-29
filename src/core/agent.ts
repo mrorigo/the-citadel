@@ -191,11 +191,11 @@ export abstract class CoreAgent {
 
                 if (!tool && toolName.length >= 5) {
                     const matches = Object.keys(this.tools).filter(k => k.endsWith(`_${toolName}`) || k.endsWith(`-${toolName}`));
-                    if (matches.length === 1) {
-                        const resolvedName = matches[0]!;
+                    if (matches.length === 1 && matches[0]) {
+                        const resolvedName = matches[0];
                         logger.info(`[${this.role}] Auto-resolved tool ${toolName} to ${resolvedName}`);
                         toolName = resolvedName;
-                        tool = this.tools[toolName]!;
+                        tool = this.tools[toolName];
                     }
                 }
 
