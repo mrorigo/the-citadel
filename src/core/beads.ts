@@ -86,8 +86,9 @@ export class BeadsClient {
     }
 
     protected async runCommand(args: string): Promise<string> {
-        // Use system bd binary or configured override
-        const command = `${this.binary} ${args}`;
+        // Use --sandbox mode to avoid daemon issues in Docker containers
+        // Sandbox mode operates in "direct mode" without requiring a daemon
+        const command = `${this.binary} --sandbox ${args}`;
 
         // Determine CWD: The parent of .beads folder
         const cwd = resolve(this.basePath, '..');
