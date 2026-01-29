@@ -109,6 +109,18 @@ export class BeadsClient {
         await this.runCommand('init');
     }
 
+    async doctor(): Promise<boolean> {
+        try {
+            // bd doctor returns JSON with overall_ok status
+            const output = await this.runCommand('doctor --json');
+            const result = JSON.parse(output);
+            return result.overall_ok === true;
+        } catch (error) {
+            // If bd doctor fails completely, it's not healthy
+            return false;
+        }
+    }
+
     private parseRaw(output: string): Bead {
         if (!output) throw new Error('Empty output from bd');
         const json = JSON.parse(output);

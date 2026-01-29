@@ -14,6 +14,7 @@ export class Conductor {
     private isRunning = false;
     private routerAgent = new RouterAgent();
     private routerTimer: Timer | null = null;
+    private consecutiveFailures = 0;
 
     // Pools
     private workerPool: WorkerPool;
@@ -110,6 +111,14 @@ export class Conductor {
         // Initialize MCP
         await getMCPService().initialize();
 
+        // Check environment sanity
+        const healthy = await this.validateEnvironment();
+        if (!healthy) {
+            this.isRunning = false;
+            await getMCPService().shutdown();
+            return;
+        }
+
         // Start Pools
         this.workerPool.start();
         this.gatekeeperPool.start();
@@ -134,19 +143,40 @@ export class Conductor {
         await getMCPService().shutdown();
     }
 
+    private async validateEnvironment(): Promise<boolean> {
+        logger.info('[Conductor] Validating environment...');
+        const healthy = await this.beads.doctor();
+        if (!healthy) {
+            logger.error('[Conductor] Environment check failed! "bd doctor" reports issues.');
+            logger.error('[Conductor] Please run "bd doctor" and "bd sync" manually to fix data integrity issues.');
+            return false;
+        }
+        return true;
+    }
+
     private async routerLoop() {
         if (!this.isRunning) return;
+
+        let nextDelay = 5000; // Default 5s
 
         try {
             await this.cycleRouter();
             await this.scalePools();
+
+            // Success! Reset failures
+            this.consecutiveFailures = 0;
         } catch (error) {
-            logger.error('[Conductor] Cycle failed:', error);
+            this.consecutiveFailures++;
+
+            // Exponential backoff: 5s * 2^failures, max ~5m (300s)
+            const backoff = Math.min(5000 * Math.pow(2, this.consecutiveFailures), 300000);
+            nextDelay = backoff;
+
+            logger.error(`[Conductor] Cycle failed (attempt ${this.consecutiveFailures}). Backing off for ${Math.round(nextDelay / 1000)}s:`, error);
         }
 
         if (this.isRunning) {
-            // Run every 5 seconds
-            this.routerTimer = setTimeout(() => this.routerLoop(), 5000);
+            this.routerTimer = setTimeout(() => this.routerLoop(), nextDelay);
         }
     }
 
