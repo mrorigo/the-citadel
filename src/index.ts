@@ -3,21 +3,27 @@ import { Command } from 'commander';
 import { loadConfig } from './config';
 import { Conductor } from './services/conductor';
 import { getQueue } from './core/queue';
-import { unlink } from 'node:fs/promises';
+import { mkdir, writeFile, access, unlink } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
+import { join, resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { startBridge } from './bridge/index';
 import { getWorkflowEngine } from './services/workflow-engine';
+import { getBeads } from './core/beads';
+
+// Read version from package.json
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'));
+const version = packageJson.version;
 
 const program = new Command();
 
 program
     .name('citadel')
     .description('The Citadel: A deterministic agent orchestration system')
-    .version('1.0.0');
+    .version(version);
 
 // --- Init Command ---
-import { mkdir, writeFile, access } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
-import { getBeads } from './core/beads';
 
 program
     .command('init')
