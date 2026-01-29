@@ -10,6 +10,7 @@ import { clearGlobalSingleton } from '../../src/core/registry';
 const mockBeads = {
     list: mock(async (): Promise<Bead[]> => []),
     get: mock(async () => ({ id: 'mock-id', title: 'mock', status: 'open', created_at: '', updated_at: '', priority: 2 } as Bead)),
+    ready: mock(async (): Promise<Bead[]> => []),
 };
 
 const mockQueue = {

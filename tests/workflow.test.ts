@@ -65,7 +65,8 @@ needs = ["prep"]
             update: mock(async (id: string, _changes: any) => {
                 return { id, status: 'updated' };
             }),
-            get: mock(async (id: string) => ({ id, title: 'mock', status: 'open', created_at: '', updated_at: '', priority: 2 }))
+            get: mock(async (id: string) => ({ id, title: 'mock', status: 'open', created_at: '', updated_at: '', priority: 2 })),
+            ready: mock(async () => [])
         };
 
         // Inject Mock

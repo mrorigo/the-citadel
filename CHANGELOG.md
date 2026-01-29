@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.1.3] - 2026-01-29
+
+### Fixed
+- **Zombie Task Prevention**: Added error handling and state recovery to worker and gatekeeper hooks. If an agent exits without calling a terminal tool (`submit_work`, `approve_work`, `reject_work`), the bead is automatically returned to an actionable state with appropriate labels (`agent-incomplete`, `agent-error`, `evaluator-incomplete`, `evaluator-error`) for retry. This prevents tasks from getting permanently stuck in `in_progress` or `verify` states.
+
 ## [0.1.2] - 2026-01-29
 
 ### Fixed

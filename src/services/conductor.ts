@@ -39,7 +39,29 @@ export class Conductor {
 
                 const agent = new WorkerAgent();
                 const bead = await this.beads.get(ticket.bead_id);
-                await agent.run(`Process this task: ${bead.title}`, { beadId: ticket.bead_id, bead });
+
+                try {
+                    await agent.run(`Process this task: ${bead.title}`, { beadId: ticket.bead_id, bead });
+
+                    // Check if the bead was actually transitioned by the agent
+                    const finalBead = await this.beads.get(ticket.bead_id);
+
+                    if (finalBead.status === 'in_progress') {
+                        // Agent exited without calling submit_work - this is a failure
+                        logger.warn(`[Worker] Agent exited without submitting work for ${ticket.bead_id}`, { beadId: ticket.bead_id });
+                        await this.beads.update(ticket.bead_id, {
+                            status: 'open',
+                            labels: [...(finalBead.labels || []), 'agent-incomplete']
+                        });
+                    }
+                } catch (error) {
+                    // Agent crashed - mark as failed
+                    logger.error(`[Worker] Agent failed for ${ticket.bead_id}`, error);
+                    await this.beads.update(ticket.bead_id, {
+                        status: 'open',
+                        labels: [...(bead.labels || []), 'failed', 'agent-error']
+                    });
+                }
             }),
             config.worker.min_workers
         );
@@ -51,7 +73,30 @@ export class Conductor {
                 logger.info(`[Gatekeeper] Verifying ${ticket.bead_id}`, { beadId: ticket.bead_id });
                 const agent = new EvaluatorAgent();
                 const bead = await this.beads.get(ticket.bead_id);
-                await agent.run(`Verify this work: ${bead.title}`, { beadId: ticket.bead_id, bead });
+
+                try {
+                    await agent.run(`Verify this work: ${bead.title}`, { beadId: ticket.bead_id, bead });
+
+                    // Check if the bead was actually transitioned by the agent
+                    const finalBead = await this.beads.get(ticket.bead_id);
+
+                    if (finalBead.status === 'verify') {
+                        // Agent exited without calling approve_work or reject_work
+                        logger.warn(`[Gatekeeper] Agent exited without decision for ${ticket.bead_id}`, { beadId: ticket.bead_id });
+                        await this.beads.update(ticket.bead_id, {
+                            status: 'verify',
+                            labels: [...(finalBead.labels || []), 'evaluator-incomplete']
+                        });
+                        // Note: We keep it in 'verify' so it can be re-evaluated
+                    }
+                } catch (error) {
+                    // Agent crashed - keep in verify for retry
+                    logger.error(`[Gatekeeper] Agent failed for ${ticket.bead_id}`, error);
+                    await this.beads.update(ticket.bead_id, {
+                        status: 'verify',
+                        labels: [...(bead.labels || []), 'evaluator-error']
+                    });
+                }
             }),
             config.gatekeeper.min_workers
         );

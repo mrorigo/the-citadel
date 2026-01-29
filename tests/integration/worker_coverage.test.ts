@@ -35,7 +35,8 @@ describe('WorkerAgent Integration Coverage', () => {
             update: mock(async () => ({})),
             create: mock(async () => ({ id: 'new-bead' })),
             addDependency: mock(async () => ({})),
-            get: mock(async () => ({ id: 'test-bead', labels: ['formula:test', 'step:prep'] }))
+            get: mock(async () => ({ id: 'test-bead', labels: ['formula:test', 'step:prep'] })),
+            ready: mock(async () => [])
         };
 
         mockQueue = {
