@@ -99,6 +99,9 @@ describe('E2E Lifecycle', () => {
         setBeadsInstance(beadsClient);
         await beadsClient.init(); // Initialize the DB!
 
+        // Mock doctor to return healthy status (E2E env doesn't have git)
+        beadsClient.doctor = mock(async () => true);
+
         conductor = new Conductor(beadsClient, queueInstance);
     });
 

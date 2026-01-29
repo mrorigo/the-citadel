@@ -1,0 +1,951 @@
+bun test v1.3.2 (b131639c)
+
+tests/mcp.test.ts:
+[dotenv@17.2.3] injecting env (0) from .env -- tip: 👥 sync secrets across teammates & machines: https://dotenvx.com/ops
+[2026-01-29T14:05:24.026Z] [INFO] [MCP] Connecting to server: testServer... 
+[2026-01-29T14:05:24.027Z] [INFO] [MCP] Using Stdio transport for testServer 
+[2026-01-29T14:05:24.027Z] [INFO] [MCP] Connected to testServer, discovered 2 tools 
+(pass) MCP Tools Integration > should discover tools from configured servers [7.23ms]
+[2026-01-29T14:05:24.027Z] [INFO] [MCP] Disconnected from testServer 
+[2026-01-29T14:05:24.027Z] [INFO] [MCP] Connecting to server: httpServer... 
+[2026-01-29T14:05:24.027Z] [INFO] [MCP] Using HTTP transport for httpServer: https://mcp.example.com/api 
+[2026-01-29T14:05:24.027Z] [INFO] [MCP] Connected to httpServer, discovered 2 tools 
+(pass) MCP Tools Integration > should discover tools from HTTP servers [0.25ms]
+[2026-01-29T14:05:24.027Z] [INFO] [MCP] Disconnected from httpServer 
+[2026-01-29T14:05:24.028Z] [INFO] [MCP] Connecting to server: testServer... 
+[2026-01-29T14:05:24.028Z] [INFO] [MCP] Using Stdio transport for testServer 
+[2026-01-29T14:05:24.028Z] [INFO] [MCP] Connected to testServer, discovered 2 tools 
+(pass) MCP Tools Integration > should support granular tool assignment for agents [0.21ms]
+[2026-01-29T14:05:24.028Z] [INFO] [MCP] Disconnected from testServer 
+[2026-01-29T14:05:24.028Z] [INFO] [MCP] Connecting to server: testServer... 
+[2026-01-29T14:05:24.028Z] [INFO] [MCP] Using Stdio transport for testServer 
+[2026-01-29T14:05:24.028Z] [INFO] [MCP] Connected to testServer, discovered 2 tools 
+[2026-01-29T14:05:24.029Z] [INFO] [worker] Registering MCP tool: testServer_echo 
+[2026-01-29T14:05:24.029Z] [INFO] [MCP] Calling tool testServer:echo {"args":{"message":"hello"}}
+(pass) MCP Tools Integration > should register MCP tools in WorkerAgent [1.51ms]
+
+tests/workflow_failure.test.ts:
+[WorkflowEngine] Cooking formula 'recovery_flow'...
+[WorkflowEngine] Created Root Epic: bd-p4zeu
+[WorkflowEngine] Created Step 'main' -> bd-e1j4e (context: {})
+[WorkflowEngine] Created Step 'recovery' -> bd-nxq4q (context: {})
+[WorkflowEngine] Wired bd-nxq4q (recovery) -> bd-e1j4e
+[WorkflowEngine] Cooking complete. Molecule ID: bd-p4zeu
+(pass) Workflow Failure Handling > should label recovery beads correctly during instantiation [4.98ms]
+[WorkflowEngine] Cooking formula 'recovery_flow'...
+[WorkflowEngine] Created Root Epic: bd-uz9gj
+[WorkflowEngine] Created Step 'main' -> bd-jgp56 (context: {})
+[WorkflowEngine] Created Step 'recovery' -> bd-i2pj2 (context: {})
+[WorkflowEngine] Wired bd-i2pj2 (recovery) -> bd-jgp56
+[WorkflowEngine] Cooking complete. Molecule ID: bd-uz9gj
+[2026-01-29T14:05:24.042Z] [INFO] [WorkerPool:worker] Resizing pool from 0 to 1 
+[2026-01-29T14:05:24.043Z] [INFO] [WorkerPool:gatekeeper] Resizing pool from 0 to 1 
+[2026-01-29T14:05:24.044Z] [INFO] [Router] Found ready bead: bd-uz9gj {"beadId":"bd-uz9gj"}
+[2026-01-29T14:05:24.045Z] [INFO] [router] Running... {"role":"router"}
+[2026-01-29T14:05:24.045Z] [INFO] [router] Loaded AGENTS.md from /Users/origo/src/the-citadel/AGENTS.md 
+AI SDK Warning System: To turn off warning logging, set the AI_SDK_LOG_WARNINGS global to false.
+AI SDK Warning (mock / mock-model): The feature "specificationVersion" is used in a compatibility mode. Using v2 specification compatibility mode. Some features may not be available.
+[2026-01-29T14:05:24.051Z] [INFO] [router] Output {"text":"Mocked Plan"}
+[2026-01-29T14:05:24.051Z] [INFO] [Router] Skipping recovery bead bd-i2pj2 (all dependencies succeeded) {"beadId":"bd-i2pj2"}
+(pass) Workflow Failure Handling > should skip recovery bead if main task succeeds [14.80ms]
+[WorkflowEngine] Cooking formula 'recovery_flow'...
+[WorkflowEngine] Created Root Epic: bd-85s8n
+[WorkflowEngine] Created Step 'main' -> bd-c301u (context: {})
+[WorkflowEngine] Created Step 'recovery' -> bd-5g7w1 (context: {})
+[WorkflowEngine] Wired bd-5g7w1 (recovery) -> bd-c301u
+[WorkflowEngine] Cooking complete. Molecule ID: bd-85s8n
+[2026-01-29T14:05:24.054Z] [INFO] [WorkerPool:worker] Resizing pool from 0 to 1 
+[2026-01-29T14:05:24.054Z] [INFO] [WorkerPool:gatekeeper] Resizing pool from 0 to 1 
+[2026-01-29T14:05:24.054Z] [INFO] [Router] Found ready bead: bd-85s8n {"beadId":"bd-85s8n"}
+[2026-01-29T14:05:24.054Z] [INFO] [router] Running... {"role":"router"}
+[2026-01-29T14:05:24.054Z] [INFO] [router] Loaded AGENTS.md from /Users/origo/src/the-citadel/AGENTS.md 
+AI SDK Warning (mock / mock-model): The feature "specificationVersion" is used in a compatibility mode. Using v2 specification compatibility mode. Some features may not be available.
+[2026-01-29T14:05:24.055Z] [INFO] [router] Output {"text":"Mocked Plan"}
+[2026-01-29T14:05:24.055Z] [INFO] [Router] Found ready bead: bd-5g7w1 {"beadId":"bd-5g7w1"}
+[2026-01-29T14:05:24.055Z] [INFO] [router] Running... {"role":"router"}
+[2026-01-29T14:05:24.055Z] [INFO] [router] Loaded AGENTS.md from /Users/origo/src/the-citadel/AGENTS.md 
+AI SDK Warning (mock / mock-model): The feature "specificationVersion" is used in a compatibility mode. Using v2 specification compatibility mode. Some features may not be available.
+[2026-01-29T14:05:24.055Z] [INFO] [router] Output {"text":"Mocked Plan"}
+(pass) Workflow Failure Handling > should NOT skip recovery bead if main task fails [2.99ms]
+(pass) Workflow Failure Handling > should correctly mark work as failed via EvaluatorAgent tool [1.49ms]
+
+tests/workflow.test.ts:
+[WorkflowEngine] Cooking formula 'compilation'...
+[WorkflowEngine] Created Root Epic: bd-kqzoh in Convoy bd-convoy1
+[WorkflowEngine] Created Step 'prep' -> bd-ovna4 (context: {})
+[WorkflowEngine] Created Step 'build' -> bd-yexlv (context: {})
+[WorkflowEngine] Wired bd-yexlv (needs) -> bd-ovna4
+[WorkflowEngine] Cooking complete. Molecule ID: bd-kqzoh
+(pass) Workflow Engine > should instantiate a formula correctly [2.30ms]
+
+tests/unit/agents.test.ts:
+(pass) Agents Unit Tests > RouterAgent should have enqueue_task tool [0.49ms]
+(pass) Agents Unit Tests > WorkerAgent should have report_progress and submit_work tools [0.19ms]
+
+tests/unit/schema_utils.test.ts:
+(pass) jsonSchemaToZod - Record/Object Handling > should convert empty object schema to z.object().passthrough() [0.34ms]
+(pass) jsonSchemaToZod - Record/Object Handling > should handle object with no properties (implicit additionalProperties) [0.03ms]
+(pass) jsonSchemaToZod - Record/Object Handling > should reject additional properties when additionalProperties is false [0.09ms]
+(pass) jsonSchemaToZod - Record/Object Handling > should handle the sisyphus formula output schema pattern [0.29ms]
+
+tests/unit/tool_tolerance.test.ts:
+(pass) Tool Parameter Tolerance > run_command tolerance > should accept "command" parameter (standard) [6.57ms]
+(pass) Tool Parameter Tolerance > run_command tolerance > should accept "cmd" parameter as string [4.45ms]
+(pass) Tool Parameter Tolerance > run_command tolerance > should accept "cmd" parameter as array and join with spaces [5.16ms]
+(pass) Tool Parameter Tolerance > run_command tolerance > should fail if neither command nor cmd is provided [0.44ms]
+(pass) Tool Parameter Tolerance > run_command tolerance > should prefer "command" over "cmd" if both provided [5.61ms]
+(pass) Tool Parameter Tolerance > run_command tolerance > should accept extra parameters like timeout (passthrough) [8.51ms]
+
+tests/unit/auto_injection.test.ts:
+[2026-01-29T14:05:24.100Z] [INFO] [worker] Running... {"role":"worker"}
+[2026-01-29T14:05:24.100Z] [INFO] [worker] Loaded AGENTS.md from /Users/origo/src/the-citadel/AGENTS.md 
+[2026-01-29T14:05:24.100Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.100Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.101Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+(pass) Parameter Auto-Injection > should auto-inject beadId from context into tool input [1.51ms]
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Running... {"role":"worker"}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Loaded AGENTS.md from /Users/origo/src/the-citadel/AGENTS.md 
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Output {"text":"Delegating"}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Executing tool: delegate_tool {"tool":"delegate_tool","full_tc":{"toolCallId":"call-2","toolName":"delegate_tool","input":{"title":"Subtask"}}}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.102Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.103Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+(pass) Parameter Auto-Injection > should auto-inject parentBeadId from context into tool input [1.71ms]
+
+tests/unit/conductor_resilience.test.ts:
+[2026-01-29T14:05:24.105Z] [INFO] [Conductor] Starting... 
+[2026-01-29T14:05:24.105Z] [INFO] [Conductor] Validating environment... 
+[2026-01-29T14:05:24.105Z] [ERROR] [Conductor] Environment check failed! "bd doctor" reports issues. {}
+[2026-01-29T14:05:24.105Z] [ERROR] [Conductor] Please run "bd doctor" and "bd sync" manually to fix data integrity issues. {}
+[2026-01-29T14:05:24.157Z] [INFO] [Conductor] Stopping... 
+(pass) Conductor Resilience > should fail startup if environment check fails [52.37ms]
+[2026-01-29T14:05:24.157Z] [INFO] [Conductor] Starting... 
+[2026-01-29T14:05:24.157Z] [INFO] [Conductor] Validating environment... 
+[2026-01-29T14:05:24.208Z] [INFO] [Conductor] Stopping... 
+(pass) Conductor Resilience > should pass startup if environment check passes [51.60ms]
+
+tests/unit/schema_validation.test.ts:
+Tool object keys: [ "description", "parameters", "execute" ]
+Tool object: {
+  "description": "Test tool",
+  "parameters": {
+    "def": {
+      "type": "object",
+      "shape": {
+        "formulaName": {
+          "def": {
+            "type": "string"
+          },
+          "type": "string",
+          "format": null,
+          "minLength": null,
+          "maxLength": null
+        },
+        "variables": {
+          "def": {
+            "type": "default",
+            "innerType": {
+              "def": {
+                "type": "optional",
+                "innerType": {
+                  "def": {
+                    "type": "record",
+                    "keyType": {
+                      "def": {
+                        "type": "string"
+                      },
+                      "type": "string",
+                      "format": null,
+                      "minLength": null,
+                      "maxLength": null
+                    },
+                    "valueType": {
+                      "def": {
+                        "type": "string"
+                      },
+                      "type": "string",
+                      "format": null,
+                      "minLength": null,
+                      "maxLength": null
+                    }
+                  },
+                  "type": "record",
+                  "keyType": {
+                    "def": {
+                      "type": "string"
+                    },
+                    "type": "string",
+                    "format": null,
+                    "minLength": null,
+                    "maxLength": null
+                  },
+                  "valueType": {
+                    "def": {
+                      "type": "string"
+                    },
+                    "type": "string",
+                    "format": null,
+                    "minLength": null,
+                    "maxLength": null
+                  }
+                }
+              },
+              "type": "optional"
+            },
+            "defaultValue": {}
+          },
+          "type": "default"
+        }
+      }
+    },
+    "type": "object"
+  }
+}
+(pass) AI SDK Tool Structure Investigation > should inspect the actual tool object structure [1.36ms]
+
+Catchall tool: {
+  "description": "Test with catchall",
+  "parameters": {
+    "def": {
+      "type": "object",
+      "shape": {
+        "formulaName": {
+          "def": {
+            "type": "string"
+          },
+          "type": "string",
+          "format": null,
+          "minLength": null,
+          "maxLength": null
+        },
+        "variables": {
+          "def": {
+            "type": "default",
+            "innerType": {
+              "def": {
+                "type": "optional",
+                "innerType": {
+                  "def": {
+                    "type": "object",
+                    "shape": {},
+                    "catchall": {
+                      "def": {
+                        "type": "string"
+                      },
+                      "type": "string",
+                      "format": null,
+                      "minLength": null,
+                      "maxLength": null
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "type": "optional"
+            },
+            "defaultValue": {}
+          },
+          "type": "default"
+        }
+      }
+    },
+    "type": "object"
+  }
+}
+(pass) AI SDK Tool Structure Investigation > should test with z.object catchall [0.23ms]
+
+Partial tool: {
+  "description": "Test with partial",
+  "parameters": {
+    "def": {
+      "type": "object",
+      "shape": {
+        "formulaName": {
+          "def": {
+            "type": "string"
+          },
+          "type": "string",
+          "format": null,
+          "minLength": null,
+          "maxLength": null
+        },
+        "variables": {
+          "def": {
+            "type": "optional",
+            "innerType": {
+              "def": {
+                "type": "object",
+                "shape": {},
+                "catchall": {
+                  "def": {
+                    "type": "string"
+                  },
+                  "type": "string",
+                  "format": null,
+                  "minLength": null,
+                  "maxLength": null
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "optional"
+        }
+      },
+      "checks": []
+    },
+    "type": "object"
+  }
+}
+(pass) AI SDK Tool Structure Investigation > should test making variables optional at object level [0.24ms]
+
+tests/unit/config.test.ts:
+(pass) Configuration System > should load configuration successfully [0.20ms]
+(pass) Configuration System > should allow accessing config synchronously after load [0.03ms]
+(pass) LLM Provider Factory > should return a LanguageModel for the router agent
+(pass) LLM Provider Factory > should throw error for invalid role [0.05ms]
+
+tests/integration/concurrency.test.ts:
+[2026-01-29T14:05:24.218Z] [INFO] [WorkerPool:worker] Resizing pool from 0 to 1 
+[2026-01-29T14:05:24.218Z] [INFO] [WorkerPool:gatekeeper] Resizing pool from 0 to 1 
+[2026-01-29T14:05:24.223Z] [INFO] [WorkerPool:worker] Resizing pool from 1 to 5 
+[2026-01-29T14:05:24.228Z] [INFO] [WorkerPool:worker] Resizing pool from 5 to 1 
+[2026-01-29T14:05:24.228Z] [INFO] [Conductor] Stopping... 
+[2026-01-29T14:05:24.228Z] [INFO] [WorkerPool:worker] Resizing pool from 1 to 0 
+[2026-01-29T14:05:24.228Z] [INFO] [WorkerPool:gatekeeper] Resizing pool from 1 to 0 
+(pass) Concurrency Integration > should scale workers based on load factor [14.24ms]
+[2026-01-29T14:05:24.231Z] [INFO] [WorkerPool:worker] Resizing pool from 0 to 2 
+[2026-01-29T14:05:24.231Z] [INFO] [WorkerPool:gatekeeper] Resizing pool from 0 to 1 
+[2026-01-29T14:05:24.275Z] [INFO] [WorkerPool:worker] Resizing pool from 2 to 4 
+[2026-01-29T14:05:24.275Z] [INFO] [Conductor] Stopping... 
+[2026-01-29T14:05:24.275Z] [INFO] [WorkerPool:worker] Resizing pool from 4 to 0 
+[2026-01-29T14:05:24.275Z] [INFO] [WorkerPool:gatekeeper] Resizing pool from 1 to 0 
+(pass) Concurrency Integration > should respect min and max workers [47.17ms]
+
+tests/integration/worker_tools.test.ts:
+(pass) WorkerAgent Tools > should have native tools registered [0.06ms]
+(pass) WorkerAgent Tools > should run a shell command [3.90ms]
+
+tests/integration/worker_coverage.test.ts:
+(pass) WorkerAgent Integration Coverage > should report progress [0.52ms]
+(pass) WorkerAgent Integration Coverage > should delegate tasks [0.41ms]
+(pass) WorkerAgent Integration Coverage > should handle delegation errors [0.28ms]
+(pass) WorkerAgent Integration Coverage > should run commands successfully [4.20ms]
+(pass) WorkerAgent Integration Coverage > should handle command errors [4.20ms]
+[2026-01-29T14:05:24.293Z] [INFO] [Worker] Submitted work for b1 with output {"beadId":"b1","hasOutput":true}
+(pass) WorkerAgent Integration Coverage > should handle handleSubmitWork when ticket exists [0.53ms]
+[2026-01-29T14:05:24.293Z] [WARN] [Worker] Could not find active ticket for b1 to save output {"beadId":"b1"}
+(pass) WorkerAgent Integration Coverage > should handle handleSubmitWork when ticket is missing [0.23ms]
+[2026-01-29T14:05:24.294Z] [INFO] [Worker] Enforcing schema for test-bead (step: prep) 
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Running... {"role":"worker"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Loaded AGENTS.md from /Users/origo/src/the-citadel/AGENTS.md 
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+(pass) WorkerAgent Integration Coverage > should apply dynamic schema in run() [0.94ms]
+[2026-01-29T14:05:24.294Z] [WARN] [Worker] Failed to resolve dynamic schema: {}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Running... {"role":"worker"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Loaded AGENTS.md from /Users/origo/src/the-citadel/AGENTS.md 
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.294Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:24.295Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+(pass) WorkerAgent Integration Coverage > should fallback to default schema when bead/formula is missing [0.61ms]
+(pass) WorkerAgent Integration Coverage > should provide custom system prompt [0.18ms]
+
+tests/integration/queue.test.ts:
+(pass) WorkQueue Integration > should enqueue and claim tickets in priority order [6.30ms]
+(pass) WorkQueue Integration > should filter by role [4.50ms]
+(pass) WorkQueue Integration > should update heartbeat [13.71ms]
+(pass) WorkQueue Integration > should release stalled tickets [5.12ms]
+(pass) WorkQueue Integration > should retry failed tickets [5.14ms]
+(pass) WorkQueue Integration > should not retry permanent failures [4.30ms]
+(pass) WorkQueue Integration > should identify active tickets [5.04ms]
+
+tests/integration/conductor.test.ts:
+[2026-01-29T14:05:24.345Z] [INFO] [WorkerPool:worker] Resizing pool from 0 to 2 
+[2026-01-29T14:05:24.345Z] [INFO] [WorkerPool:gatekeeper] Resizing pool from 0 to 1 
+[2026-01-29T14:05:24.346Z] [INFO] [Conductor] Starting... 
+[2026-01-29T14:05:24.346Z] [INFO] [Conductor] Validating environment... 
+[2026-01-29T14:05:24.648Z] [INFO] [Conductor] Stopping... 
+[2026-01-29T14:05:24.648Z] [INFO] [WorkerPool:worker] Resizing pool from 2 to 0 
+[2026-01-29T14:05:24.648Z] [INFO] [WorkerPool:gatekeeper] Resizing pool from 1 to 0 
+[2026-01-29T14:05:24.648Z] [INFO] [Conductor] Stopping... 
+(pass) Conductor Service Integration > should route open beads to worker [303.64ms]
+[2026-01-29T14:05:24.648Z] [INFO] [WorkerPool:worker] Resizing pool from 0 to 2 
+[2026-01-29T14:05:24.649Z] [INFO] [WorkerPool:gatekeeper] Resizing pool from 0 to 1 
+[2026-01-29T14:05:24.649Z] [INFO] [Conductor] Starting... 
+[2026-01-29T14:05:24.649Z] [INFO] [Conductor] Validating environment... 
+[2026-01-29T14:05:24.850Z] [INFO] [Conductor] Stopping... 
+[2026-01-29T14:05:24.850Z] [INFO] [WorkerPool:worker] Resizing pool from 2 to 0 
+[2026-01-29T14:05:24.850Z] [INFO] [WorkerPool:gatekeeper] Resizing pool from 1 to 0 
+[2026-01-29T14:05:24.850Z] [INFO] [Conductor] Stopping... 
+(pass) Conductor Service Integration > should route verify beads to gatekeeper [202.25ms]
+
+tests/integration/hooks.test.ts:
+(pass) Hook Mechanism Integration > should poll and execute tasks [106.87ms]
+
+tests/integration/beads.test.ts:
+(pass) Beads Integration > should create a new bead [264.91ms]
+(pass) Beads Integration > should transition state correctly [678.89ms]
+(pass) Beads Integration > should fail invalid transition [347.10ms]
+(pass) Beads Integration > should enforce acceptance test for done [776.28ms]
+
+tests/integration/ddp.test.ts:
+[WorkflowEngine] Cooking formula 'ddp_test'...
+[WorkflowEngine] Created Root Epic: bead-b09uv9qer
+[WorkflowEngine] Created Step 'producer' -> bead-q4rsfe37e (context: {})
+[WorkflowEngine] Created Step 'consumer' -> bead-acyxsrm3u (context: {})
+[WorkflowEngine] Wired bead-acyxsrm3u (needs) -> bead-q4rsfe37e
+[WorkflowEngine] Cooking complete. Molecule ID: bead-b09uv9qer
+[2026-01-29T14:05:27.730Z] [INFO] [Worker] Enforcing schema for bead-q4rsfe37e (step: producer) 
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Running... {"role":"worker"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Loaded AGENTS.md from /Users/origo/src/the-citadel/AGENTS.md 
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.730Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.731Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.731Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.731Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.731Z] [INFO] [worker] Output {"text":"Executing tool"}
+[2026-01-29T14:05:27.731Z] [INFO] [worker] Executing tool: test_tool {"tool":"test_tool","full_tc":{"toolCallId":"call-1","toolName":"test_tool","input":{"message":"Incomplete call"}}}
+[2026-01-29T14:05:27.731Z] [INFO] [Worker] Submitted work for bead-q4rsfe37e with output {"beadId":"bead-q4rsfe37e","hasOutput":true}
+[2026-01-29T14:05:27.732Z] [INFO] [Piper] Resolved data for bead bead-acyxsrm3u {"newContext":{"input_num":42}}
+(pass) Dynamic Data Piping > should enforce schema and pipe data between steps [9.13ms]
+
+tests/integration/data_flow.test.ts:
+[Mock] runCommand: create "Context Test Bead" --json --description "---
+{
+  \"query\": \"test query\",
+  \"depth\": 2,
+  \"tags\": [
+    \"ai\",
+    \"agent\"
+  ]
+}
+---
+This is a test bead"
+[Mock] Created bead bead-0btzvg8f7
+[Mock] runCommand: show bead-0btzvg8f7 --json
+[Mock] runCommand: show bead-0btzvg8f7 --json
+(pass) Data Flow Integration > should persist context in bead description and parse it back [3.19ms]
+[Mock] runCommand: create "Output Test Bead" --json
+[Mock] Created bead bead-r36ouu1fe
+[Mock] runCommand: show bead-r36ouu1fe --json
+[Mock] runCommand: show bead-r36ouu1fe --json
+[Mock] runCommand: update bead-r36ouu1fe --status in_progress --remove-label verify --json
+[Mock] Updating bead bead-r36ouu1fe with args: update bead-r36ouu1fe --status in_progress --remove-label verify --json
+[Mock] Status set to in_progress (verify removed)
+[Mock] runCommand: show bead-r36ouu1fe --json
+[Mock] runCommand: update bead-r36ouu1fe --status in_progress --add-label verify --json
+[Mock] Updating bead bead-r36ouu1fe with args: update bead-r36ouu1fe --status in_progress --add-label verify --json
+[Mock] Status set to in_progress + verify label
+[2026-01-29T14:05:27.743Z] [INFO] [Worker] Submitted work for bead-r36ouu1fe with output {"beadId":"bead-r36ouu1fe","hasOutput":true}
+[Mock] runCommand: show bead-r36ouu1fe --json
+(pass) Data Flow Integration > should save structured output from worker agent [5.68ms]
+
+tests/e2e/e2e.test.ts:
+[2026-01-29T14:05:28.446Z] [INFO] [WorkerPool:worker] Resizing pool from 0 to 1 
+[2026-01-29T14:05:28.447Z] [INFO] [WorkerPool:gatekeeper] Resizing pool from 0 to 1 
+[Test] Pre-start list: found 1 items
+[Test] Item 0: {"id":"the-citadel-2gz","title":"E2E Task","status":"open","priority":0,"acceptance_criteria":"Verify it works","created_at":"2026-01-29T15:05:28.789573+01:00","updated_at":"2026-01-29T15:05:28.883951+01:00","acceptance_test":"Verify it works"}
+[2026-01-29T14:05:29.116Z] [INFO] [Conductor] Starting... 
+[2026-01-29T14:05:29.117Z] [INFO] [Conductor] Validating environment... 
+[2026-01-29T14:05:29.475Z] [INFO] [Router] Found ready bead: the-citadel-2gz {"beadId":"the-citadel-2gz"}
+[MockRouter] Analyze the-citadel-2gz (open)
+[MockRouter] Enqueuing the-citadel-2gz for worker
+[2026-01-29T14:05:30.450Z] [INFO] [Worker] Processing the-citadel-2gz {"beadId":"the-citadel-2gz"}
+[Worker] Moving the-citadel-2gz to in_progress...
+[Worker] Moving the-citadel-2gz to verify...
+[2026-01-29T14:05:34.738Z] [INFO] [Router] Skipping the-citadel-2gz (status changed to verify) {"beadId":"the-citadel-2gz"}
+[2026-01-29T14:05:34.914Z] [INFO] [Router] Found unassigned verify bead: the-citadel-2gz {"beadId":"the-citadel-2gz"}
+[MockRouter] Analyze the-citadel-2gz (verify)
+[MockRouter] Enqueuing the-citadel-2gz for gatekeeper
+[2026-01-29T14:05:35.455Z] [INFO] [Gatekeeper] Verifying the-citadel-2gz {"beadId":"the-citadel-2gz"}
+[Gatekeeper] Approving the-citadel-2gz...
+[2026-01-29T14:05:35.821Z] [INFO] [Conductor] Stopping... 
+[2026-01-29T14:05:35.821Z] [INFO] [WorkerPool:worker] Resizing pool from 1 to 0 
+[2026-01-29T14:05:35.821Z] [INFO] [WorkerPool:gatekeeper] Resizing pool from 1 to 0 
+(pass) E2E Lifecycle > should drive a task from creation to completion [8075.87ms]
+
+ 64 pass
+ 0 fail
+ 156 expect() calls
+Ran 64 tests across 20 files. [11.92s]
