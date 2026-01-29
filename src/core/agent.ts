@@ -211,6 +211,25 @@ export abstract class CoreAgent {
                     // Internal execution
                     // Strictly validate input against schema if it's a Zod schema
                     const schema = this.schemas[tc.toolName];
+
+                    // Parameter Auto-Injection:
+                    // Weaker LLMs often fail to extract beadId from the context in the system prompt.
+                    // We auto-inject it here if it's missing but present in the agent context.
+                    if (context && tc.input && typeof tc.input === 'object') {
+                        // biome-ignore lint/suspicious/noExplicitAny: Context is dynamic
+                        const input = tc.input as Record<string, any>;
+
+                        // Inject beadId if missing
+                        if (context.beadId && !input.beadId) {
+                            input.beadId = context.beadId;
+                        }
+
+                        // Inject parentBeadId (useful for delegate_task)
+                        if (context.beadId && !input.parentBeadId) {
+                            input.parentBeadId = context.beadId;
+                        }
+                    }
+
                     const validatedInput = (schema && 'parse' in schema && typeof schema.parse === 'function')
                         ? schema.parse(tc.input)
                         : tc.input;
