@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.1.2] - 2026-01-29
+
+### Fixed
+- **Dependency-Aware Task Routing**: The Conductor now uses `beadsClient.ready()` instead of `list('open')` to ensure only beads with satisfied dependencies (all blockers closed) are routed to workers. This prevents wasting resources on tasks that cannot proceed due to missing dependencies.
+- **Recovery Logic**: Re-added recovery bead handling to correctly skip recovery tasks when their dependencies succeed.
+
 ## [0.1.1] - 2026-01-29
 
 ### Added

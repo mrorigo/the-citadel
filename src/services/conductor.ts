@@ -109,20 +109,21 @@ export class Conductor {
         const beadsClient = this.beads;
         const queue = this.queue;
 
-        // 1. Fetch Candidates (Open or Verify)
-        // Currently beads client 'list' filters by status.
-        // We need to fetch 'open' (for workers) and 'verify' (for gatekeepers)
+        // 1. Fetch Candidates (Ready or Verify)
+        // We fetch 'ready' (open beads with all blockers closed) for workers
+        // and 'verify' (for gatekeepers)
 
         // Strategy: 
-        // A. Get OPEN beads -> Send to Worker
-        const openBeads = await beadsClient.list('open');
+        // A. Get READY beads (open + all blockers closed) -> Send to Worker
+        const readyBeads = await beadsClient.ready();
 
-        if (!openBeads) {
-            logger.error('[Conductor] openBeads is undefined!');
+        if (!readyBeads) {
+            logger.error('[Conductor] readyBeads is undefined!');
             return;
         }
 
-        for (const bead of openBeads) {
+        for (const bead of readyBeads) {
+
             const active = queue.getActiveTicket(bead.id);
             if (!active) {
                 // Double-check: ensure bead is STILL open (race condition protect)
@@ -133,6 +134,8 @@ export class Conductor {
                 }
 
                 // --- Recovery Logic ---
+                // Recovery beads should only execute if their dependency (the main task) failed.
+                // If all blockers are done and none failed, we skip the recovery bead.
                 if (fresh.labels?.includes('recovery')) {
                     const blockers = fresh.blockers || [];
                     if (blockers.length > 0) {
@@ -144,12 +147,6 @@ export class Conductor {
                             logger.info(`[Router] Skipping recovery bead ${bead.id} (all dependencies succeeded)`, { beadId: bead.id });
                             await beadsClient.update(bead.id, { status: 'done' });
                             continue;
-                        }
-
-                        if (!anyFailed) {
-                            // If not all done and none failed yet, we wait.
-                            // But usually `open` status implies blockers ARE done.
-                            // If they are done and none failed, we skip.
                         }
                     }
                 }
@@ -172,7 +169,7 @@ export class Conductor {
                     }
                 }
 
-                logger.info(`[Router] Found unassigned open bead: ${bead.id}`, { beadId: bead.id });
+                logger.info(`[Router] Found ready bead: ${bead.id}`, { beadId: bead.id });
                 // Ask RouterAgent to route it
                 await this.routerAgent.run(
                     `New task found: ${bead.title}. Please route it.`,

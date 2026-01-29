@@ -109,6 +109,17 @@ description = "Cleaning up after main failure"
             }),
             list: mock(async (status: string) => {
                 return Array.from(store.values()).filter(b => b.status === status);
+            }),
+            ready: mock(async () => {
+                // Return beads that are 'open' and have all blockers 'done'
+                return Array.from(store.values()).filter(b => {
+                    if (b.status !== 'open') return false;
+                    if (!b.blockers || b.blockers.length === 0) return true;
+                    return b.blockers.every((blockerId: string) => {
+                        const blocker = store.get(blockerId);
+                        return blocker && blocker.status === 'done';
+                    });
+                });
             })
         };
         setBeadsInstance(beadsMock);
