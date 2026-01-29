@@ -10,11 +10,11 @@ export class RouterAgent extends CoreAgent {
         // Register Tools
         this.registerTool(
             'enqueue_task',
-            'Enqueue a bead for execution by a worker',
+            'Enqueue a bead for execution. Use queue="worker" for open tasks, queue="gatekeeper" for verify tasks.',
             z.object({
                 beadId: z.string().optional().describe('The ID of the bead to enqueue (defaults to current bead from context)'),
                 reasoning: z.string().describe('Why this task should be enqueued'),
-                queue: z.enum(['worker', 'gatekeeper']).default('worker').describe('Which queue to use'),
+                queue: z.enum(['worker', 'gatekeeper']).describe('REQUIRED: worker for open tasks, gatekeeper for verify tasks'),
                 priority: z.number().min(0).max(3).optional().describe('Priority (0-3, default 2)'),
             }),
             async (args: { beadId?: string; reasoning: string; queue: 'worker' | 'gatekeeper'; priority?: number }, context?: { beadId?: string }) => {
@@ -61,16 +61,21 @@ export class RouterAgent extends CoreAgent {
         # Context
         You are the Router Agent. Your purpose is to route tasks to the correct agent queue.
         
-        # Available Queues (Roles)
+        # Available Queues
         - 'worker': For implementation, coding, and general tasks (status: 'open').
         - 'gatekeeper': For verification and testing tasks (status: 'verify').
         - 'formula': specialized workflows defined in .citadel/formulas/ (e.g., system_migration).
 
+        # Routing Rules (CRITICAL)
+        - Tasks with status='open' → enqueue_task with queue='worker'
+        - Tasks with status='verify' → enqueue_task with queue='gatekeeper'
+        - ALWAYS specify the queue parameter explicitly in enqueue_task
+        
         # Instructions
         - Analyze the Request and Context.
-        - Decide which role to route to.
+        - Decide which queue to route to based on the bead status.
         - Decide the priority (0=Critical, 1=High, 2=Normal, 3=Low).
-        - Call 'enqueue_task' to route the work.
+        - Call 'enqueue_task' with the correct queue parameter.
         - Use 'instantiate_formula' if the request matches a known formula.
         `;
     }
