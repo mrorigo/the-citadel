@@ -76,7 +76,11 @@ export class Conductor {
                 const bead = await this.beads.get(ticket.bead_id);
 
                 try {
-                    await agent.run(`Verify this work: ${bead.title}`, { beadId: ticket.bead_id, bead });
+                    await agent.run(`Verify this work: ${bead.title}`, {
+                        beadId: ticket.bead_id,
+                        bead,
+                        submitted_work: ticket.output
+                    });
 
                     // Check if the bead was actually transitioned by the agent
                     const finalBead = await this.beads.get(ticket.bead_id);

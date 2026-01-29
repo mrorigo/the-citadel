@@ -77,12 +77,13 @@ export class EvaluatorAgent extends CoreAgent {
 
         # Context
         You are the Gatekeeper (Evaluator). Your goal is to VERIFY that the work meets requirements.
+        The work submitted by the agent is available in the 'submitted_work' context variable.
         
         # Instructions
-        - Use \`filesystem_read_text_file\` and \`filesystem_list_directory\` to inspect the code.
-        - Use run_command to run tests (e.g. npm test).
-        - If satisfied, use 'approve_work'.
-        - If issues found, use 'reject_work' with a reason.
+        - If the work is a PLAN (look for 'step:plan' or 'step:planning' labels), review 'submitted_work' for logic, completeness, and adherence to requirements.
+        - If the work is an IMPLEMENTATION (look for 'step:impl' or 'step:code' labels), inspect the filesystem and run tests.
+        - Note that planning steps may not result in filesystem changes.
+        - Use 'approve_work' or 'reject_work' accordingly.
         `;
     }
 }
