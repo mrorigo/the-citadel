@@ -186,7 +186,19 @@ export abstract class CoreAgent {
             for (const tc of toolCalls) {
                 logger.info(`[${this.role}] Executing tool: ${tc.toolName}`, { tool: tc.toolName, full_tc: tc });
 
-                const tool = this.tools[tc.toolName];
+                let toolName = tc.toolName;
+                let tool = this.tools[toolName];
+
+                if (!tool && toolName.length >= 5) {
+                    const matches = Object.keys(this.tools).filter(k => k.endsWith(`_${toolName}`) || k.endsWith(`-${toolName}`));
+                    if (matches.length === 1) {
+                        const resolvedName = matches[0]!;
+                        logger.info(`[${this.role}] Auto-resolved tool ${toolName} to ${resolvedName}`);
+                        toolName = resolvedName;
+                        tool = this.tools[toolName]!;
+                    }
+                }
+
                 if (!tool) {
                     toolResults.push({
                         type: 'tool-result',
@@ -210,7 +222,7 @@ export abstract class CoreAgent {
                 try {
                     // Internal execution
                     // Strictly validate input against schema if it's a Zod schema
-                    const schema = this.schemas[tc.toolName];
+                    const schema = this.schemas[toolName];
 
                     // Parameter Auto-Injection:
                     // Weaker LLMs often fail to extract beadId from the context in the system prompt.
@@ -244,7 +256,7 @@ export abstract class CoreAgent {
                     // Check for explicit finish signals if tool returns them? 
                     // Not standard, but we can convention.
                     // Or check specific tool names.
-                    if (tc.toolName === 'submit_work' || tc.toolName === 'approve_work' || tc.toolName === 'reject_work' || tc.toolName === 'enqueue_task') {
+                    if (toolName === 'submit_work' || toolName === 'approve_work' || toolName === 'reject_work' || toolName === 'enqueue_task') {
                         finished = true;
                     }
 
