@@ -21,13 +21,15 @@ export class WorkerAgent extends CoreAgent {
             'Update the progress of the current task',
             z.object({
                 beadId: z.string().describe('The ID of the bead being worked on'),
-                message: z.string().describe('Progress message'),
-            }),
-            async ({ beadId, message }) => {
+                message: z.string().optional().describe('Progress message'),
+                reasoning: z.string().optional().describe('Reasoning or detailed progress'),
+            }).passthrough(),
+            async (args: { beadId: string; message?: string; reasoning?: string }) => {
+                const msg = args.message || args.reasoning || "Working on it...";
                 // In a real system, this would maybe comment on the issue or update a log
                 // For now, we update the Bead status to ensure it's in_progress
-                await getBeads().update(beadId, { status: 'in_progress' });
-                return { success: true, message: `Updated ${beadId}: ${message}` };
+                await getBeads().update(args.beadId, { status: 'in_progress' });
+                return { success: true, message: `Updated ${args.beadId}: ${msg}` };
             }
         );
 
