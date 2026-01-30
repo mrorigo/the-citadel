@@ -129,7 +129,8 @@ export class WorkerAgent extends CoreAgent {
     }
 
     override async run(prompt: string, context?: Record<string, unknown>): Promise<string> {
-        let outputSchema: z.ZodTypeAny = z.string().describe('Unstructured output data (default)');
+        // Bug Fix: Default schema must be permissive (object or string) to avoid blocking non-formula structured output
+        let outputSchema: z.ZodTypeAny = z.record(z.string(), z.unknown()).describe('Unstructured output data (default)');
 
         // Dynamic Schema Lookup
         if (context?.beadId) {
@@ -161,6 +162,7 @@ export class WorkerAgent extends CoreAgent {
 
         // Re-register tool with specific schema for this run
         // Bug #2 fix: Accept both string and object for output
+
         const outputParamSchema = z.union([z.string(), outputSchema]).optional().describe('Output data - can be a string or match the required schema');
 
         this.registerTool(
