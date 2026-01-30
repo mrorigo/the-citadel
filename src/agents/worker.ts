@@ -39,8 +39,8 @@ export class WorkerAgent extends CoreAgent {
             'Submit the completed work for verification',
             z.object({
                 beadId: z.string().describe('The ID of the bead being worked on (from context)'),
-                summary: z.string().describe('Summary of work done'),
-                output: z.string().optional().describe('Unstructured output data (default)'),
+                summary: z.string().describe('REQUIRED: Brief summary of work completed'),
+                output: z.union([z.string(), z.record(z.string(), z.unknown())]).optional().describe('Output data - can be a string or structured object'),
                 acceptance_test_result: z.optional(z.string().describe('Result of running the acceptance test')),
             }),
             this.handleSubmitWork

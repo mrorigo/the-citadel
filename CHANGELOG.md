@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.10] - 2026-01-30
+
+### Fixed
+- **Planning Workflow Schema Fix**: Fixed critical bug where `submit_work` tool rejected structured JSON output from planning steps
+  - Updated initial schema to accept both strings and objects: `z.union([z.string(), z.record(z.unknown())])`
+  - Planning workflows can now submit structured output with `affected_files`, `analysis`, and `steps`
+  - Preserves backward compatibility with string outputs and dynamic schema enforcement
+
 ## [0.1.9] - 2026-01-29
 
 ### Fixed

@@ -125,6 +125,28 @@ describe('WorkerAgent Integration Coverage', () => {
         expect(mockQueue.complete).not.toHaveBeenCalled();
     });
 
+    it('should accept structured object output (planning workflow)', async () => {
+        const submitWork = (agent as any).tools['submit_work'];
+        const planOutput = {
+            affected_files: ['README.md', 'src/feature.ts'],
+            analysis: 'This plan addresses the feature request',
+            steps: [
+                { title: 'Step 1', description: 'Create files' },
+                { title: 'Step 2', description: 'Implement logic' }
+            ]
+        };
+
+        const result = await submitWork.execute({
+            beadId: 'b1',
+            summary: 'Plan created',
+            output: planOutput
+        });
+
+        expect(result.success).toBe(true);
+        expect(mockBeads.update).toHaveBeenCalledWith('b1', { status: 'verify' });
+        expect(mockQueue.complete).toHaveBeenCalledWith('ticket-1', planOutput);
+    });
+
     it('should apply dynamic schema in run()', async () => {
         await agent.run('test', { beadId: 'test-bead' });
 

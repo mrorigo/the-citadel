@@ -5,6 +5,7 @@ import { setBeadsInstance } from '../../src/core/beads';
 import type { WorkQueue } from '../../src/core/queue';
 import { setQueueInstance } from '../../src/core/queue';
 import { clearGlobalSingleton } from '../../src/core/registry';
+import { setConfig, resetConfig } from '../../src/config';
 
 // Mock dependencies
 const mockBeads = {
@@ -12,6 +13,7 @@ const mockBeads = {
     get: mock(async () => ({ id: 'mock-id', title: 'mock', status: 'open', created_at: '', updated_at: '', priority: 2 } as Bead)),
     ready: mock(async (): Promise<Bead[]> => []),
     doctor: mock(async () => true),
+    update: mock(async () => ({ id: 'mock-id', title: 'mock', status: 'open', created_at: '', updated_at: '', priority: 2 } as Bead)),
 };
 
 const mockQueue = {
@@ -64,15 +66,31 @@ describe('Conductor Service Integration', () => {
     let conductor: Conductor;
 
     beforeEach(() => {
+        // Setup proper config
+        setConfig({
+            env: 'development',
+            providers: { ollama: {} },
+            beads: { path: '.beads' },
+            worker: { min_workers: 0, max_workers: 1, load_factor: 1 },
+            gatekeeper: { min_workers: 0, max_workers: 1, load_factor: 1 },
+            agents: {
+                router: { provider: 'ollama', model: 'mock' },
+                worker: { provider: 'ollama', model: 'mock' },
+                gatekeeper: { provider: 'ollama', model: 'mock' },
+                supervisor: { provider: 'ollama', model: 'mock' }
+            }
+        });
+
         conductor = new Conductor(mockBeads as unknown as BeadsClient, mockQueue as unknown as WorkQueue);
         setBeadsInstance(mockBeads as unknown as BeadsClient);
         setQueueInstance(mockQueue as unknown as WorkQueue);
     });
 
     afterEach(() => {
-        conductor.stop();
+        if (conductor) conductor.stop();
         clearGlobalSingleton('beads_client');
         clearGlobalSingleton('work_queue');
+        resetConfig();
         mock.restore(); // Restore mocks if needed, though module mocks persist
     });
 
