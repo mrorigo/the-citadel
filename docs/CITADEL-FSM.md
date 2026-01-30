@@ -128,19 +128,21 @@ sequenceDiagram
 
 1.  **Pickup**: The Gatekeeper picks up beads in `verify` status.
 2.  **Approval**: If the **EvaluatorAgent** calls `approve_work`, the bead becomes `done`.
-3.  **Rejection**: If the **EvaluatorAgent** calls `reject_work`, the bead becomes `open` (sent back to Worker).
+3.  **Rejection**: If the **EvaluatorAgent** calls `reject_work`, the bead becomes `open` (with a `rejected` label). This allows the Router to immediately re-queue the work for a new Worker attempt.
 4.  **Zombie Prevention**: If the agent exits without decision, the Hook detects that the status is still `verify`. It adds an `evaluator-incomplete` label but keeps the status as `verify` so it is immediately eligible for re-evaluation by another Gatekeeper.
 
 ---
 
 ## Failure Modes & Recovery
 
-| Failure Scenario     | Detected By                                | Action Taken     | Resulting State                   |
-| :------------------- | :----------------------------------------- | :--------------- | :-------------------------------- |
-| **Worker Crash**     | Conductor Worker Hook (try/catch)          | Mark as failed   | `open` + `failed`, `agent-error`  |
-| **Worker No-Op**     | Conductor Worker Hook (post-run logic)     | Rollback to open | `open` + `agent-incomplete`       |
-| **Gatekeeper Crash** | Conductor Gatekeeper Hook (try/catch)      | Log error        | `verify` + `evaluator-error`      |
-| **Gatekeeper No-Op** | Conductor Gatekeeper Hook (post-run logic) | Flag for retry   | `verify` + `evaluator-incomplete` |
+| Failure Scenario           | Detected By                                | Action Taken     | Resulting State                   |
+| :------------------------- | :----------------------------------------- | :--------------- | :-------------------------------- |
+| **Worker Crash**           | Conductor Worker Hook (try/catch)          | Mark as failed   | `open` + `failed`, `agent-error`  |
+| **Worker No-Op**           | Conductor Worker Hook (post-run logic)     | Rollback to open | `open` + `agent-incomplete`       |
+| **Gatekeeper Crash**       | Conductor Gatekeeper Hook (try/catch)      | Log error        | `verify` + `evaluator-error`      |
+| **Gatekeeper No-Op**       | Conductor Gatekeeper Hook (post-run logic) | Flag for retry   | `verify` + `evaluator-incomplete` |
+| **Stuck in `in_progress`** | Router (stuck bead recovery)               | Reset to open    | `open` + `auto-recovered`         |
+| **Gatekeeper Rejection**   | EvaluatorAgent (`reject_work`)             | Reset to open    | `open` + `rejected`               |
 
 This robust state machine ensures that **no task is ever left behind** (Zombified), regardless of LLM stability or runtime errors.
 
@@ -155,6 +157,8 @@ Citadel uses labels as semantic modifiers to the 4 primary states. This creates 
 - **`open` + `failed`**: A task that encountered a critical error and is pending manual intervention or a specific retry strategy.
 - **`open` + `agent-incomplete`**: A task that was attempted but where the agent exited prematurely.
 - **`open` + `recovery`**: A conditional task that the Router will either skip (if the blocker succeeds) or allow to run (if the blocker fails).
+- **`open` + `rejected`**: A task that was rejected by the Gatekeeper and is pending rework by a Worker.
+- **`open` + `auto-recovered`**: A task that was stuck in `in_progress` with no active ticket and was automatically reset by the Router.
 
 ### 2. Race Condition Mitigation
 The transition from `open` to `in_progress` is technically a race condition.

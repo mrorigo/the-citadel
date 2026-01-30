@@ -110,19 +110,20 @@ export class WorkerAgent extends CoreAgent {
 
     // Extracted handler for reuse
     private handleSubmitWork = async ({ beadId, summary, output, acceptance_test_result: _acceptance_test_result }: { beadId: string, summary: string, output?: unknown, acceptance_test_result?: string }) => {
-        // Update Bead Status to verify
+        // Validate ticket exists FIRST (before any state changes)
+        const ticket = getQueue().getActiveTicket(beadId);
+        if (!ticket) {
+            throw new Error(`No active ticket found for ${beadId}. Cannot submit work.`);
+        }
+
+        // Save output FIRST (before status transition)
+        getQueue().complete(ticket.id, output || { summary });
+        logger.info(`[Worker] Submitted work for ${beadId}`, { beadId, hasOutput: !!output });
+
+        // THEN update status to verify
         await getBeads().update(beadId, {
             status: 'verify',
         });
-
-        // Save Structured Output to Ticket in Queue
-        const ticket = getQueue().getActiveTicket(beadId);
-        if (ticket) {
-            getQueue().complete(ticket.id, output || { summary });
-            logger.info(`[Worker] Submitted work for ${beadId} with output`, { beadId, hasOutput: !!output });
-        } else {
-            logger.warn(`[Worker] Could not find active ticket for ${beadId} to save output`, { beadId });
-        }
 
         return { success: true, status: 'verify', summary };
     }

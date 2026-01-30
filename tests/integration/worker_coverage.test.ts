@@ -118,9 +118,10 @@ describe('WorkerAgent Integration Coverage', () => {
     it('should handle handleSubmitWork when ticket is missing', async () => {
         mockQueue.getActiveTicket.mockReturnValue(null);
         const submitWork = (agent as any).tools['submit_work'];
-        const result = await submitWork.execute({ beadId: 'b1', summary: 'Done' });
 
-        expect(result.success).toBe(true);
+        // Now throws an error instead of silently failing
+        await expect(submitWork.execute({ beadId: 'b1', summary: 'Done' }))
+            .rejects.toThrow('No active ticket found for b1');
         expect(mockQueue.complete).not.toHaveBeenCalled();
     });
 

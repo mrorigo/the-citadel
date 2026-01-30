@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] - 2026-01-29
+
+### Fixed
+- **Critical Deadlock Fix**: Resolved a system deadlock caused by agent parameter omission and premature state transitions:
+  - `handleSubmitWork` now validates ticket existence and saves output **before** transitioning to `verify` status
+  - `reject_work` now resets bead to `open` (with `rejected` label) instead of `in_progress`, preventing orphaned beads
+  - Added stuck bead recovery to Router: automatically resets `in_progress` beads with no active ticket
+  - Added `REQUIRED` hints to mandatory tool parameters to reduce LLM omission
+
+### Changed
+- Updated `docs/CITADEL-FSM.md` to reflect new rejection behavior, stuck bead recovery, and new labels
+
 ## [0.1.8] - 2026-01-29
 
 ### Fixed

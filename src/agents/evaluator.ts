@@ -28,14 +28,18 @@ export class EvaluatorAgent extends CoreAgent {
         // Reject
         this.registerTool(
             'reject_work',
-            'Reject the work and send it back to in_progress',
+            'Reject the work and send it back for rework',
             z.object({
                 beadId: z.string().describe('The ID of the bead being rejected'),
-                reason: z.string().describe('Why the work was rejected'),
+                reason: z.string().describe('REQUIRED: Why the work was rejected'),
             }),
             async ({ beadId, reason }) => {
-                await getBeads().update(beadId, { status: 'in_progress' });
-                return { success: true, status: 'in_progress', reason };
+                const bead = await getBeads().get(beadId);
+                await getBeads().update(beadId, {
+                    status: 'open',
+                    labels: [...(bead.labels || []).filter(l => l !== 'rejected'), 'rejected']
+                });
+                return { success: true, status: 'open', reason };
             }
         );
 

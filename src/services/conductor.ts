@@ -201,6 +201,20 @@ export class Conductor {
             return;
         }
 
+        // --- Stuck Bead Recovery ---
+        // Detect beads stuck in 'in_progress' with no active ticket and reset them
+        const inProgressBeads = await beadsClient.list('in_progress');
+        for (const bead of inProgressBeads) {
+            const active = queue.getActiveTicket(bead.id);
+            if (!active) {
+                logger.warn(`[Router] Resetting stuck bead ${bead.id} (in_progress with no active ticket)`, { beadId: bead.id });
+                await beadsClient.update(bead.id, {
+                    status: 'open',
+                    labels: [...(bead.labels || []).filter(l => l !== 'auto-recovered'), 'auto-recovered']
+                });
+            }
+        }
+
         for (const bead of readyBeads) {
 
             const active = queue.getActiveTicket(bead.id);
