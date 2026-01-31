@@ -168,7 +168,7 @@ export class WorkerAgent extends CoreAgent {
             status: 'verify',
         });
 
-        return { success: true, status: 'verify', summary };
+        return { success: true, status: 'verify', summary, message: 'Work submitted successfully.' };
     }
 
     override async run(prompt: string, context?: Record<string, unknown>): Promise<string> {

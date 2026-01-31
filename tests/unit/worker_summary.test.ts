@@ -96,6 +96,7 @@ describe('WorkerAgent Summary Conflation Fix', () => {
 
         expect(result.success).toBe(true);
         expect((result as Record<string, unknown>).summary).toBe('Extracted Summary');
+        expect((result as Record<string, unknown>).message).toBe('Work submitted successfully.');
         // @ts-expect-error
         expect(mockBeads.update).toHaveBeenCalledWith('b1', { status: 'verify' });
     });
