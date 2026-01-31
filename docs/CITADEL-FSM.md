@@ -25,6 +25,14 @@ stateDiagram-v2
 | **`verify`**      | The Worker has submitted the work. It is now waiting for a **Gatekeeper** (Evaluator) to review it. |
 | **`done`**        | The task has been successfully completed and verified.                                              |
 
+## State Validation
+
+Transitions between states are guarded by strict validation rules to ensure data integrity:
+
+1.  **Strict Transitions**: Beads can only move between states defined in the FSM (e.g., `verify -> open` is allowed for rejections).
+2.  **Completion Requirement**: To transition to `done`, a bead normally requires an `acceptance_test` property to be set (defining how to verify it).
+    *   *Exception*: If the bead is marked with the `failed` label (e.g., a "Terminal Failure" from the Gatekeeper), this requirement is bypassed.
+
 ---
 
 ## Lifecycle: The Worker

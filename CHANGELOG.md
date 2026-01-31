@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.1.14] - 2026-01-31
+
+### Fixed
+- **Evaluator State & Validation Fixes**:
+  - Relaxed FSM to allow `verify` -> `open` transitions, enabling Gatekeepers to reject work back to the pool.
+  - Updated validation logic to skip strict `acceptance_test` checks for tasks marked `failed`, enabling Gatekeepers to fail work (terminal failure).
+  - Updated Evaluator system prompt to strictly enforce providing a `reason` when rejecting work.
+  - Added new integration tests (`tests/integration/evaluator_state.test.ts`) covering these edge cases.
+
 
 ## [0.1.13] - 2026-01-31
 ### Fixed

@@ -282,8 +282,9 @@ export class BeadsClient {
             const current = await this.get(id);
             this.validateTransition(current, changes.status);
 
-            // Enforce acceptance test for 'done'
-            if (changes.status === 'done' && !current.acceptance_test && !changes.acceptance_test) {
+            // Enforce acceptance test for 'done' (unless failed)
+            const isFailed = (changes.labels?.includes('failed')) || (!changes.labels && current.labels?.includes('failed'));
+            if (changes.status === 'done' && !isFailed && !current.acceptance_test && !changes.acceptance_test) {
                 throw new Error(`Cannot transition ${id} to 'done': missing acceptance_test`);
             }
         }
@@ -350,7 +351,7 @@ export class BeadsClient {
         const validTransitions: Record<BeadStatus, BeadStatus[]> = {
             'open': ['in_progress'],
             'in_progress': ['verify', 'open'], // Allow moving back to open if dropped
-            'verify': ['done', 'in_progress'], // Verify -> Done or back to In Progress if failed
+            'verify': ['done', 'in_progress', 'open'], // FIX: Allow rejecting back to open
             'done': ['in_progress', 'open'] // Reopen cases
         };
 

@@ -88,6 +88,7 @@ export class EvaluatorAgent extends CoreAgent {
         - If the work is an IMPLEMENTATION (look for 'step:impl' or 'step:code' labels), inspect the filesystem and run tests.
         - Note that planning steps may not result in filesystem changes.
         - Use 'approve_work' or 'reject_work' accordingly.
+        - CRITICAL: When using 'reject_work', you MUST provide a clear 'reason' explaining why the work was rejected so the worker can fix it.
         `;
     }
 }
