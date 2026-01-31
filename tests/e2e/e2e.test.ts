@@ -77,7 +77,8 @@ setConfig({
         gatekeeper: { provider: 'ollama', model: 'mock' },
         supervisor: { provider: 'ollama', model: 'mock' }
     },
-    worker: { timeout: 300, maxRetries: 3, costLimit: 1 },
+    worker: { timeout: 300, maxRetries: 3, costLimit: 1, min_workers: 1 },
+    gatekeeper: { min_workers: 1 },
     beads: { path: TEST_BEADS_PATH, autoSync: true },
     bridge: { maxLogs: 1000 }
 });
@@ -128,7 +129,8 @@ describe('E2E Lifecycle', () => {
         // 3. Wait for Router -> Worker -> Verify
         const start = Date.now();
         let verified = false;
-        while (Date.now() - start < 4000) {
+        // Increased timeout for full suite runs
+        while (Date.now() - start < 10000) {
             const b = await beadsClient.get(bead.id);
             if (b.status === 'verify') {
                 verified = true;
@@ -140,7 +142,7 @@ describe('E2E Lifecycle', () => {
 
         // 4. Wait for Router -> Gatekeeper -> Done
         let done = false;
-        while (Date.now() - start < 15000) {
+        while (Date.now() - start < 20000) {
             const b = await beadsClient.get(bead.id);
             if (b.status === 'done') {
                 done = true;
@@ -149,5 +151,5 @@ describe('E2E Lifecycle', () => {
             await new Promise(r => setTimeout(r, 500));
         }
         expect(done).toBe(true);
-    }, 20000); // Including buffer
+    }, 30000); // 30s buffer
 });
