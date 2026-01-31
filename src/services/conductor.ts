@@ -75,11 +75,17 @@ export class Conductor {
                 const agent = new EvaluatorAgent();
                 const bead = await this.beads.get(ticket.bead_id);
 
+                const submittedWork = this.queue.getOutput(ticket.bead_id);
+
+                if (!submittedWork) {
+                    logger.warn(`[Gatekeeper] No submitted work found for ${ticket.bead_id} (retrieved 'null' from queue). Evaluator may reject.`, { beadId: ticket.bead_id });
+                }
+
                 try {
                     await agent.run(`Verify this work: ${bead.title}`, {
                         beadId: ticket.bead_id,
                         bead,
-                        submitted_work: ticket.output
+                        submitted_work: submittedWork
                     });
 
                     // Check if the bead was actually transitioned by the agent

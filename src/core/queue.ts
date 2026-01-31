@@ -147,6 +147,8 @@ export class WorkQueue {
         const result = this.db.query(`
             SELECT output FROM tickets 
             WHERE bead_id = ? AND status = 'completed'
+            ORDER BY completed_at DESC
+            LIMIT 1
         `).get(beadId) as { output: string | null } | null;
 
         if (result?.output) {
