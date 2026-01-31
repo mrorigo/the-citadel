@@ -11,23 +11,6 @@ import { setConfig, resetConfig } from '../../src/config';
 // Import real agents to patch prototypes
 import { RouterAgent } from '../../src/agents/router';
 import { WorkerAgent } from '../../src/agents/worker';
-import { GatekeeperAgent } from '../../src/agents/gatekeeper';
-import { SupervisorAgent } from '../../src/agents/supervisor';
-
-// Import real Piper to patch
-import { getPiper } from '../../src/services/piper';
-
-// We need to access getPiper to patch the singleton it returns?
-// Or mock the module safely? 
-// Piper is harder because it's a singleton getter. 
-// But let's look at `src/services/conductor.ts`: import { getPiper } from './piper';
-// If we mock the module for Piper, we risk leaking.
-// Maybe we can stub `getPiper().pipeData` if getPiper returns an object?
-// But getPiper return type might not be easily mutable if it's not a class instance.
-
-// Let's try mocking Piper module but ensuring restore works, or using spyOn if possible?
-// Bun `spyOn` equivalent? `mock(obj, 'method')`.
-// Check if `getPiper()` returns a singleton object we can patch.
 
 const mockBeads = {
     ready: mock(async () => []),

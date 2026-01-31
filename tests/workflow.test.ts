@@ -62,7 +62,7 @@ needs = ["prep"]
             addDependency: mock(async (_child: string, _parent: string) => {
                 // valid
             }),
-            update: mock(async (id: string, _changes: any) => {
+            update: mock(async (id: string, _changes: unknown) => {
                 return { id, status: 'updated' };
             }),
             get: mock(async (id: string) => ({ id, title: 'mock', status: 'open', created_at: '', updated_at: '', priority: 2 })),

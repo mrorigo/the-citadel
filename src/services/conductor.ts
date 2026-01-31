@@ -39,10 +39,17 @@ export class Conductor {
                 await this.beads.update(ticket.bead_id, { status: 'in_progress' });
 
                 const agent = new WorkerAgent();
-                const bead = await this.beads.get(ticket.bead_id);
+                const bead = await this.beads.get(ticket.bead_id).catch(() => null);
+
+                if (!bead) {
+                    logger.error(`[Worker] Failed to retrieve bead ${ticket.bead_id} for processing`, { beadId: ticket.bead_id });
+                    // We should fail the ticket if the bead is gone
+                    this.queue.fail(ticket.id, true);
+                    return;
+                }
 
                 try {
-                    await agent.run(`Process this task: ${bead.title}`, { beadId: ticket.bead_id, bead });
+                    const result = await agent.run(`Process this task: ${bead.title}`, { beadId: ticket.bead_id, bead });
 
                     // Check if the bead was actually transitioned by the agent
                     const finalBead = await this.beads.get(ticket.bead_id);
@@ -55,15 +62,17 @@ export class Conductor {
                             labels: [...(finalBead.labels || []), 'agent-incomplete']
                         });
                     }
+                    return result;
                 } catch (error) {
                     // Agent crashed - mark as failed
                     logger.error(`[Worker] Agent failed for ${ticket.bead_id}`, error);
+                    const currentLabels = bead?.labels || [];
                     await this.beads.update(ticket.bead_id, {
                         status: 'open',
-                        labels: [...(bead.labels || []), 'failed', 'agent-error']
+                        labels: [...currentLabels, 'failed', 'agent-error']
                     });
                 }
-            }),
+            }, this.queue),
             config.worker.min_workers
         );
 
@@ -108,7 +117,7 @@ export class Conductor {
                         labels: [...(bead.labels || []), 'evaluator-error']
                     });
                 }
-            }),
+            }, this.queue),
             config.gatekeeper.min_workers
         );
     }

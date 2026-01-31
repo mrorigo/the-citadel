@@ -19,19 +19,46 @@ const mockBeadsList = mock();
 const mockBeadsGet = mock();
 
 class MockBeadsClient {
+    private store = new Map<string, Bead>();
+
     async create(title: string, opts: CreateOptions) {
         mockBeadsCreate(title, opts);
-        return { id: `bd-${Date.now()}-${Math.random()}`, title, status: 'open', ...opts } as Bead;
+        const id = `bd-${Date.now()}-${Math.random()}`;
+        const now = new Date().toISOString();
+        const bead: Bead = {
+            id,
+            title,
+            status: 'open',
+            priority: 1,
+            created_at: now,
+            updated_at: now,
+            labels: [],
+            ...opts
+        };
+        this.store.set(id, bead);
+        return bead;
     }
     async update(id: string, updates: Partial<Bead>) {
         mockBeadsUpdate(id, updates);
-        return { id, ...updates } as Bead;
+        const existing = this.store.get(id);
+        if (!existing) throw new Error(`Bead ${id} not found`);
+        const updated = { ...existing, ...updates };
+        this.store.set(id, updated);
+        return updated;
     }
     async list(status: string) {
-        return mockBeadsList(status);
+        mockBeadsList(status);
+        return Array.from(this.store.values()).filter(b => b.status === status);
     }
     async get(id: string) {
-        return mockBeadsGet(id);
+        mockBeadsGet(id);
+        const bead = this.store.get(id);
+        if (!bead) {
+            // For test stability, return a dummy if not found but requested by ID
+            // This happens if queue has IDs not in our store
+            return { id, title: 'Mock Bead', status: 'open', labels: [] } as Bead;
+        }
+        return bead;
     }
 }
 
@@ -100,7 +127,20 @@ describe("Concurrency Integration", () => {
 
         // 1. Enqueue 10 tasks
         for (let i = 0; i < 10; i++) {
-            queue.enqueue(`bd-${i}`, 1, 'worker');
+            // We must create them in the store first so update() works
+            const id = `bd-${i}`;
+            const bead = {
+                id,
+                title: `Task ${i}`,
+                status: 'open',
+                priority: 1,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                labels: []
+            } as Bead;
+            (beads as any).store.set(id, bead);
+
+            queue.enqueue(id, 1, 'worker');
         }
 
         // 2. Trigger scaling
@@ -149,7 +189,19 @@ describe("Concurrency Integration", () => {
 
         // Enqueue 100 tasks
         for (let i = 0; i < 100; i++) {
-            queue.enqueue(`bd-${i}`, 1, 'worker');
+            const id = `bd-${i}`;
+            const bead = {
+                id,
+                title: `Task ${i}`,
+                status: 'open',
+                priority: 1,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                labels: []
+            } as Bead;
+            (beads as any).store.set(id, bead);
+
+            queue.enqueue(id, 1, 'worker');
         }
 
         await (conductor as unknown as TestConductor).scalePools();

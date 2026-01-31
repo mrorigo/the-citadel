@@ -30,7 +30,6 @@ export class WorkerPool {
             // Grow
             const countToAdd = targetSize - this.size;
             for (let i = 0; i < countToAdd; i++) {
-                // const id = `${this.role}-${this.size + 1}`; // Unused
                 // Note: unique IDs might need better handling if we shrink and grow repeatedly
                 // Usage of timestamp or random suffix would be safer
                 const uniqueId = `${this.role}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;

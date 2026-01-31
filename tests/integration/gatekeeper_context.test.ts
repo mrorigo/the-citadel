@@ -1,6 +1,6 @@
 
 import { describe, it, expect, mock, beforeEach, afterAll } from 'bun:test';
-import { Hook } from '../../src/core/hooks';
+import type { Hook } from '../../src/core/hooks';
 
 // 1. Mock WorkerPool BEFORE importing Conductor
 // This needs to be a "hoisted" mock or ensure require happens after
@@ -39,9 +39,9 @@ import { clearGlobalSingleton } from '../../src/core/registry';
 import { loadConfig } from '../../src/config';
 
 describe('Gatekeeper Context Integration', () => {
-    let conductor: Conductor;
     let mockBeads: Partial<BeadsClient>;
     let mockQueue: Partial<WorkQueue>;
+    let conductor: Conductor;
 
     afterAll(() => {
         mock.restore();

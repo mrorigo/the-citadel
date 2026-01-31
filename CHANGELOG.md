@@ -9,12 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Conductor Hook Dependency Injection (Critical)**: Fixed a bug where `WorkerPool` and `GatekeeperPool` hooks were falling back to the global singleton `WorkQueue` instead of using the isolated queue instance passed to `Conductor`. This caused test failures (`claim is not a function`) and prevented proper multi-queue isolation.
 - **Robust Error Handling**: Added null checks for `bead` access in `Conductor`'s error handling block to prevent secondary crashes during failure recovery.
-
-## [0.1.21] - 2026-01-31
-
-### Fixed
-- **Conductor Hook Dependency Injection (Critical)**: Fixed a bug where `WorkerPool` and `GatekeeperPool` hooks were falling back to the global singleton `WorkQueue` instead of using the isolated queue instance passed to `Conductor`. This caused test failures (`claim is not a function`) and prevented proper multi-queue isolation.
-- **Robust Error Handling**: Added null checks for `bead` access in `Conductor`'s error handling block to prevent secondary crashes during failure recovery.
 - **Output Capture**: Ensuring `Conductor` hooks return the agent's execution result so it gets persisted to the queue ticket output, fixing data flow to Gatekeepers.
 
 ## [0.1.22] - 2026-01-31

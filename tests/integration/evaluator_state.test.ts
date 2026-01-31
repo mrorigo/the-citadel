@@ -3,10 +3,6 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { BeadsClient } from '../../src/core/beads';
 import { clearGlobalSingleton } from '../../src/core/registry';
 import { loadConfig } from '../../src/config';
-import { exec } from 'node:child_process';
-import { promisify } from 'node:util';
-
-const execAsync = promisify(exec);
 
 // Test suite for verifying FSM bugs reported in Evaluator
 describe('Evaluator State Logic (Reproduction)', () => {

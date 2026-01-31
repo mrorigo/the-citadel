@@ -1,7 +1,7 @@
 import { getQueue, type Ticket, type WorkQueue } from './queue';
 
 
-export type TicketHandler = (ticket: Ticket) => Promise<void>;
+export type TicketHandler = (ticket: Ticket) => Promise<unknown>;
 
 export class Hook {
     private agentId: string;
@@ -62,10 +62,10 @@ export class Hook {
 
         try {
             // 3. Execute handler
-            await this.handler(ticket);
+            const output = await this.handler(ticket);
 
             // 4. Mark complete
-            this.queue.complete(ticket.id);
+            this.queue.complete(ticket.id, output);
         } catch (error) {
             console.error(`Hook ${this.agentId} task failed:`, error);
             // 5. Mark failed
