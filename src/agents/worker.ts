@@ -113,16 +113,31 @@ export class WorkerAgent extends CoreAgent {
         let { beadId, summary, output, acceptance_test_result: _acceptance_test_result } = args;
 
         // Auto-Extraction: Recover summary if nested in output (common agent error)
-        if (!summary && typeof output === 'object' && output !== null && 'summary' in output) {
+        if (!summary && typeof output === 'object' && output !== null) {
             const outObj = output as Record<string, unknown>;
             if (typeof outObj.summary === 'string') {
                 summary = outObj.summary;
-                logger.info(`[Worker] Auto-extracted summary from output payload for ${beadId}`);
+                logger.info(`[Worker] Auto-extracted summary from output.summary for ${beadId}`);
+            } else if (typeof outObj.analysis === 'string') {
+                // Common pattern in planning steps
+                summary = outObj.analysis;
+                logger.info(`[Worker] Auto-extracted summary from output.analysis for ${beadId}`);
+            } else if (Object.keys(outObj).length > 0) {
+                // Fallback: If we have structured output but no clear summary field,
+                // don't fail the task. Just generate a generic summary.
+                const keys = Object.keys(outObj).slice(0, 3).join(', ');
+                summary = `Completed work with structured output (keys: ${keys}...)`;
+                logger.warn(`[Worker] No summary found. Generated fallback summary for ${beadId}`);
             }
         }
 
         if (!summary) {
-            throw new Error("Missing required field: 'summary'. Please provide a brief summary of the work completed.");
+            // Last resort: If output is just a string, use it (truncated)
+            if (typeof output === 'string' && output.length > 0) {
+                summary = output.length > 100 ? `${output.substring(0, 97)}...` : output;
+            } else {
+                throw new Error("Missing required field: 'summary'. Please provide a brief summary of the work completed, or ensure 'output' contains meaningful data.");
+            }
         }
 
         // Validate ticket exists FIRST (before any state changes)

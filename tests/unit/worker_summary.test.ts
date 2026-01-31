@@ -101,18 +101,48 @@ describe('WorkerAgent Summary Conflation Fix', () => {
         expect(mockBeads.update).toHaveBeenCalledWith('b1', { status: 'verify' });
     });
 
-    it('should still fail if summary is completely missing', async () => {
+    it('should extract summary from output.analysis', async () => {
         const submitWork = (agent as unknown as { tools: Record<string, CoreTool> }).tools.submit_work;
 
-        // Validation passes (because optional), but handler throws
+        const result = await submitWork.execute({
+            beadId: 'b2',
+            output: {
+                analysis: 'This is the analysis',
+                steps: []
+            }
+        });
+
+        expect(result.success).toBe(true);
+        expect((result as Record<string, unknown>).summary).toBe('This is the analysis');
+    });
+
+    it('should generate fallback summary for structured output', async () => {
+        const submitWork = (agent as unknown as { tools: Record<string, CoreTool> }).tools.submit_work;
+
+        const result = await submitWork.execute({
+            beadId: 'b3',
+            output: {
+                key1: 'val1',
+                key2: 'val2'
+            }
+        });
+
+        expect(result.success).toBe(true);
+        expect((result as Record<string, unknown>).summary).toContain('Completed work with structured output');
+    });
+
+    it('should still fail if no summary AND no meaningful output', async () => {
+        const submitWork = (agent as unknown as { tools: Record<string, CoreTool> }).tools.submit_work;
+
         try {
             await submitWork.execute({
-                beadId: 'b1',
-                output: { data: 'no summary here' }
+                beadId: 'b4',
+                // Missing output entirely or empty object
+                output: {}
             });
             throw new Error('Should have failed');
         } catch (e: unknown) {
-            expect((e as Error).message).toContain('Missing required field: \'summary\'');
+            expect((e as Error).message).toContain("Missing required field: 'summary'");
         }
     });
 });

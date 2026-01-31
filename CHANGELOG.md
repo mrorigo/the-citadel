@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.1.21] - 2026-01-31
+
+### Fixed
+- **Conductor Hook Dependency Injection (Critical)**: Fixed a bug where `WorkerPool` and `GatekeeperPool` hooks were falling back to the global singleton `WorkQueue` instead of using the isolated queue instance passed to `Conductor`. This caused test failures (`claim is not a function`) and prevented proper multi-queue isolation.
+- **Robust Error Handling**: Added null checks for `bead` access in `Conductor`'s error handling block to prevent secondary crashes during failure recovery.
+
+## [0.1.21] - 2026-01-31
+
+### Fixed
+- **Conductor Hook Dependency Injection (Critical)**: Fixed a bug where `WorkerPool` and `GatekeeperPool` hooks were falling back to the global singleton `WorkQueue` instead of using the isolated queue instance passed to `Conductor`. This caused test failures (`claim is not a function`) and prevented proper multi-queue isolation.
+- **Robust Error Handling**: Added null checks for `bead` access in `Conductor`'s error handling block to prevent secondary crashes during failure recovery.
+- **Output Capture**: Ensuring `Conductor` hooks return the agent's execution result so it gets persisted to the queue ticket output, fixing data flow to Gatekeepers.
+
+## [0.1.22] - 2026-01-31
+
+### Fixed
+- **Submit Work Schema Regression**: Fixed an issue where agents providing structured output without a top-level summary were failing validation. `submit_work` now robustly extracts summaries from `output.summary`, `output.analysis`, or generates a fallback summary from keys.
+
+## [0.1.20] - 2026-01-31
+
+### Fixed
+- **Persistence Overwrite Bug (Critical)**: Fixed a bug in `WorkQueue.complete()` where the standard Hook cleanup logic (which calls `complete` with no output) was unconditionally overwriting the existing output with `null`. Modified `complete()` to conditionally update the output field only if a non-null value is provided, ensuring that the WorkerAgent's submission is preserved.
+
 ## [0.1.19] - 2026-01-31
 
 ### Fixed
