@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.12] - 2026-01-31
+
+### Fixed
+- **Summary Validation Fix**: Addressed an issue where agents (especially in planning mode) misplaced the `summary` field inside the structured `output` object.
+  - Made `summary` optional in `submit_work` schema to prevent immediate validation failure.
+  - Added auto-extraction logic in `WorkerAgent` to recover the summary from `output.summary` if missing at the top level.
+  - Improves robustness against common agent "envelope conflation" errors.
+
 ## [0.1.11] - 2026-01-30
 
 ### Fixed

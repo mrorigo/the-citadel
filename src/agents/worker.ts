@@ -109,7 +109,22 @@ export class WorkerAgent extends CoreAgent {
     }
 
     // Extracted handler for reuse
-    private handleSubmitWork = async ({ beadId, summary, output, acceptance_test_result: _acceptance_test_result }: { beadId: string, summary: string, output?: unknown, acceptance_test_result?: string }) => {
+    private handleSubmitWork = async (args: { beadId: string, summary?: string, output?: unknown, acceptance_test_result?: string }) => {
+        let { beadId, summary, output, acceptance_test_result: _acceptance_test_result } = args;
+
+        // Auto-Extraction: Recover summary if nested in output (common agent error)
+        if (!summary && typeof output === 'object' && output !== null && 'summary' in output) {
+            const outObj = output as Record<string, unknown>;
+            if (typeof outObj.summary === 'string') {
+                summary = outObj.summary;
+                logger.info(`[Worker] Auto-extracted summary from output payload for ${beadId}`);
+            }
+        }
+
+        if (!summary) {
+            throw new Error("Missing required field: 'summary'. Please provide a brief summary of the work completed.");
+        }
+
         // Validate ticket exists FIRST (before any state changes)
         const ticket = getQueue().getActiveTicket(beadId);
         if (!ticket) {
@@ -170,7 +185,7 @@ export class WorkerAgent extends CoreAgent {
             'Submit the completed work for verification',
             z.object({
                 beadId: z.string().describe('The ID of the bead being worked on (from context)'),
-                summary: z.string().describe('Summary of work done'),
+                summary: z.string().optional().describe('Summary of work done (required if not in output)'),
                 output: outputParamSchema,
                 acceptance_test_result: z.optional(z.string().describe('Result of running the acceptance test')),
             }),
