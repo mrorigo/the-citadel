@@ -11,10 +11,11 @@ stateDiagram-v2
     [*] --> open: Created
     open --> in_progress: Worker Picked Up
     in_progress --> verify: submit_work()
-    in_progress --> open: Agent Crash / Timeout (Recovery)
+    in_progress --> open: Agent Crash / Zombie Recovery
     verify --> done: approve_work()
     verify --> open: reject_work()
-    verify --> verify: Agent Crash / Timeout (Recovery)
+    verify --> verify: Evaluator Crash / Zombie Recovery
+    done --> open: Manual Reopen
     done --> [*]
 ```
 
@@ -25,13 +26,14 @@ stateDiagram-v2
 | **`verify`**      | The Worker has submitted the work. It is now waiting for a **Gatekeeper** (Evaluator) to review it. |
 | **`done`**        | The task has been successfully completed and verified.                                              |
 
-## State Validation
+## State Validation & Persistence Guard
 
-Transitions between states are guarded by strict validation rules to ensure data integrity:
+Transitions between states are guarded by strict rules and a persistence layer that ensures data integrity:
 
-1.  **Strict Transitions**: Beads can only move between states defined in the FSM (e.g., `verify -> open` is allowed for rejections).
-2.  **Completion Requirement**: To transition to `done`, a bead normally requires an `acceptance_test` property to be set (defining how to verify it).
-    *   *Exception*: If the bead is marked with the `failed` label (e.g., a "Terminal Failure" from the Gatekeeper), this requirement is bypassed.
+1.  **Strict Transitions**: Beads can only move between states defined in the FSM (e.g., `verify -> open` is allowed; `open -> done` is blocked).
+2.  **Completion Requirement**: To transition to `done`, a bead normally requires an `acceptance_test` property.
+    *   *Exception*: If the bead has the `failed` label (Terminal Failure), this requirement is bypassed.
+3.  **Persistence Guard (v0.1.23)**: The `WorkQueue` enforces idempotency for task completion. Once an agent tool (like `submit_work`) marks a ticket as `completed`, any subsequent automated Hook cleanup attempts are ignored. This prevents final "narration strings" from overwriting structured tool output.
 
 ---
 

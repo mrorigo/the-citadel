@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Output Persistence Bug**: Fixed a critical "double-complete" race condition where agent tools (like `submit_work`) would save structured JSON, but the task runner would later overwrite it with a narration string. `WorkQueue.complete()` and `fail()` are now idempotent.
 
+## [0.1.24] - 2026-01-31
+
+### Changed
+- **Documentation Update**: Fully synchronized `docs/CITADEL-FSM.md` with the latest FSM implementation, including new rejection transitions, recovery labels, and the v0.1.23 Persistence Guard details.
+
 ## [0.1.20] - 2026-01-31
 
 ### Fixed
