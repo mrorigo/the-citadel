@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.1.15] - 2026-01-31
+
+### Fixed
+- **Agent Summary Conflation**: Relaxed `submit_work` schema to make `summary` optional and implemented smart extraction logic in `WorkerAgent`. This fixes a common issue where agents placed the `summary` inside the structured `output` object, causing validation failures.
+
 ## [0.1.14] - 2026-01-31
 
 ### Fixed
