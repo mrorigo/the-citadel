@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Submit Work Schema Regression**: Fixed an issue where agents providing structured output without a top-level summary were failing validation. `submit_work` now robustly extracts summaries from `output.summary`, `output.analysis`, or generates a fallback summary from keys.
 
+## [0.1.23] - 2026-01-31
+
+### Fixed
+- **Output Persistence Bug**: Fixed a critical "double-complete" race condition where agent tools (like `submit_work`) would save structured JSON, but the task runner would later overwrite it with a narration string. `WorkQueue.complete()` and `fail()` are now idempotent.
+
 ## [0.1.20] - 2026-01-31
 
 ### Fixed

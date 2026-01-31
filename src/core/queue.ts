@@ -132,12 +132,23 @@ export class WorkQueue {
      * Mark ticket as complete with optional output
      */
     complete(ticketId: string, output?: unknown): void {
-        const outputJson = output ? JSON.stringify(output) : null;
-        this.db.run(`
-        UPDATE tickets 
-        SET status = 'completed', completed_at = ?, output = ? 
-        WHERE id = ?
-    `, [Date.now(), outputJson, ticketId]);
+        const now = Date.now();
+
+        if (output !== undefined && output !== null) {
+            const outputJson = JSON.stringify(output);
+            this.db.run(`
+            UPDATE tickets 
+            SET status = 'completed', completed_at = ?, output = ? 
+            WHERE id = ? AND status = 'processing'
+        `, [now, outputJson, ticketId]);
+        } else {
+            // Preserve existing output
+            this.db.run(`
+            UPDATE tickets 
+            SET status = 'completed', completed_at = ?
+            WHERE id = ? AND status = 'processing'
+        `, [now, ticketId]);
+        }
     }
 
     /**
@@ -165,14 +176,14 @@ export class WorkQueue {
             this.db.run(`
             UPDATE tickets 
             SET status = 'failed' 
-            WHERE id = ?
+            WHERE id = ? AND status = 'processing'
         `, [ticketId]);
         } else {
             // Re-queue with incremented retry count
             this.db.run(`
             UPDATE tickets 
             SET status = 'queued', assignee_id = NULL, started_at = NULL, heartbeat_at = NULL, retry_count = retry_count + 1
-            WHERE id = ?
+            WHERE id = ? AND status = 'processing'
         `, [ticketId]);
         }
     }
