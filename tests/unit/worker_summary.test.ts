@@ -1,5 +1,5 @@
 
-import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from 'bun:test';
+import { describe, it, expect, mock, beforeEach, afterAll } from 'bun:test';
 
 // Mock MCP Service FIRST
 mock.module('../../src/services/mcp', () => ({
@@ -11,28 +11,31 @@ mock.module('../../src/services/mcp', () => ({
 }));
 
 import { WorkerAgent } from '../../src/agents/worker';
-import { setBeadsInstance } from '../../src/core/beads';
-import { setQueueInstance } from '../../src/core/queue';
-import { setFormulaRegistry } from '../../src/core/formula';
+import { setBeadsInstance, type BeadsClient } from '../../src/core/beads';
+import { setQueueInstance, type WorkQueue } from '../../src/core/queue';
+import { setFormulaRegistry, type FormulaRegistry } from '../../src/core/formula';
 import { clearGlobalSingleton } from '../../src/core/registry';
 import { loadConfig } from '../../src/config';
-import { z } from 'zod';
+import type { z } from 'zod';
+import type { LanguageModel } from 'ai';
+import type { CoreTool } from '../../src/core/tool';
 
-const mockModel: any = {
-    specificationVersion: 'v2',
+const mockModel = {
+    specificationVersion: 'v1',
     provider: 'mock',
     modelId: 'mock-model',
     doGenerate: async () => ({
         content: [{ type: 'text', text: 'Mocked Result' }],
         finishReason: 'stop',
-        usage: { promptTokens: 0, completionTokens: 0 }
+        usage: { promptTokens: 0, completionTokens: 0 },
+        rawResponse: {}
     })
-};
+} as unknown as LanguageModel;
 
 describe('WorkerAgent Summary Conflation Fix', () => {
     let agent: WorkerAgent;
-    let mockBeads: any;
-    let mockQueue: any;
+    let mockBeads: Partial<BeadsClient>;
+    let mockQueue: Partial<WorkQueue>;
 
     afterAll(() => {
         mock.restore();
@@ -46,26 +49,26 @@ describe('WorkerAgent Summary Conflation Fix', () => {
 
         mockBeads = {
             update: mock(async () => ({})),
-            get: mock(async () => ({ id: 'test-bead' })),
+            get: mock(async () => ({ id: 'test-bead', status: 'open', title: 'test', created_at: '', updated_at: '' })),
             ready: mock(async () => [])
-        };
+        } as unknown as Partial<BeadsClient>;
 
         mockQueue = {
             getActiveTicket: mock(() => ({ id: 'ticket-1' })),
             complete: mock(() => ({}))
-        };
+        } as unknown as Partial<WorkQueue>;
 
-        setBeadsInstance(mockBeads);
-        setQueueInstance(mockQueue);
-        setFormulaRegistry({ get: () => null } as any);
+        setBeadsInstance(mockBeads as BeadsClient);
+        setQueueInstance(mockQueue as WorkQueue);
+        setFormulaRegistry({ get: () => null } as unknown as FormulaRegistry);
 
         agent = new WorkerAgent(mockModel);
     });
 
     it('should successfully PARSE missing top-level summary (fix verified)', async () => {
-        const submitWork = (agent as any).tools['submit_work'];
+        const submitWork = (agent as unknown as { tools: Record<string, CoreTool> }).tools.submit_work;
         // Re-fetch schema from tool definition map
-        const schema = submitWork.parameters as z.ZodObject<any>;
+        const schema = submitWork.parameters as z.ZodObject<z.ZodRawShape>;
 
         const input = {
             beadId: 'b1',
@@ -80,7 +83,7 @@ describe('WorkerAgent Summary Conflation Fix', () => {
     });
 
     it('should extract nested summary in handler', async () => {
-        const submitWork = (agent as any).tools['submit_work'];
+        const submitWork = (agent as unknown as { tools: Record<string, CoreTool> }).tools.submit_work;
 
         // Mock update to verify success
         const result = await submitWork.execute({
@@ -92,12 +95,13 @@ describe('WorkerAgent Summary Conflation Fix', () => {
         });
 
         expect(result.success).toBe(true);
-        expect(result.summary).toBe('Extracted Summary');
+        expect((result as Record<string, unknown>).summary).toBe('Extracted Summary');
+        // @ts-expect-error
         expect(mockBeads.update).toHaveBeenCalledWith('b1', { status: 'verify' });
     });
 
     it('should still fail if summary is completely missing', async () => {
-        const submitWork = (agent as any).tools['submit_work'];
+        const submitWork = (agent as unknown as { tools: Record<string, CoreTool> }).tools.submit_work;
 
         // Validation passes (because optional), but handler throws
         try {
@@ -106,8 +110,8 @@ describe('WorkerAgent Summary Conflation Fix', () => {
                 output: { data: 'no summary here' }
             });
             throw new Error('Should have failed');
-        } catch (e: any) {
-            expect(e.message).toContain('Missing required field: \'summary\'');
+        } catch (e: unknown) {
+            expect((e as Error).message).toContain('Missing required field: \'summary\'');
         }
     });
 });

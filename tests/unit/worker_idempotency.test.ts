@@ -1,5 +1,5 @@
 
-import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from 'bun:test';
+import { describe, it, expect, mock, beforeEach, afterAll } from 'bun:test';
 
 // Mock MCP Service FIRST
 mock.module('../../src/services/mcp', () => ({
@@ -11,28 +11,30 @@ mock.module('../../src/services/mcp', () => ({
 }));
 
 import { WorkerAgent } from '../../src/agents/worker';
-import { setBeadsInstance } from '../../src/core/beads';
-import { setQueueInstance } from '../../src/core/queue';
-import { setFormulaRegistry } from '../../src/core/formula';
+import { setBeadsInstance, type BeadsClient, type Bead } from '../../src/core/beads';
+import { setQueueInstance, type WorkQueue } from '../../src/core/queue';
+import { setFormulaRegistry, type FormulaRegistry } from '../../src/core/formula';
 import { clearGlobalSingleton } from '../../src/core/registry';
 import { loadConfig } from '../../src/config';
-import { z } from 'zod';
+import type { LanguageModel } from 'ai';
+import type { CoreTool } from '../../src/core/tool';
 
-const mockModel: any = {
-    specificationVersion: 'v2',
+const mockModel = {
+    specificationVersion: 'v1',
     provider: 'mock',
     modelId: 'mock-model',
     doGenerate: async () => ({
         content: [{ type: 'text', text: 'Mocked Result' }],
         finishReason: 'stop',
-        usage: { promptTokens: 0, completionTokens: 0 }
+        usage: { promptTokens: 0, completionTokens: 0 },
+        rawResponse: {}
     })
-};
+} as unknown as LanguageModel;
 
 describe('WorkerAgent Idempotency', () => {
     let agent: WorkerAgent;
-    let mockBeads: any;
-    let mockQueue: any;
+    let mockBeads: Partial<BeadsClient>;
+    let mockQueue: Partial<WorkQueue>;
 
     afterAll(() => {
         mock.restore();
@@ -46,43 +48,79 @@ describe('WorkerAgent Idempotency', () => {
 
         mockBeads = {
             update: mock(async () => ({})),
-            get: mock(async () => ({ id: 'test-bead', status: 'verify' })), // Already verified
+            get: mock(async () => ({ id: 'test-bead', status: 'verify', title: 'test', created_at: '', updated_at: '' })),
             ready: mock(async () => [])
-        };
+        } as unknown as Partial<BeadsClient>;
 
         mockQueue = {
-            getActiveTicket: mock(() => null), // Ticket is GONE (closed)
-            complete: mock(() => ({}))
-        };
+            getActiveTicket: mock(() => null), // Default: Ticket is GONE (closed)
+            complete: mock(() => ({})),
+            getOutput: mock(() => null)
+        } as unknown as Partial<WorkQueue>;
 
-        setBeadsInstance(mockBeads);
-        setQueueInstance(mockQueue);
-        setFormulaRegistry({ get: () => null } as any);
+        setBeadsInstance(mockBeads as BeadsClient);
+        setQueueInstance(mockQueue as WorkQueue);
+        setFormulaRegistry({ get: () => null } as unknown as FormulaRegistry);
 
         agent = new WorkerAgent(mockModel);
     });
 
-    it('should handle Double Submit gracefully (Idempotency)', async () => {
-        const submitWork = (agent as any).tools['submit_work'];
+    it('should handle Double Submit gracefully (Scenario A: Already Verified)', async () => {
+        const submitWork = (agent as unknown as { tools: Record<string, CoreTool> }).tools.submit_work;
 
-        // Scenario: Ticket is null, but Bead status is ALREADY 'verify'
-        // Current behavior: Throws "No active ticket found"
-        // Desired behavior: Returns success "Already submitted"
+        // Scenario A: Ticket is null, Bead status is ALREADY 'verify'
+        mockBeads.get = mock(async () => ({
+            id: 'test-bead',
+            status: 'verify',
+            title: '',
+            created_at: '',
+            updated_at: '',
+            priority: 1
+        } as unknown as Bead));
 
-        let result;
-        try {
-            result = await submitWork.execute({
-                beadId: 'test-bead',
-                summary: 'Retry summary'
-            });
-        } catch (err: any) {
-            // CURRENT FAILURE
-            expect(err.message).toContain('No active ticket found');
-            return;
-        }
+        const result = await submitWork.execute({
+            beadId: 'test-bead',
+            summary: 'Retry summary'
+        });
 
-        // DESIRED SUCCESS (Once fixed)
-        // expect(result.success).toBe(true);
-        // expect(result.message).toContain('already submitted');
+        expect(result.success).toBe(true);
+        expect((result as Record<string, unknown>).message).toContain('already submitted');
+    });
+
+    it('should RECOVER from partial failure (Scenario B: Ticket closed, Bead not updated)', async () => {
+        const submitWork = (agent as unknown as { tools: Record<string, CoreTool> }).tools.submit_work;
+
+        // Scenario B:
+        // 1. Ticket is GONE (ActiveTicket = null)
+        // 2. Bead is STILL in_progress (Update failed previously)
+        // 3. Output EXISTS in queue (Complete succeeded)
+
+        mockBeads.get = mock(async () => ({
+            id: 'stuck-bead',
+            status: 'in_progress',
+            title: '',
+            created_at: '',
+            updated_at: '',
+            priority: 1
+        } as unknown as Bead));
+        mockQueue.getActiveTicket = mock(() => null);
+        mockQueue.getOutput = mock(() => ({ summary: 'Persisted Summary' })); // Output found!
+
+        const result = await submitWork.execute({
+            beadId: 'stuck-bead',
+            summary: 'Retry summary'
+        });
+
+        // Verify:
+        // 1. Should return success
+        expect(result.success).toBe(true);
+        expect((result as Record<string, unknown>).status).toBe('verify');
+        expect((result as Record<string, unknown>).message).toContain('recovered');
+
+        // 2. Should have triggered a forced UPDATE to verify
+        // @ts-expect-error
+        expect(mockBeads.update).toHaveBeenCalled();
+        // @ts-expect-error
+        expect(mockBeads.update.mock.lastCall[1]).toEqual({ status: 'verify' });
     });
 });

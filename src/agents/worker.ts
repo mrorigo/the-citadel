@@ -129,16 +129,32 @@ export class WorkerAgent extends CoreAgent {
         // Validate ticket exists FIRST (before any state changes)
         const ticket = getQueue().getActiveTicket(beadId);
         if (!ticket) {
-            // Idempotency Check: Did we already submit this?
-            // If the agent retries (double-submit), the ticket is already closed.
+            // Idempotency & Recovery Check
+            // Scenario A: Agent retries successful submit (Double Submit) -> Bead is 'verify'/'done'
+            // Scenario B: 'complete()' succeeded but 'update()' failed (Partial Failure) -> Ticket completed, Output exists, but Bead 'in_progress'
             try {
                 const bead = await getBeads().get(beadId);
+
+                // Check if verified/done (Scenario A)
                 if (bead.status === 'verify' || bead.status === 'done') {
                     logger.info(`[Worker] Idempotency: Work for ${beadId} already submitted. Returning success.`);
                     return { success: true, status: bead.status, message: 'Work already submitted successfully.' };
                 }
+
+                // Check active output (Scenario B)
+                // If ticket is closed (complete), getOutput will return data.
+                const savedOutput = getQueue().getOutput(beadId);
+                if (savedOutput) {
+                    logger.warn(`[Worker] Recovery: Bead ${beadId} stuck in '${bead.status}' despite completed ticket. Forcing transition to 'verify'.`);
+                    await getBeads().update(beadId, { status: 'verify' });
+
+                    const summary = (savedOutput as Record<string, unknown>)?.summary || 'Recovered summary';
+                    return { success: true, status: 'verify', summary, message: 'Work submission recovered and verified.' };
+                }
+
             } catch (err) {
-                // Ignore get error, fall through to throw
+                // Ignore errors during recovery check, fall through to main error
+                logger.debug(`[Worker] Idempotency check failed: ${err}`);
             }
             throw new Error(`No active ticket found for ${beadId}. Cannot submit work.`);
         }
