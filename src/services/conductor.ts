@@ -226,6 +226,17 @@ export class Conductor {
                     continue;
                 }
 
+                // Race Condition Fix: Double check blockers
+                if (fresh.blockers && fresh.blockers.length > 0) {
+                    const blockers = await Promise.all(fresh.blockers.map(id => beadsClient.get(id)));
+                    const activeBlockers = blockers.filter(b => b.status !== 'done');
+
+                    if (activeBlockers.length > 0) {
+                        logger.warn(`[Router] Skipping ${bead.id} - incorrectly marked ready (blocked by ${activeBlockers.map(b => b.id).join(', ')})`, { beadId: bead.id });
+                        continue;
+                    }
+                }
+
                 // --- Recovery Logic ---
                 // Recovery beads should only execute if their dependency (the main task) failed.
                 // If all blockers are done and none failed, we skip the recovery bead.

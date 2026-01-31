@@ -1,8 +1,8 @@
 {
   "name": "the-citadel",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "A deterministic agent orchestration system for Knowledge Work",
-  "module": "dist/index.js",
+  "module": "src/index.ts",
   "type": "module",
   "author": "The Citadel Team",
   "license": "MIT",

@@ -1,4 +1,14 @@
-import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from 'bun:test';
+
+// Mock MCP Service FIRST (Hoisting)
+mock.module('../../src/services/mcp', () => ({
+    getMCPService: () => ({
+        getToolsForAgent: async () => ([]),
+        initialize: async () => { },
+        shutdown: async () => { }
+    })
+}));
+
 import { WorkerAgent } from '../../src/agents/worker';
 import { setBeadsInstance } from '../../src/core/beads';
 import { setQueueInstance } from '../../src/core/queue';
@@ -24,6 +34,11 @@ describe('WorkerAgent Integration Coverage', () => {
     let mockBeads: any;
     let mockQueue: any;
     let mockRegistry: any;
+
+    // Use afterAll to clean up compilation level mocks
+    afterAll(() => {
+        mock.restore();
+    });
 
     beforeEach(async () => {
         await loadConfig();
