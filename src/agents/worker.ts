@@ -126,8 +126,20 @@ export class WorkerAgent extends CoreAgent {
         }
 
         // Validate ticket exists FIRST (before any state changes)
+        // Validate ticket exists FIRST (before any state changes)
         const ticket = getQueue().getActiveTicket(beadId);
         if (!ticket) {
+            // Idempotency Check: Did we already submit this?
+            // If the agent retries (double-submit), the ticket is already closed.
+            try {
+                const bead = await getBeads().get(beadId);
+                if (bead.status === 'verify' || bead.status === 'done') {
+                    logger.info(`[Worker] Idempotency: Work for ${beadId} already submitted. Returning success.`);
+                    return { success: true, status: bead.status, message: 'Work already submitted successfully.' };
+                }
+            } catch (err) {
+                // Ignore get error, fall through to throw
+            }
             throw new Error(`No active ticket found for ${beadId}. Cannot submit work.`);
         }
 
