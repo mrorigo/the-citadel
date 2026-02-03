@@ -129,9 +129,9 @@ export class WorkflowEngine {
                     context: finalContext, // Merged context
                 });
 
-                // tag with step ID for piping
+                // tag with step ID for piping AND 'molecule:cooking' to prevent premature routing
                 await beads.update(bead.id, {
-                    labels: [`step:${step.id}`, `formula:${formulaName}`]
+                    labels: [`step:${step.id}`, `formula:${formulaName}`, 'molecule:cooking']
                 });
 
                 createdIds.push(bead.id);
@@ -181,6 +181,16 @@ export class WorkflowEngine {
                     }
                 }
             }
+        }
+
+        // 4. Release Beads (Remove 'molecule:cooking')
+        console.log(`[WorkflowEngine] Wiring complete. Releasing beads...`);
+        const allCreatedIds = Array.from(stepIdToBeadIds.values()).flat();
+        for (const id of allCreatedIds) {
+            await beads.update(id, {
+                // @ts-ignore
+                remove_labels: ['molecule:cooking']
+            });
         }
 
         console.log(`[WorkflowEngine] Cooking complete. Molecule ID: ${rootBead.id}`);

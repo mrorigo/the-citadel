@@ -10,7 +10,7 @@ import { logger } from '../core/logger';
 import { getMCPService } from './mcp';
 import { getPiper } from './piper';
 
-import { type CitadelConfig } from '../config/schema';
+import type { CitadelConfig } from '../config/schema';
 
 export class Conductor {
     private isRunning = false;
@@ -256,6 +256,12 @@ export class Conductor {
                     continue;
                 }
 
+                // ATOMICITY: specific check for beads being cooked by WorkflowEngine
+                if (fresh.labels?.includes('molecule:cooking')) {
+                    logger.debug(`[Router] Skipping cooking bead ${bead.id}`, { beadId: bead.id });
+                    continue;
+                }
+
                 // Race Condition Fix: Double check blockers
                 if (fresh.blockers && fresh.blockers.length > 0) {
                     const blockers = await Promise.all(fresh.blockers.map(id => beadsClient.get(id)));
@@ -279,7 +285,10 @@ export class Conductor {
 
                         if (allDone && !anyFailed) {
                             logger.info(`[Router] Skipping recovery bead ${bead.id} (all dependencies succeeded)`, { beadId: bead.id });
-                            await beadsClient.update(bead.id, { status: 'done' });
+                            await beadsClient.update(bead.id, {
+                                status: 'done',
+                                acceptance_test: 'Skipped: All dependencies succeeded without failure.'
+                            });
                             continue;
                         }
                     }

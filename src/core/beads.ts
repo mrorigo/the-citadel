@@ -96,8 +96,8 @@ export class BeadsClient {
         // Sandbox mode operates in "direct mode" without requiring a daemon
         const command = `${this.binary} --sandbox ${args}`;
 
-        // Determine CWD: The parent of .beads folder
-        const cwd = resolve(this.basePath, '..');
+        // Determine CWD: The folder containing .beads folder, or the basePath itself if it is the root
+        const cwd = this.basePath.endsWith('.beads') ? resolve(this.basePath, '..') : this.basePath;
 
         try {
             const { stdout, stderr } = await execAsync(command, { cwd });
@@ -332,6 +332,15 @@ export class BeadsClient {
             }
         }
 
+        // @ts-ignore - Extension for internal use
+        if (changes.remove_labels) {
+            // Remove labels using --remove-label
+            // @ts-ignore
+            for (const label of changes.remove_labels) {
+                args += ` --remove-label "${label}"`;
+            }
+        }
+
         if (changes.context) {
             // Context is stored in description frontmatter.
             // We need to preserve the text body of description.
@@ -366,7 +375,7 @@ export class BeadsClient {
 
     private validateTransition(current: Bead, next: BeadStatus) {
         const validTransitions: Record<BeadStatus, BeadStatus[]> = {
-            'open': ['in_progress'],
+            'open': ['in_progress', 'done'], // Allow skipping (open->done)
             'in_progress': ['verify', 'open'], // Allow moving back to open if dropped
             'verify': ['done', 'in_progress', 'open'], // FIX: Allow rejecting back to open
             'done': ['in_progress', 'open'] // Reopen cases

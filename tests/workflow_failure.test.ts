@@ -99,6 +99,9 @@ description = "Cleaning up after main failure"
                 if (changes.labels && current.labels) {
                     updated.labels = [...new Set([...current.labels, ...changes.labels])];
                 }
+                if (changes.remove_labels && current.labels) {
+                    updated.labels = current.labels.filter((l: string) => !changes.remove_labels.includes(l));
+                }
                 store.set(id, updated);
                 return updated;
             }),

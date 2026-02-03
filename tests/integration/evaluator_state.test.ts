@@ -3,18 +3,29 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { BeadsClient } from '../../src/core/beads';
 import { clearGlobalSingleton } from '../../src/core/registry';
 import { loadConfig } from '../../src/config';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 // Test suite for verifying FSM bugs reported in Evaluator
 describe('Evaluator State Logic (Reproduction)', () => {
     let beads: BeadsClient;
+    let tempDir: string;
 
     beforeEach(async () => {
         await loadConfig();
         clearGlobalSingleton('beads_client');
-        beads = new BeadsClient();
 
-        // Ensure clean state (using bd verify or just creating temp beads)
-        // We'll create fresh beads for each test
+        // Setup isolated temp dir
+        tempDir = mkdtempSync(join(tmpdir(), 'citadel-eval-state-'));
+        const beadsPath = join(tempDir, '.beads');
+
+        beads = new BeadsClient(beadsPath);
+        await beads.init(); // bd init
+    });
+
+    afterEach(() => {
+        rmSync(tempDir, { recursive: true, force: true });
     });
 
     it('should allow transitioning from verify to open (Bug 1 Fix)', async () => {
