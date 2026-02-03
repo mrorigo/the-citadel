@@ -6,6 +6,7 @@ import { logger } from './logger';
 import { getProjectContext } from '../services/project-context';
 import { getConfig } from '../config';
 import { getMCPService } from '../services/mcp';
+import { getIgnoredPatterns } from './gitignore';
 
 export interface AgentContext {
     beadId?: string;
@@ -46,6 +47,20 @@ export abstract class CoreAgent {
                     jsonSchema(tool.inputSchema) as any,
                     // biome-ignore lint/suspicious/noExplicitAny: arguments are generic for MCP
                     async (args: any) => {
+                        // Middleware: Inject .gitignore patterns for filesystem search
+                        if (tool.name === 'search_files' && tool.serverName === 'filesystem') {
+                            const ignored = getIgnoredPatterns();
+
+                            // If args doesn't have excludePatterns, or we want to append?
+                            // The server likely takes an array.
+                            const current = (args.excludePatterns as string[]) || [];
+                            // Merge ensuring uniqueness
+                            const merged = Array.from(new Set([...current, ...ignored]));
+                            args.excludePatterns = merged;
+
+                            logger.info(`[${this.role}] Injected ${merged.length} ignore patterns into search_files`);
+                        }
+
                         const result = await mcp.callTool(tool.serverName, tool.name, args);
                         return result;
                     }
