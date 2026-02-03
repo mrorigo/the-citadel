@@ -17,10 +17,11 @@ export class EvaluatorAgent extends CoreAgent {
             'Approve the work and mark the task as done',
             z.object({
                 beadId: z.string().describe('The ID of the bead being evaluated'),
+                acceptance_test: z.string().optional().describe('REQUIRED if not already present: The specific acceptance test/criteria used to verify this work.'),
                 comment: z.string().optional().describe('Optional comment on the approval'),
             }),
-            async ({ beadId }) => {
-                await getBeads().update(beadId, { status: 'done' });
+            async ({ beadId, acceptance_test }) => {
+                await getBeads().update(beadId, { status: 'done', acceptance_test });
                 return { success: true, status: 'done' };
             }
         );
@@ -89,6 +90,7 @@ export class EvaluatorAgent extends CoreAgent {
         - Note that planning steps may not result in filesystem changes.
         - Use 'approve_work' or 'reject_work' accordingly.
         - CRITICAL: When using 'reject_work', you MUST provide a clear 'reason' explaining why the work was rejected so the worker can fix it.
+        - CRITICAL: When approving a plan, if the plan text contains acceptance criteria/tests, you MUST extract them and pass them to 'approve_work' via the 'acceptance_test' argument.
         `;
     }
 }
