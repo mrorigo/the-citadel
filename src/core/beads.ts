@@ -178,7 +178,7 @@ export class BeadsClient {
         let blockers: string[] = [];
         if (raw.dependencies) {
             blockers = raw.dependencies
-                .filter(d => d.dependency_type === 'blocks' || d.dependency_type === 'parent-child')
+                .filter(d => d.dependency_type === 'blocks')
                 .map(d => d.id);
         } else if (raw.blockers) {
             blockers = raw.blockers;
