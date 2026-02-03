@@ -29,6 +29,10 @@ const RawBeadSchema = z.object({
     assignee: z.string().optional(),
     labels: z.array(z.string()).optional(),
     parent: z.string().optional(),
+    dependencies: z.array(z.object({
+        id: z.string(),
+        dependency_type: z.string(),
+    })).optional(),
     blockers: z.array(z.string()).optional(),
     issue_type: z.string().optional(), // Added type field, maps to type in domain
     acceptance_criteria: z.string().optional(), // Maps to acceptance_test in domain
@@ -167,15 +171,24 @@ export class BeadsClient {
                 status = 'in_progress';
             }
         } else {
-            status = 'open'; // Default fallback, or map correctly if other statuses exist
+            status = 'open';
+        }
+
+        // Map dependencies to blockers
+        let blockers: string[] = [];
+        if (raw.dependencies) {
+            blockers = raw.dependencies
+                .filter(d => d.dependency_type === 'blocks' || d.dependency_type === 'parent-child')
+                .map(d => d.id);
+        } else if (raw.blockers) {
+            blockers = raw.blockers;
         }
 
         // Parse context from description
         let context: Record<string, unknown> | undefined;
-        let description = raw.description || undefined; // Normalizing null/undefined to undefined
+        let description = raw.description || undefined;
 
         if (description) {
-            // We use a temp variable to help TS narrowing if needed, but description is string here
             const match = description.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
             if (match?.[1] && match[2]) {
                 try {
@@ -185,7 +198,7 @@ export class BeadsClient {
                         description = match[2];
                     }
                 } catch {
-                    // Ignore parse error, treat as plain description
+                    // Ignore parse error
                 }
             }
         }
@@ -194,6 +207,7 @@ export class BeadsClient {
             ...raw,
             status,
             type: raw.issue_type,
+            blockers,
             acceptance_test: raw.acceptance_criteria,
             description,
             context

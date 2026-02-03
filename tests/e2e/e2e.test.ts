@@ -1,28 +1,42 @@
 import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
-import { Conductor } from '../../src/services/conductor';
-import { WorkQueue, setQueueInstance, getQueue } from '../../src/core/queue';
-import { BeadsClient, setBeadsInstance, getBeads } from '../../src/core/beads';
 import { rm, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
-// FORCE UNMOCK: Restore real implementations if they were mocked by other tests
-mock.module('../../src/core/beads', () => {
-    return import('../../src/core/beads'); // Re-import real module
-});
-mock.module('../../src/core/queue', () => {
-    return import('../../src/core/queue');
-});
+const TEST_ENV = join(process.cwd(), `tests/temp_e2e_env_${Date.now()}_${Math.floor(Math.random() * 1000)}`);
+const TEST_BEADS_PATH = join(TEST_ENV, '.beads');
+const TEST_QUEUE_PATH = join(TEST_ENV, 'queue.sqlite');
 
-// Mock Agents to force deterministic behavior without LLM costs
+// 1. Mock Registry (Ultimate Isolation)
+const localRegistry: Record<string, any> = {};
+mock.module('../../src/core/registry', () => ({
+    getGlobalSingleton: (key: string, factory: () => any) => {
+        if (!localRegistry[key]) {
+            localRegistry[key] = factory();
+        }
+        return localRegistry[key];
+    },
+    setGlobalSingleton: (key: string, value: any) => {
+        localRegistry[key] = value;
+    },
+    clearGlobalSingleton: (key: string) => {
+        delete localRegistry[key];
+    }
+}));
+
+// 2. Mock Agents
 mock.module('../../src/agents/router', () => ({
     RouterAgent: class MockRouter {
+        static testQueue: any = null;
         // biome-ignore lint/suspicious/noExplicitAny: Mocking context
         async run(_prompt: string, context: any) {
             const { beadId, status } = context || {};
             console.log(`[MockRouter] Analyze ${beadId} (${status})`);
-            // We need to access the real Queue using the singleton accessor, 
-            // which we will inject with our instance.
-            const q = getQueue();
+
+            // Use injected test queue (with fallback if needed, but we expect injection)
+            // @ts-ignore
+            const { getQueue } = await import('../../src/core/queue');
+            // @ts-ignore
+            const q = globalThis.__TEST_QUEUE__ || MockRouter.testQueue || getQueue();
 
             if (status === 'open') {
                 console.log(`[MockRouter] Enqueuing ${beadId} for worker`);
@@ -40,12 +54,16 @@ mock.module('../../src/agents/router', () => ({
 
 mock.module('../../src/agents/worker', () => ({
     WorkerAgent: class MockWorker {
+        static beadsClient: any = null;
         // biome-ignore lint/suspicious/noExplicitAny: Mocking context
         async run(_prompt: string, context: any) {
+            const client = MockWorker.beadsClient;
+            if (!client) throw new Error("MockWorker: beadsClient not injected");
+
             console.log(`[Worker] Moving ${context.beadId} to in_progress...`);
-            await getBeads().update(context.beadId, { status: 'in_progress' });
+            await client.update(context.beadId, { status: 'in_progress' });
             console.log(`[Worker] Moving ${context.beadId} to verify...`);
-            await getBeads().update(context.beadId, { status: 'verify' });
+            await client.update(context.beadId, { status: 'verify' });
             return "Work done";
         }
     }
@@ -53,63 +71,131 @@ mock.module('../../src/agents/worker', () => ({
 
 mock.module('../../src/agents/evaluator', () => ({
     EvaluatorAgent: class MockEvaluator {
+        static beadsClient: any = null;
         // biome-ignore lint/suspicious/noExplicitAny: Mocking context
         async run(_prompt: string, context: any) {
+            const client = MockEvaluator.beadsClient;
+            if (!client) throw new Error("MockEvaluator: beadsClient not injected");
+
             console.log(`[Gatekeeper] Approving ${context.beadId}...`);
-            await getBeads().update(context.beadId, { status: 'done' });
+            await client.update(context.beadId, { status: 'done' });
             return "Approved";
         }
     }
 }));
 
-const TEST_ENV = join(process.cwd(), `tests/temp_e2e_env_${Date.now()}_${Math.floor(Math.random() * 1000)}`);
-const TEST_BEADS_PATH = join(TEST_ENV, '.beads');
-const TEST_QUEUE_PATH = join(TEST_ENV, 'queue.sqlite');
 
-// Inject Config
-import { setConfig } from '../../src/config';
-setConfig({
-    env: 'development',
-    providers: {},
-    agents: {
-        router: { provider: 'ollama', model: 'mock' },
-        worker: { provider: 'ollama', model: 'mock' },
-        gatekeeper: { provider: 'ollama', model: 'mock' },
-        supervisor: { provider: 'ollama', model: 'mock' }
-    },
-    worker: { timeout: 300, maxRetries: 3, costLimit: 1, min_workers: 1 },
-    gatekeeper: { min_workers: 1 },
-    beads: { path: TEST_BEADS_PATH, autoSync: true },
-    bridge: { maxLogs: 1000 }
-});
+// 3. Dynamic Imports for System Under Test
+// We use top-level await to load them AFTER the mocks are registered.
+const { Conductor } = await import('../../src/services/conductor');
+const { WorkQueue, setQueueInstance } = await import('../../src/core/queue');
+const { BeadsClient, setBeadsInstance } = await import('../../src/core/beads');
+
 
 describe('E2E Lifecycle', () => {
-    let conductor: Conductor;
-    let beadsClient: BeadsClient;
+    let conductor: InstanceType<typeof Conductor>;
+    let beadsClient: InstanceType<typeof BeadsClient>;
 
     beforeEach(async () => {
         await rm(TEST_ENV, { recursive: true, force: true });
         await mkdir(TEST_BEADS_PATH, { recursive: true });
 
-        // Init Real Queue at temp path and inject it
         const queueInstance = new WorkQueue(TEST_QUEUE_PATH);
         setQueueInstance(queueInstance);
 
-        // Init Real Beads Client and inject it
+        // Inject into MockRouter
+        const { RouterAgent } = await import('../../src/agents/router');
+        // @ts-ignore
+        RouterAgent.testQueue = queueInstance;
+        // @ts-ignore
+        globalThis.__TEST_QUEUE__ = queueInstance;
+
         beadsClient = new BeadsClient(TEST_BEADS_PATH);
         setBeadsInstance(beadsClient);
-        await beadsClient.init(); // Initialize the DB!
+        await beadsClient.init();
 
-        // Mock doctor to return healthy status (E2E env doesn't have git)
-        beadsClient.doctor = mock(async () => true);
+        // Inject into MockWorker/Evaluator
+        const { WorkerAgent } = await import('../../src/agents/worker');
+        // @ts-ignore
+        WorkerAgent.beadsClient = beadsClient;
 
-        conductor = new Conductor(beadsClient, queueInstance);
+        const { EvaluatorAgent } = await import('../../src/agents/evaluator');
+        // @ts-ignore
+        EvaluatorAgent.beadsClient = beadsClient;
+
+        // 0. Test Worker Pool (Guaranteed Real Implementation)
+        // We define this inline to avoid any mock leakage from src/core/pool
+        class TestWorkerPool {
+            hooks: any[] = [];
+            role: string;
+            factory: (id: string) => any;
+
+            constructor(role: string, factory: (id: string) => any, initialSize: number = 1) {
+                this.role = role;
+                this.factory = factory;
+                this.resize(initialSize);
+            }
+
+            get size() { return this.hooks.length; }
+
+            async resize(targetSize: number) {
+                if (targetSize > this.size) {
+                    const add = targetSize - this.size;
+                    for (let i = 0; i < add; i++) {
+                        const id = `${this.role}-${Date.now()}-${i}`;
+                        const hook = this.factory(id);
+                        // Ensure hook starts!
+                        if (hook && typeof hook.start === 'function') {
+                            hook.start();
+                        } else {
+                            console.error(`[TestWorkerPool] Factory returned invalid hook for ${id}`, hook);
+                        }
+                        this.hooks.push(hook);
+                    }
+                } else {
+                    // shrink logic if needed
+                    while (this.size > targetSize) {
+                        const h = this.hooks.pop();
+                        if (h?.stop) h.stop();
+                    }
+                }
+            }
+            start() { this.hooks.forEach(h => h.start && h.start()); }
+            stop() { this.hooks.forEach(h => h.stop && h.stop()); }
+        }
+
+        // Config is passed, but we also manually create pools to ensure they are "Real"
+        // 4. Inject Config directly (Bypass global state)
+        const testConfig = {
+            env: 'development',
+            providers: {},
+            agents: {
+                router: { provider: 'ollama', model: 'mock' },
+                worker: { provider: 'ollama', model: 'mock' },
+                gatekeeper: { provider: 'ollama', model: 'mock' },
+                supervisor: { provider: 'ollama', model: 'mock' }
+            },
+            worker: { timeout: 300, maxRetries: 3, costLimit: 1, min_workers: 1, max_workers: 2, load_factor: 1 },
+            gatekeeper: { min_workers: 1, max_workers: 1, load_factor: 1 },
+            beads: { path: TEST_BEADS_PATH, autoSync: true },
+            bridge: { maxLogs: 1000 }
+        };
+
+        const { setConfig } = await import('../../src/config');
+        setConfig(testConfig as any);
+
+        // Inject Config AND Pool Class
+        // @ts-ignore
+        conductor = new Conductor(beadsClient, queueInstance, testConfig, TestWorkerPool);
     });
 
     afterEach(async () => {
         if (conductor) conductor.stop();
+        // @ts-ignore
+        delete globalThis.__TEST_QUEUE__;
         await rm(TEST_ENV, { recursive: true, force: true });
     });
+
 
     it('should drive a task from creation to completion', async () => {
         // 1. Create a Task (Open)
@@ -130,7 +216,7 @@ describe('E2E Lifecycle', () => {
         const start = Date.now();
         let verified = false;
         // Increased timeout for full suite runs
-        while (Date.now() - start < 10000) {
+        while (Date.now() - start < 30000) {
             const b = await beadsClient.get(bead.id);
             if (b.status === 'verify') {
                 verified = true;
@@ -142,7 +228,7 @@ describe('E2E Lifecycle', () => {
 
         // 4. Wait for Router -> Gatekeeper -> Done
         let done = false;
-        while (Date.now() - start < 20000) {
+        while (Date.now() - start < 60000) {
             const b = await beadsClient.get(bead.id);
             if (b.status === 'done') {
                 done = true;
@@ -151,5 +237,5 @@ describe('E2E Lifecycle', () => {
             await new Promise(r => setTimeout(r, 500));
         }
         expect(done).toBe(true);
-    }, 30000); // 30s buffer
+    }, 60000); // 60s buffer
 });

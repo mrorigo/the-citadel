@@ -10,11 +10,14 @@ import { logger } from '../core/logger';
 import { getMCPService } from './mcp';
 import { getPiper } from './piper';
 
+import { type CitadelConfig } from '../config/schema';
+
 export class Conductor {
     private isRunning = false;
     private routerAgent = new RouterAgent();
     private routerTimer: Timer | null = null;
     private consecutiveFailures = 0;
+    private config: CitadelConfig;
 
     // Pools
     private workerPool: WorkerPool;
@@ -23,16 +26,22 @@ export class Conductor {
     private beads: BeadsClient;
     private queue: WorkQueue;
 
-    constructor(beads?: BeadsClient, queue?: WorkQueue) {
+    constructor(beads?: BeadsClient, queue?: WorkQueue, config?: CitadelConfig, PoolClass: any = WorkerPool) {
         this.beads = beads || getBeads();
         this.queue = queue || getQueue();
+        this.config = config || getConfig();
 
-        const config = getConfig();
+        // Debug parallel test issue
+        // @ts-ignore
+        logger.info(`[Conductor] Queue DB: ${this.queue.db?.filename}`);
+        logger.info(`[Conductor] Config: min_workers=${this.config.worker.min_workers}`);
 
         // Initialize Worker Pool
-        this.workerPool = new WorkerPool(
+        // We use the injected PoolClass (defaulting to WorkerPool) to allow tests to override the implementation
+        // while preserving the internal factory logic (which binds agent execution).
+        this.workerPool = new PoolClass(
             'worker',
-            (id) => new Hook(id, 'worker', async (ticket) => {
+            (id: string) => new Hook(id, 'worker', async (ticket) => {
                 logger.info(`[Worker] Processing ${ticket.bead_id}`, { beadId: ticket.bead_id });
 
                 // Move bead to in_progress when we start processing
@@ -73,13 +82,13 @@ export class Conductor {
                     });
                 }
             }, this.queue),
-            config.worker.min_workers
+            this.config.worker.min_workers
         );
 
         // Initialize Gatekeeper Pool
-        this.gatekeeperPool = new WorkerPool(
+        this.gatekeeperPool = new PoolClass(
             'gatekeeper',
-            (id) => new Hook(id, 'gatekeeper', async (ticket) => {
+            (id: string) => new Hook(id, 'gatekeeper', async (ticket) => {
                 logger.info(`[Gatekeeper] Verifying ${ticket.bead_id}`, { beadId: ticket.bead_id });
                 const agent = new EvaluatorAgent();
                 const bead = await this.beads.get(ticket.bead_id);
@@ -118,7 +127,7 @@ export class Conductor {
                     });
                 }
             }, this.queue),
-            config.gatekeeper.min_workers
+            this.config.gatekeeper.min_workers
         );
     }
 
@@ -327,20 +336,18 @@ export class Conductor {
 
 
     private async scalePools() {
-        const config = getConfig();
-
         // Scale Workers
         const workerPending = this.queue.getPendingCount('worker');
-        let targetWorkers = Math.ceil(workerPending * config.worker.load_factor);
+        let targetWorkers = Math.ceil(workerPending * this.config.worker.load_factor);
         // Ensure bounds
-        targetWorkers = Math.max(config.worker.min_workers, Math.min(targetWorkers, config.worker.max_workers));
+        targetWorkers = Math.max(this.config.worker.min_workers, Math.min(targetWorkers, this.config.worker.max_workers));
 
         await this.workerPool.resize(targetWorkers);
 
         // Scale Gatekeepers
         const gatekeeperPending = this.queue.getPendingCount('gatekeeper');
-        let targetGatekeepers = Math.ceil(gatekeeperPending * config.gatekeeper.load_factor);
-        targetGatekeepers = Math.max(config.gatekeeper.min_workers, Math.min(targetGatekeepers, config.gatekeeper.max_workers));
+        let targetGatekeepers = Math.ceil(gatekeeperPending * this.config.gatekeeper.load_factor);
+        targetGatekeepers = Math.max(this.config.gatekeeper.min_workers, Math.min(targetGatekeepers, this.config.gatekeeper.max_workers));
 
         await this.gatekeeperPool.resize(targetGatekeepers);
     }
