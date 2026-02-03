@@ -330,6 +330,27 @@ export class Conductor {
                     `Task ready for verification: ${bead.title}. Please route to gatekeeper.`,
                     { beadId: bead.id, status: bead.status }
                 );
+            } else {
+                // CLEANUP: Check for Zombie Worker Ticket
+                // If bead is 'verify' but active ticket is 'worker' (processing or queued), the worker is effectively done/stuck.
+                if (active.target_role === 'worker' && active.status !== 'completed') {
+                    logger.warn(`[Router] Found zombie worker ticket for verify bead ${bead.id}. Cleaning up.`, { beadId: bead.id, ticketId: active.id });
+
+                    // Force complete the ticket to allow gatekeeper assignment
+                    try {
+                        // We use a direct DB update or a specialized method if available, 
+                        // but since we updated complete() to throw on status mismatch, we might need a force flag?
+                        // Actually, 'active' status IS processing or queued (getActiveTicket filters for this).
+                        // So we can try valid transition.
+                        // If it is 'queued', complete() will throw.
+                        // We should probably just kill it manually here.
+
+                        queue['db'].run(`UPDATE tickets SET status = 'completed', completed_at = ? WHERE id = ?`, [Date.now(), active.id]);
+                    } catch (e) {
+                        logger.error(`[Router] Failed to cleanup zombie ticket ${active.id}`, e);
+                    }
+                    // Continue to next cycle to pick it up as free
+                }
             }
         }
     }

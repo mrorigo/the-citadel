@@ -131,23 +131,37 @@ export class WorkQueue {
     /**
      * Mark ticket as complete with optional output
      */
+    /**
+     * Mark ticket as complete with optional output
+     */
     complete(ticketId: string, output?: unknown): void {
         const now = Date.now();
+        let result: { changes: number };
 
         if (output !== undefined && output !== null) {
             const outputJson = JSON.stringify(output);
-            this.db.run(`
+            result = this.db.run(`
             UPDATE tickets 
             SET status = 'completed', completed_at = ?, output = ? 
             WHERE id = ? AND status = 'processing'
-        `, [now, outputJson, ticketId]);
+        `, [now, outputJson, ticketId]) as { changes: number };
         } else {
             // Preserve existing output
-            this.db.run(`
+            result = this.db.run(`
             UPDATE tickets 
             SET status = 'completed', completed_at = ?
             WHERE id = ? AND status = 'processing'
-        `, [now, ticketId]);
+        `, [now, ticketId]) as { changes: number };
+        }
+
+        if (result.changes === 0) {
+            // Check if it was already completed (idempotency)
+            const current = this.db.query(`SELECT status FROM tickets WHERE id = ?`).get(ticketId) as { status: string } | null;
+            if (current && current.status === 'completed') {
+                // Already done, safe to ignore
+                return;
+            }
+            throw new Error(`Failed to complete ticket ${ticketId}: Ticket is not in 'processing' state (current: ${current?.status || 'unknown'}).`);
         }
     }
 
