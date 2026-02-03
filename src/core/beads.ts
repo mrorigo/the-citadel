@@ -30,7 +30,7 @@ const RawBeadSchema = z.object({
     labels: z.array(z.string()).optional(),
     parent: z.string().optional(),
     blockers: z.array(z.string()).optional(),
-    type: z.string().optional(), // Added type field
+    issue_type: z.string().optional(), // Added type field, maps to type in domain
     acceptance_criteria: z.string().optional(), // Maps to acceptance_test in domain
     description: z.string().optional(),
     created_at: z.string(),
@@ -193,6 +193,7 @@ export class BeadsClient {
         return {
             ...raw,
             status,
+            type: raw.issue_type,
             acceptance_test: raw.acceptance_criteria,
             description,
             context

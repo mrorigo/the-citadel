@@ -188,7 +188,7 @@ export class Conductor {
             this.consecutiveFailures++;
 
             // Exponential backoff: 5s * 2^failures, max ~5m (300s)
-            const backoff = Math.min(5000 ** this.consecutiveFailures, 300000);
+            const backoff = Math.min(5000 * (2 ** this.consecutiveFailures), 300000);
             nextDelay = backoff;
 
             logger.error(`[Conductor] Cycle failed (attempt ${this.consecutiveFailures}). Backing off for ${Math.round(nextDelay / 1000)}s:`, error);
