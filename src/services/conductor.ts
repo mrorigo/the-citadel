@@ -241,6 +241,12 @@ export class Conductor {
                     continue;
                 }
 
+                // Skip container/epic beads - they are for organizational purposes only
+                if (fresh.type === 'epic') {
+                    logger.info(`[Router] Skipping container/epic bead ${bead.id}`, { beadId: bead.id });
+                    continue;
+                }
+
                 // Race Condition Fix: Double check blockers
                 if (fresh.blockers && fresh.blockers.length > 0) {
                     const blockers = await Promise.all(fresh.blockers.map(id => beadsClient.get(id)));

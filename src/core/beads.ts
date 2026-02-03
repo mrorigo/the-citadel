@@ -30,6 +30,7 @@ const RawBeadSchema = z.object({
     labels: z.array(z.string()).optional(),
     parent: z.string().optional(),
     blockers: z.array(z.string()).optional(),
+    type: z.string().optional(), // Added type field
     acceptance_criteria: z.string().optional(), // Maps to acceptance_test in domain
     description: z.string().optional(),
     created_at: z.string(),
@@ -49,6 +50,7 @@ export const BeadSchema = z.object({
     blockers: z.array(z.string()).optional(),
     acceptance_test: z.string().optional(),
     parent: z.string().optional(),
+    type: z.string().optional(), // Added type field
     description: z.string().optional(),
     context: z.record(z.string(), z.unknown()).optional(),
     created_at: z.string(),
