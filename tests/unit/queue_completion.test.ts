@@ -42,7 +42,7 @@ describe('WorkQueue Completion Persistence', () => {
         expect(result).toEqual(initialPayload);
     });
 
-    it('should overwrite output if new output provided', () => {
+    it('should not overwrite output if already completed', () => {
         // 1. Create ticket
         queue.enqueue('bead-2', 1, 'worker');
         const ticket = queue.claim('agent-2', 'worker');
@@ -52,12 +52,12 @@ describe('WorkQueue Completion Persistence', () => {
         const initialPayload = { summary: 'A' };
         queue.complete(ticket.id, initialPayload);
 
-        // 3. Complete with NEW output
+        // 3. Complete with NEW output (should be ignored)
         const newPayload = { summary: 'B' };
         queue.complete(ticket.id, newPayload);
 
-        // 4. Verify update
+        // 4. Verify update - SHOULD remain 'A' (idempotent)
         const result = queue.getOutput('bead-2');
-        expect(result).toEqual(newPayload);
+        expect(result).toEqual(initialPayload);
     });
 });

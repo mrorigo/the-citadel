@@ -48,7 +48,7 @@ export abstract class CoreAgent {
                     // biome-ignore lint/suspicious/noExplicitAny: arguments are generic for MCP
                     async (args: any) => {
                         // Middleware: Inject .gitignore patterns for filesystem search
-                        if (tool.name === 'search_files' && tool.serverName === 'filesystem') {
+                        if (['search_files', 'directory_tree'].includes(tool.name) && tool.serverName === 'filesystem') {
                             const ignored = getIgnoredPatterns();
 
                             // If args doesn't have excludePatterns, or we want to append?
