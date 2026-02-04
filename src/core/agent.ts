@@ -3,10 +3,10 @@ import { getAgentModel } from './llm';
 import type { AgentRole } from '../config/schema';
 import { z } from 'zod';
 import { logger } from './logger';
-import { getProjectContext } from '../services/project-context';
 import { getConfig } from '../config';
 import { getMCPService } from '../services/mcp';
 import { getIgnoredPatterns } from './gitignore';
+import { getInstructionService } from './instruction';
 
 export interface AgentContext {
     beadId?: string;
@@ -60,7 +60,6 @@ export abstract class CoreAgent {
                         if (['search_files', 'directory_tree'].includes(tool.name) && tool.serverName === 'filesystem') {
                             const ignored = getIgnoredPatterns();
                             const current = (args.excludePatterns as string[]) || [];
-                            // Merge ensuring uniqueness
                             const merged = Array.from(new Set([...current, ...ignored, '.beads', '.citadel', '.codeflow']));
                             args.excludePatterns = merged;
 
@@ -111,38 +110,18 @@ export abstract class CoreAgent {
         // Ensure MCP tools are loaded
         await this.registerBuiltinTools();
 
-        // 1. Load Project Awareness
-        const projectContext = await getProjectContext().resolveContext(process.cwd(), process.cwd());
-
-        let projectRules = '';
-        if (projectContext) {
-            logger.info(`[${this.role}] Loaded AGENTS.md from ${projectContext.sourcePath}`);
-            projectRules = `
-            # PROJECT RULES (AGENTS.md)
-            You must follow these rules from the project configuration:
-            
-            ## Raw Configuration
-            ${projectContext.config.raw}
-
-            ## Parsed Commands & Rules (Reference)
-            ${projectContext.config.rules.length > 0 ? `### Extracted Rules\n${projectContext.config.rules.map(r => `- ${r}`).join('\n')}` : ''}
-            
-            ${projectContext.config.commands.setup.length > 0 ? `### Setup Commands\n${projectContext.config.commands.setup.map(c => `- ${c}`).join('\n')}` : ''}
-            ${projectContext.config.commands.test.length > 0 ? `### Test Commands\n${projectContext.config.commands.test.map(c => `- ${c}`).join('\n')}` : ''}
-            ${projectContext.config.commands.lint.length > 0 ? `### Lint Commands\n${projectContext.config.commands.lint.map(c => `- ${c}`).join('\n')}` : ''}
-            ${projectContext.config.commands.build.length > 0 ? `### Build Commands\n${projectContext.config.commands.build.map(c => `- ${c}`).join('\n')}` : ''}
-            
-            Always prioritize these project-specific instructions over general knowledge.
-            `;
-        }
-
-        const baseSystem = `You are a ${this.role}. Execute the request.
+        // 1. Resolve Context and Build Prompt using InstructionService
+        const instructionService = getInstructionService();
+        const baseSystem = await instructionService.buildPrompt({
+            role: this.role,
+            beadId: context?.beadId,
+            labels: context?.labels as string[] | undefined,
+            context: context
+        }, `You are a ${this.role}. Execute the request.
         
         # Tools
         You have access to tools. You MUST use them to perform actions.
-        
-        ${projectRules}
-        `;
+        `);
 
         const system = this.getSystemPrompt(baseSystem);
 
@@ -305,8 +284,8 @@ If you are still working, continue with your next step.`
 
                     // Enhanced Zod Error Handling
                     if (error instanceof z.ZodError) {
-                        const schemaDescription = (tool as any).parameters
-                            ? JSON.stringify((tool as any).parameters.description || 'See tool definition') // Basic schema hint
+                        const _schemaDescription = (tool as { parameters?: { description?: string } }).parameters
+                            ? JSON.stringify((tool as { parameters?: { description?: string } }).parameters?.description || 'See tool definition') // Basic schema hint
                             : 'No schema available';
 
                         const formattedIssues = error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ');

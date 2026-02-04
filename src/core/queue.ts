@@ -215,7 +215,7 @@ export class WorkQueue {
             }
 
             // Exponential delay
-            const nextAttempt = now + Math.min(1000 * Math.pow(2, nextRetry), 300000);
+            const nextAttempt = now + Math.min(1000 * 2 ** nextRetry, 300000);
 
             this.db.run(`
             UPDATE tickets 
@@ -251,7 +251,7 @@ export class WorkQueue {
                 // For stalled, we might want a simpler backoff or use count
                 const t = this.db.query(`SELECT retry_count FROM tickets WHERE id = ?`).get(ticket.id) as { retry_count: number };
                 const nextRetry = (t?.retry_count || 0) + 1;
-                const nextAttempt = now + Math.min(1000 * Math.pow(2, nextRetry), 300000);
+                const nextAttempt = now + Math.min(1000 * 2 ** nextRetry, 300000);
                 releaseStmt.run(nextAttempt, ticket.id);
             }
         });

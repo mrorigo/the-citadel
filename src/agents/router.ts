@@ -70,19 +70,11 @@ export class RouterAgent extends CoreAgent {
         return `
         ${defaultPrompt}
 
-        # Context
-        You are the Router Agent. Your purpose is to route tasks to the correct agent queue.
-        
         # Available Queues
         - 'worker': For implementation, coding, and general tasks (status: 'open').
         - 'gatekeeper': For verification and testing tasks (status: 'verify').
         - 'formula': specialized workflows defined in .citadel/formulas/ (e.g., system_migration).
 
-        # Routing Rules (CRITICAL)
-        - Tasks with status='open' → enqueue_task with queue='worker'
-        - Tasks with status='verify' → enqueue_task with queue='gatekeeper'
-        - ALWAYS specify the queue parameter explicitly in enqueue_task
-        
         # Instructions
         - Analyze the Request and Context.
         - Decide which queue to route to based on the bead status.

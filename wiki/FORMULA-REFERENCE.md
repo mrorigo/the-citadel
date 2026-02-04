@@ -164,7 +164,27 @@ needs = ["analyze"] # Must rely on the source step
 context = { score = "{{steps.analyze.output.score}}" }
 ```
 
-## 5. Dependencies
+## 5. Formula Prompts (`prompts`)
+
+You can inject specialized instructions directly into the agents involved in a specific workflow. This is useful for providing guardrails or SOPs that only apply to this formula.
+
+```toml
+formula = "system_migration"
+description = "Migrates auth system"
+
+[prompts]
+worker = "You MUST use 'git' for every change. Do NOT use the filesystem directly for final state."
+router = "Ensure all tasks are routed to the 'high-priority' queue."
+
+[[steps]]
+id = "migrate"
+title = "Run Migration"
+# ...
+```
+
+When an agent processes a bead belonging to this formula, the `InstructionService` automatically fetches and appends these prompts to the system message.
+
+## 6. Dependencies
 
 Use the `needs` array to define the Directed Acyclic Graph (DAG).
 
@@ -175,7 +195,7 @@ needs = ["step_id_1", "step_id_2"]
 - If `step_id_1` was a **Loop**, the current step will depend on **ALL** iterations of that loop (fan-in).
 - If `step_id_1` was **Skipped** (due to `if`), the dependency is ignored.
 
-## 5. Usage
+## 7. Usage
 
 Create a new Molecule from a formula:
 
@@ -183,7 +203,7 @@ Create a new Molecule from a formula:
 citadel create "My Deployment" --formula deploy_app --vars env=prod
 ```
 
-## 6. Practical Examples
+## 8. Practical Examples
 
 ### Example A: Monorepo Deployment (Loops)
 Deploy multiple microservices in parallel, then run integration tests.

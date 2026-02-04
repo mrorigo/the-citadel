@@ -26,13 +26,13 @@ export class Conductor {
     private beads: BeadsClient;
     private queue: WorkQueue;
 
-    constructor(beads?: BeadsClient, queue?: WorkQueue, config?: CitadelConfig, PoolClass: any = WorkerPool) {
+    constructor(beads?: BeadsClient, queue?: WorkQueue, config?: CitadelConfig, PoolClass: typeof WorkerPool = WorkerPool) {
         this.beads = beads || getBeads();
         this.queue = queue || getQueue();
         this.config = config || getConfig();
 
         // Debug parallel test issue
-        // @ts-ignore
+        // @ts-expect-error
         logger.info(`[Conductor] Queue DB: ${this.queue.db?.filename}`);
         logger.info(`[Conductor] Config: min_workers=${this.config.worker.min_workers}`);
 
@@ -323,8 +323,6 @@ export class Conductor {
 
         // B. Get VERIFY beads -> Send to Gatekeeper
         // Note: 'verify' is mapped to in_progress + label 'verify' in our beads client logic?
-        // Let's check beads.ts. 
-        // Yes, mapToDomain maps in_progress+verify -> 'verify'.
         const verifyBeads = await beadsClient.list('verify');
         for (const bead of verifyBeads) {
             const active = queue.getActiveTicket(bead.id);
@@ -347,14 +345,8 @@ export class Conductor {
 
                     // Force complete the ticket to allow gatekeeper assignment
                     try {
-                        // We use a direct DB update or a specialized method if available, 
-                        // but since we updated complete() to throw on status mismatch, we might need a force flag?
-                        // Actually, 'active' status IS processing or queued (getActiveTicket filters for this).
-                        // So we can try valid transition.
-                        // If it is 'queued', complete() will throw.
-                        // We should probably just kill it manually here.
-
-                        queue['db'].run(`UPDATE tickets SET status = 'completed', completed_at = ? WHERE id = ?`, [Date.now(), active.id]);
+                        // @ts-expect-error - Accessing private DB for explicit cleanup
+                        this.queue.db.run(`UPDATE tickets SET status = 'completed', completed_at = ? WHERE id = ?`, [Date.now(), active.id]);
                     } catch (e) {
                         logger.error(`[Router] Failed to cleanup zombie ticket ${active.id}`, e);
                     }

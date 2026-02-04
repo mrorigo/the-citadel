@@ -192,7 +192,8 @@ describe('WorkerAgent Integration Coverage', () => {
 
     it('should provide custom system prompt', () => {
         const prompt = (agent as any).getSystemPrompt('Default');
-        expect(prompt).toContain('You are the Worker');
-        expect(prompt).toContain('Filesystem');
+        expect(prompt).toContain('Default');
+        expect(prompt).toContain('# Guidelines');
+        expect(prompt).toContain('filesystem tools');
     });
 });

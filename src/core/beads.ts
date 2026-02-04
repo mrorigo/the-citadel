@@ -181,7 +181,7 @@ export class BeadsClient {
 
         return output.split('\n')
             .filter(line => line.trim())
-            .map(line => {
+            .flatMap(line => {
                 try {
                     const parsed = JSON.parse(line);
                     // Handle if line is a full array (CLI sometimes does this)
@@ -189,13 +189,12 @@ export class BeadsClient {
                         return parsed.map(item => {
                             try {
                                 return this.mapToDomain(RawBeadSchema.parse(item));
-                            } catch (e) { return null; }
+                            } catch (_e) { return null; }
                         });
                     }
                     return this.mapToDomain(RawBeadSchema.parse(parsed));
                 } catch (_e) { return null; }
             })
-            .flat()
             .filter(b => !!b) as Bead[];
     }
 
@@ -372,10 +371,10 @@ export class BeadsClient {
             }
         }
 
-        // @ts-ignore - Extension for internal use
+        // @ts-expect-error - Extension for internal use
         if (changes.remove_labels) {
             // Remove labels using --remove-label
-            // @ts-ignore
+            // @ts-expect-error
             for (const label of changes.remove_labels) {
                 args += ` --remove-label "${label}"`;
             }

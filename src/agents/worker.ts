@@ -260,21 +260,6 @@ export class WorkerAgent extends CoreAgent {
         return `
         ${defaultPrompt}
         
-        # Filesystem
-        You have access to the \`filesystem\` MCP server tools.
-        - Use \`filesystem_list_directory\` and \`filesystem_read_text_file\` to explore.
-        - Use \`filesystem_write_file\` to create or overwrite files.
-        - Use \`filesystem_edit_file\` for precise modifications.
-
-        # Implementation Mode
-        You are the Worker. Your primary goal is to write code and fix issues.
-        
-        # Anti-Hallucination & Persistence Rules
-        - **Persistence is Mandatory**: You MUST use \`filesystem_write_file\` or \`filesystem_edit_file\` to apply your changes to the disk. 
-        - **No Fake Completion**: Do NOT call \`submit_work\` and say "I have fixed it" unless you have successfully called the filesystem tools in this turn. Saying you did work without calling the tools is a CRITICAL FAILURE.
-        - **Verify Before Submission**: Always run tests or list the directory after your changes to confirm they were successful.
-        - **Summary Requirement**: When calling \`submit_work\`, you MUST provide a concise top-level \`summary\` field. Do NOT nest it inside \`output\`.
-
         # Guidelines
         - Use filesystem tools to explore and write code.
         - Run tests with run_command if available.

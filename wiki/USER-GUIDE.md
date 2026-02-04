@@ -203,24 +203,35 @@ Workers are not limited to single tasks. If a Worker picks up a large objective,
 3.  Spawns 5 child beads (one per competitor) to gather deep data in parallel.
 4.  Synthesizes the results once all children complete.
 
-### 5. Project Awareness (AGENTS.md)
-You can "teach" agents about your specific project by placing `AGENTS.md` files in your repository.
+### 5. Project Awareness & Custom Instructions
+You can "teach" agents about your specific project by placing rules in your repository. The Citadel uses a tiered **Instruction Discovery Service** to build agent prompts dynamically.
 
-**Example `.citadel/AGENTS.md`:**
+#### The Instruction Hierarchy (Priority order)
+1.  **Global Rules**: Loaded from `AGENTS.md` in the project root.
+2.  **Builtin Defaults**: Hardcoded core safety and persistence rules for each role.
+3.  **Role Overrides**: Files in `.citadel/instructions/role-${role}.md` (e.g., `role-worker.md`).
+4.  **Formula Prompts**: Task-specific instructions defined in a workflow's TOML.
+5.  **Tag-based Instructions**: Triggered by bead labels (e.g., `tag:git` loads `tag-git.md`).
+6.  **Context (Dynamic)**: Instructions passed directly in the bead's JSON context.
+
+#### Role-Specific Overrides
+To customize a specific agent role project-wide, create a file in `.citadel/instructions/`:
 ```markdown
-# Project Rules
-- Tone: Professional, Academic
-- Format: APA Style Citations
-- Tools: Use 'filesystem' for gathering existing data
-
-# Behavior
-- Always verify sources before citing.
-- Summarize findings before drafting sections.
+# .citadel/instructions/role-worker.md
+- Always use 'npm test' to verify changes.
+- Do not modify files in 'vendor/'.
 ```
 
-When a Worker enters a directory, it automatically merges the instructions from the nearest `AGENTS.md`.
+#### Tag-based Specialization
+If you have specific tools or domains (like Git, Research, or SQL), you can create tag-based instruction files. Any bead with a `tag:NAME` label will automatically pull in `.citadel/instructions/tag-NAME.md`.
 
-When a Worker enters a directory, it automatically merges the instructions from the nearest `AGENTS.md`.
+```markdown
+# .citadel/instructions/tag-git.md
+- Use short, descriptive commit messages.
+- Always create a new branch for feature work.
+```
+
+When a Worker picks up a task labeled `tag:git`, it will receive these additional specialized instructions automatically.
 
 ### 6. Structured Data Flow
 The Citadel supports passing rich data between steps, enabling complex chaining and branching.

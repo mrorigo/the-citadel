@@ -188,7 +188,7 @@ export class WorkflowEngine {
         const allCreatedIds = Array.from(stepIdToBeadIds.values()).flat();
         for (const id of allCreatedIds) {
             await beads.update(id, {
-                // @ts-ignore
+                // @ts-expect-error
                 remove_labels: ['molecule:cooking']
             });
         }

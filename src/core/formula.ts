@@ -34,6 +34,7 @@ export const FormulaSchema = z.object({
     formula: z.string(),
     description: z.string(),
     vars: z.record(z.string(), FormulaVariableSchema).optional(),
+    prompts: z.record(z.string(), z.string()).optional(), // Add this: { worker: "...", router: "..." }
     steps: z.array(FormulaStepSchema),
 });
 
