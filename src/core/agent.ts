@@ -18,6 +18,7 @@ export abstract class CoreAgent {
     protected model: LanguageModel;
     protected tools: Record<string, Tool> = {};
     protected schemas: Record<string, z.ZodTypeAny> = {};
+    protected requiresExplicitCompletion: boolean = false;
 
     constructor(role: AgentRole, model?: LanguageModel) {
         this.role = role;
@@ -50,9 +51,6 @@ export abstract class CoreAgent {
                         // Middleware: Inject .gitignore patterns for filesystem search
                         if (['search_files', 'directory_tree'].includes(tool.name) && tool.serverName === 'filesystem') {
                             const ignored = getIgnoredPatterns();
-
-                            // If args doesn't have excludePatterns, or we want to append?
-                            // The server likely takes an array.
                             const current = (args.excludePatterns as string[]) || [];
                             // Merge ensuring uniqueness
                             const merged = Array.from(new Set([...current, ...ignored, '.beads', '.citadel', '.codeflow']));
@@ -147,6 +145,9 @@ export abstract class CoreAgent {
 
         let finalResult = '';
 
+        let didRemindForCompletion = false;
+        let completionToolCalled = false;
+
         // Max steps 50 to prevent infinite loops but allow complex tasks
         for (let i = 0; i < 50; i++) {
             const result = await generateText({
@@ -186,11 +187,19 @@ export abstract class CoreAgent {
 
             // If no tools, we might be done
             if (!toolCalls || toolCalls.length === 0) {
-                // If the model produced a final text response without tools, we can stop?
-                // Or we can let it continue if we feel like it. 
-                // For now, if no tools, we are mostly done unless the prompt forces more.
-                // But let's check if the text implies completion? Hard to know.
-                // Let's assume: No tools = explicit answer = done.
+                // AGENT ENCOURAGEMENT: If the agent provides text but no tool calls, 
+                // and we require explicit completion, remind them ONCE.
+                if (this.requiresExplicitCompletion && !completionToolCalled && !didRemindForCompletion) {
+                    logger.info(`[${this.role}] Agent exited without completion tool. Providing reminder.`);
+                    messages.push({
+                        role: 'user',
+                        content: `You provided a response but did not call a completion tool (e.g., submit_work, approve_work, reject_work, fail_work). 
+If you have finished your task, you MUST call the appropriate tool to finalize the workflow. 
+If you are still working, continue with your next step.`
+                    });
+                    didRemindForCompletion = true;
+                    continue;
+                }
                 break;
             }
 
@@ -271,8 +280,10 @@ export abstract class CoreAgent {
                     // Check for explicit finish signals if tool returns them? 
                     // Not standard, but we can convention.
                     // Or check specific tool names.
-                    if (toolName === 'submit_work' || toolName === 'approve_work' || toolName === 'reject_work' || toolName === 'enqueue_task') {
+                    const completionTools = ['submit_work', 'approve_work', 'reject_work', 'fail_work', 'enqueue_task'];
+                    if (completionTools.includes(toolName)) {
                         finished = true;
+                        completionToolCalled = true;
                     }
 
                     const toolOutput = typeof output === 'string'

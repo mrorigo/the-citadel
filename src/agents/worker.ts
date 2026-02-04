@@ -14,6 +14,7 @@ const execAsync = promisify(exec);
 export class WorkerAgent extends CoreAgent {
     constructor(model?: LanguageModel) {
         super('worker', model);
+        this.requiresExplicitCompletion = true;
 
         // Report Progress
         this.registerTool(

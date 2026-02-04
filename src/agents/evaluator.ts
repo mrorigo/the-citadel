@@ -10,6 +10,7 @@ const execAsync = promisify(exec);
 export class EvaluatorAgent extends CoreAgent {
     constructor(model?: LanguageModel) {
         super('gatekeeper', model);
+        this.requiresExplicitCompletion = true;
 
         // Approve
         this.registerTool(

@@ -6,6 +6,7 @@ import { getWorkflowEngine } from '../services/workflow-engine';
 export class RouterAgent extends CoreAgent {
     constructor() {
         super('router');
+        this.requiresExplicitCompletion = true;
 
         // Register Tools
         this.registerTool(
