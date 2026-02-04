@@ -26,7 +26,7 @@ export abstract class CoreAgent {
     }
 
     private mcpLoaded = false;
-    protected async executeGenerateText(messages: ModelMessage[]) {
+    protected async executeGenerateText(messages: ModelMessage[]): Promise<Awaited<ReturnType<typeof generateText>>> {
         return generateText({
             model: this.model,
             tools: this.tools,
