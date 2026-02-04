@@ -1,4 +1,4 @@
-import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from 'bun:test';
 import { Conductor } from '../../src/services/conductor';
 import type { Bead, BeadsClient } from '../../src/core/beads';
 import { setBeadsInstance } from '../../src/core/beads';
@@ -56,6 +56,8 @@ describe('Conductor Resilience', () => {
             ready: mock(async () => []),
             doctor: mock(async () => true),
             update: mock(async () => ({})),
+            create: mock(async () => ({ id: 'new-bead' })),
+            addDependency: mock(async () => ({})),
         };
 
         mockQueue = {
@@ -70,8 +72,13 @@ describe('Conductor Resilience', () => {
 
     afterEach(() => {
         conductor.stop();
+    });
+
+    afterAll(() => {
+        conductor.stop();
         clearGlobalSingleton('beads_client');
         clearGlobalSingleton('work_queue');
+        clearGlobalSingleton('formula_registry');
         resetConfig();
         mock.restore();
     });

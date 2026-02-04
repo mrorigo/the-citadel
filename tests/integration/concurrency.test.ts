@@ -95,6 +95,7 @@ describe("Concurrency Integration", () => {
 
     afterEach(async () => {
         if (conductor) await conductor.stop();
+        if (queue) queue.close();
         if (dbPath) {
             try {
                 await unlink(dbPath);

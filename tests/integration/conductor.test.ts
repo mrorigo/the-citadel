@@ -1,4 +1,4 @@
-import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from 'bun:test';
 import { Conductor } from '../../src/services/conductor';
 import type { Bead, BeadsClient } from '../../src/core/beads';
 import { setBeadsInstance } from '../../src/core/beads';
@@ -14,6 +14,8 @@ const mockBeads = {
     ready: mock(async (): Promise<Bead[]> => []),
     doctor: mock(async () => true),
     update: mock(async () => ({ id: 'mock-id', title: 'mock', status: 'open', created_at: '', updated_at: '', priority: 2 } as Bead)),
+    create: mock(async () => ({ id: 'new-bead' })),
+    addDependency: mock(async () => ({})),
 };
 
 const mockQueue = {
@@ -88,10 +90,15 @@ describe('Conductor Service Integration', () => {
 
     afterEach(() => {
         if (conductor) conductor.stop();
+    });
+
+    afterAll(() => {
+        if (conductor) conductor.stop();
         clearGlobalSingleton('beads_client');
         clearGlobalSingleton('work_queue');
+        clearGlobalSingleton('formula_registry');
         resetConfig();
-        mock.restore(); // Restore mocks if needed, though module mocks persist
+        mock.restore();
     });
 
     it('should route open beads to worker', async () => {

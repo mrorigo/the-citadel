@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeAll, mock } from 'bun:test';
+import { describe, it, expect, beforeAll, afterAll, mock } from 'bun:test';
 import { WorkerAgent } from '../../src/agents/worker';
 import { loadConfig } from '../../src/config';
 import { setBeadsInstance } from '../../src/core/beads';
+import { clearGlobalSingleton } from '../../src/core/registry';
 
 describe('Report Progress Tolerance', () => {
     let mockBeads: any;
@@ -15,6 +16,10 @@ describe('Report Progress Tolerance', () => {
             addDependency: mock(async () => ({ success: true })),
         };
         setBeadsInstance(mockBeads);
+    });
+
+    afterAll(() => {
+        clearGlobalSingleton('beads_client');
     });
 
     it('should work with exact message', async () => {

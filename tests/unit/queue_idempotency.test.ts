@@ -12,6 +12,7 @@ describe('WorkQueue Idempotency', () => {
     });
 
     afterEach(async () => {
+        if (queue) queue.close();
         await rm(TEST_DB, { force: true });
     });
 

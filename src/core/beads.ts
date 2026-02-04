@@ -29,10 +29,7 @@ const RawBeadSchema = z.object({
     assignee: z.string().optional(),
     labels: z.array(z.string()).optional(),
     parent: z.string().optional(),
-    dependencies: z.array(z.object({
-        id: z.string(),
-        dependency_type: z.string(),
-    })).optional(),
+    dependencies: z.array(z.any()).optional(),
     blockers: z.array(z.string()).optional(),
     issue_type: z.string().optional(), // Added type field, maps to type in domain
     acceptance_criteria: z.string().optional(), // Maps to acceptance_test in domain
@@ -134,16 +131,19 @@ export class BeadsClient {
         const raw = RawBeadSchema.parse(Array.isArray(json) ? json[0] : json);
         return this.mapToDomain(raw);
     }
-
     private parseRawList(output: string): Bead[] {
         if (!output) return [];
-        // Handle line-delimited JSON or array of objects
-        // bd list --json often returns line-delimited
-        // bd show --json returns array
         try {
             const json = JSON.parse(output);
             if (Array.isArray(json)) {
-                return json.map(item => this.mapToDomain(RawBeadSchema.parse(item)));
+                return json.map(item => {
+                    try {
+                        return this.mapToDomain(RawBeadSchema.parse(item));
+                    } catch (e) {
+                        console.warn(`[Beads] Failed to parse bead item:`, e, item);
+                        return null;
+                    }
+                }).filter(b => !!b) as Bead[];
             }
         } catch (_e) {
             // Fallback to line delimited
@@ -153,10 +153,20 @@ export class BeadsClient {
             .filter(line => line.trim())
             .map(line => {
                 try {
-                    return this.mapToDomain(RawBeadSchema.parse(JSON.parse(line)));
-                } catch (_e) { return null; } // Filter out invalid lines
+                    const parsed = JSON.parse(line);
+                    // Handle if line is a full array (CLI sometimes does this)
+                    if (Array.isArray(parsed)) {
+                        return parsed.map(item => {
+                            try {
+                                return this.mapToDomain(RawBeadSchema.parse(item));
+                            } catch (e) { return null; }
+                        });
+                    }
+                    return this.mapToDomain(RawBeadSchema.parse(parsed));
+                } catch (_e) { return null; }
             })
-            .filter(b => !!b);
+            .flat()
+            .filter(b => !!b) as Bead[];
     }
 
     private mapToDomain(raw: RawBead): Bead {

@@ -44,6 +44,9 @@ describe('Gatekeeper Context Integration', () => {
     let conductor: Conductor;
 
     afterAll(() => {
+        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('work_queue');
+        clearGlobalSingleton('formula_registry');
         mock.restore();
     });
 
@@ -111,6 +114,7 @@ describe('Gatekeeper Context Integration', () => {
             completed_at: 0,
             heartbeat_at: 0,
             retry_count: 0,
+            next_attempt_at: null,
             output: null
         };
 

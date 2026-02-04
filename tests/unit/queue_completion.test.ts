@@ -14,6 +14,7 @@ describe('WorkQueue Completion Persistence', () => {
     });
 
     afterAll(() => {
+        if (queue) queue.close();
         if (existsSync(DB_PATH)) unlinkSync(DB_PATH);
     });
 

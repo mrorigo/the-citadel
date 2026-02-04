@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, afterAll } from 'bun:test';
 import { Conductor } from '../../src/services/conductor';
 import { BeadsClient, setBeadsInstance } from '../../src/core/beads';
 import { WorkQueue, setQueueInstance } from '../../src/core/queue';
 import { rm, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { setConfig } from '../../src/config';
+import { setConfig, resetConfig } from '../../src/config';
+import { clearGlobalSingleton } from '../../src/core/registry';
 
 // Setup test env
 const TEST_ENV = join(process.cwd(), `tests/temp_deadlock_${Date.now()}`);
@@ -41,7 +42,15 @@ describe('Deadlock Reproduction', () => {
 
     afterEach(async () => {
         if (conductor) conductor.stop();
+        if (queue) queue.close();
         await rm(TEST_ENV, { recursive: true, force: true }).catch(() => { });
+    });
+
+    afterAll(() => {
+        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('work_queue');
+        clearGlobalSingleton('formula_registry');
+        resetConfig();
     });
 
     it('should NOT block child task when parent is an epic', async () => {

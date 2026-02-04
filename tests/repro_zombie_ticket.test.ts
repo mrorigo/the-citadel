@@ -65,6 +65,7 @@ describe('Zombie Worker Ticket (Reproduction)', () => {
     });
 
     afterEach(() => {
+        if (queue) queue.close();
         if (tempDir) {
             rmSync(tempDir, { recursive: true, force: true });
         }

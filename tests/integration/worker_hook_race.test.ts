@@ -16,6 +16,10 @@ describe('Worker Hook Integration (Zombie Verification)', () => {
         queue = new WorkQueue(':memory:');
     });
 
+    afterEach(() => {
+        if (queue) queue.close();
+    });
+
     it('should handle double completion (Worker + Hook) gracefully', async () => {
         // 1. Setup Ticket
         const beadId = 'bead-1';

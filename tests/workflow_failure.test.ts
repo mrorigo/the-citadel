@@ -1,13 +1,14 @@
 
-import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from 'bun:test';
 import { join } from 'node:path';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { FormulaRegistry } from '../src/core/formula';
 import { WorkflowEngine } from '../src/services/workflow-engine';
 import { Conductor } from '../src/services/conductor';
 import { setBeadsInstance } from '../src/core/beads';
-import { setConfig } from '../src/config';
+import { setConfig, resetConfig } from '../src/config';
 import { EvaluatorAgent } from '../src/agents/evaluator';
+import { clearGlobalSingleton } from '../src/core/registry';
 
 // Mock getAgentModel to return dummy models
 mock.module('../src/core/llm', () => ({
@@ -130,6 +131,13 @@ description = "Cleaning up after main failure"
 
     afterEach(async () => {
         await rm(testRoot, { recursive: true, force: true });
+    });
+
+    afterAll(async () => {
+        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('work_queue');
+        clearGlobalSingleton('formula_registry');
+        resetConfig();
     });
 
     it('should label recovery beads correctly during instantiation', async () => {

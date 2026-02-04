@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { resolve, dirname } from 'node:path';
 import { mkdirSync } from 'node:fs';
 import { getGlobalSingleton, setGlobalSingleton } from './registry';
+import { logger } from './logger';
 
 
 // --- Schema ---
@@ -22,6 +23,7 @@ export const TicketSchema = z.object({
     completed_at: z.number().nullable(),
     heartbeat_at: z.number().nullable(),
     retry_count: z.number(),
+    next_attempt_at: z.number().nullable(),
     output: z.unknown().optional(),
 });
 
@@ -55,7 +57,8 @@ export class WorkQueue {
         started_at INTEGER,
         completed_at INTEGER,
         heartbeat_at INTEGER,
-        retry_count INTEGER DEFAULT 0
+        retry_count INTEGER DEFAULT 0,
+        next_attempt_at INTEGER
       )
     `);
 
@@ -66,9 +69,11 @@ export class WorkQueue {
         // Migration: Add output column if not exists
         try {
             this.db.run(`ALTER TABLE tickets ADD COLUMN output TEXT`);
-        } catch {
-            // Ignore if column exists
-        }
+        } catch { /* ignore */ }
+
+        try {
+            this.db.run(`ALTER TABLE tickets ADD COLUMN next_attempt_at INTEGER`);
+        } catch { /* ignore */ }
     }
 
     enqueue(beadId: string, priority?: number, targetRole?: string): void {
@@ -94,16 +99,17 @@ export class WorkQueue {
 
         const transaction = this.db.transaction(() => {
             // Find candidate
+            const now = Date.now();
             const candidate = this.db.query(`
             SELECT * FROM tickets 
-            WHERE status = 'queued' AND target_role = ?
+            WHERE status = 'queued' AND target_role = ? 
+            AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
             ORDER BY priority ASC, created_at ASC 
             LIMIT 1
-        `).get(role) as Ticket | null;
+        `).get(role, now) as Ticket | null;
 
             if (!candidate) return null;
 
-            const now = Date.now();
             this.db.run(`
             UPDATE tickets 
             SET status = 'processing', assignee_id = ?, started_at = ?, heartbeat_at = ?
@@ -185,7 +191,7 @@ export class WorkQueue {
     /**
      * Release a failed ticket back to queue (or fail permanently)
      */
-    fail(ticketId: string, permanent: boolean = false): void {
+    fail(ticketId: string, permanent: boolean = false, maxRetries: number = 10): void {
         if (permanent) {
             this.db.run(`
             UPDATE tickets 
@@ -193,12 +199,30 @@ export class WorkQueue {
             WHERE id = ? AND status = 'processing'
         `, [ticketId]);
         } else {
-            // Re-queue with incremented retry count
+            // Re-queue with incremented retry count AND next_attempt_at
+            const now = Date.now();
+            const current = this.db.query(`SELECT retry_count FROM tickets WHERE id = ?`).get(ticketId) as { retry_count: number };
+            const nextRetry = (current?.retry_count || 0) + 1;
+
+            if (nextRetry > maxRetries) {
+                logger.warn(`[Queue] Ticket ${ticketId} exceeded max retries (${maxRetries}). Failing permanently.`);
+                this.db.run(`
+                    UPDATE tickets 
+                    SET status = 'failed' 
+                    WHERE id = ? AND status = 'processing'
+                `, [ticketId]);
+                return;
+            }
+
+            // Exponential delay
+            const nextAttempt = now + Math.min(1000 * Math.pow(2, nextRetry), 300000);
+
             this.db.run(`
             UPDATE tickets 
-            SET status = 'queued', assignee_id = NULL, started_at = NULL, heartbeat_at = NULL, retry_count = retry_count + 1
+            SET status = 'queued', assignee_id = NULL, started_at = NULL, heartbeat_at = NULL, 
+                retry_count = ?, next_attempt_at = ?
             WHERE id = ? AND status = 'processing'
-        `, [ticketId]);
+        `, [nextRetry, nextAttempt, ticketId]);
         }
     }
 
@@ -216,13 +240,19 @@ export class WorkQueue {
 
         const releaseStmt = this.db.prepare(`
         UPDATE tickets 
-        SET status = 'queued', assignee_id = NULL, started_at = NULL, heartbeat_at = NULL, retry_count = retry_count + 1
+        SET status = 'queued', assignee_id = NULL, started_at = NULL, heartbeat_at = NULL, 
+            retry_count = retry_count + 1, next_attempt_at = ?
         WHERE id = ?
     `);
 
         const transaction = this.db.transaction(() => {
+            const now = Date.now();
             for (const ticket of stalled) {
-                releaseStmt.run(ticket.id);
+                // For stalled, we might want a simpler backoff or use count
+                const t = this.db.query(`SELECT retry_count FROM tickets WHERE id = ?`).get(ticket.id) as { retry_count: number };
+                const nextRetry = (t?.retry_count || 0) + 1;
+                const nextAttempt = now + Math.min(1000 * Math.pow(2, nextRetry), 300000);
+                releaseStmt.run(nextAttempt, ticket.id);
             }
         });
 
@@ -264,6 +294,12 @@ export class WorkQueue {
             WHERE status = 'queued' AND target_role = ?
         `).get(role) as { count: number };
         return result.count;
+    }
+    /**
+     * Close the database connection
+     */
+    close(): void {
+        this.db.close();
     }
 }
 

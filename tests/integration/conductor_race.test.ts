@@ -1,5 +1,5 @@
 
-import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from 'bun:test';
 import { Conductor } from '../../src/services/conductor';
 import { BeadsClient } from '../../src/core/beads';
 import { WorkQueue } from '../../src/core/queue';
@@ -16,7 +16,9 @@ const mockBeads = {
     ready: mock(async () => []),
     get: mock(async (id: string) => ({ id, status: 'open', blockers: [] })),
     list: mock(async () => []),
-    update: mock(async () => ({}))
+    update: mock(async () => ({})),
+    create: mock(async () => ({ id: 'new-bead' })),
+    addDependency: mock(async () => ({})),
 };
 
 const mockQueue = {
@@ -89,9 +91,10 @@ describe('Conductor Race Condition', () => {
     }
 
     function teardownMocks() {
-        conductor.stop();
+        if (conductor) conductor.stop();
         clearGlobalSingleton('beads_client');
         clearGlobalSingleton('work_queue');
+        clearGlobalSingleton('formula_registry');
         resetConfig();
 
         // Restore Prototypes
@@ -100,6 +103,10 @@ describe('Conductor Race Condition', () => {
 
         mock.restore();
     }
+
+    afterAll(() => {
+        teardownMocks();
+    });
 
     it('should NOT route a bead if its blockers are not done (Double Check)', async () => {
         // Mock Piper? 

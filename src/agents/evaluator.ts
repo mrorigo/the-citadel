@@ -17,11 +17,12 @@ export class EvaluatorAgent extends CoreAgent {
             'Approve the work and mark the task as done',
             z.object({
                 beadId: z.string().describe('The ID of the bead being evaluated'),
-                acceptance_test: z.string().optional().describe('REQUIRED if not already present: The specific acceptance test/criteria used to verify this work.'),
+                acceptance_test: z.union([z.string(), z.array(z.string())]).optional().describe('REQUIRED if not already present: The specific acceptance test/criteria used to verify this work.'),
                 comment: z.string().optional().describe('Optional comment on the approval'),
             }),
             async ({ beadId, acceptance_test }) => {
-                await getBeads().update(beadId, { status: 'done', acceptance_test });
+                const finalTest = Array.isArray(acceptance_test) ? acceptance_test.join('\n') : acceptance_test;
+                await getBeads().update(beadId, { status: 'done', acceptance_test: finalTest });
                 return { success: true, status: 'done' };
             }
         );

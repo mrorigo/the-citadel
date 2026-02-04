@@ -37,6 +37,9 @@ describe('WorkerAgent Integration Coverage', () => {
 
     // Use afterAll to clean up compilation level mocks
     afterAll(() => {
+        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('work_queue');
+        clearGlobalSingleton('formula_registry');
         mock.restore();
     });
 

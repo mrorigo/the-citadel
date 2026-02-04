@@ -14,6 +14,7 @@ describe('WorkQueue Integration', () => {
     });
 
     afterEach(async () => {
+        if (queue) queue.close();
         await rm(TEST_DB, { force: true });
     });
 
@@ -103,7 +104,14 @@ describe('WorkQueue Integration', () => {
         const releasedCount = queue.releaseStalled(5000);
         expect(releasedCount).toBe(1);
 
-        // Should be available to claim again
+        // Should NOT be available to claim immediately due to backoff
+        expect(queue.claim('worker-2', 'worker')).toBeNull();
+
+        // Manually reset next_attempt_at for test verification
+        // biome-ignore lint/suspicious/noExplicitAny: Access private db
+        (queue as any).db.run('UPDATE tickets SET next_attempt_at = 0 WHERE id = ?', [ticket.id]);
+
+        // Should be available now
         const reclaimed = queue.claim('worker-2', 'worker');
         expect(reclaimed?.id).toBe(ticket.id);
         expect(reclaimed?.retry_count).toBe(1);
@@ -116,6 +124,13 @@ describe('WorkQueue Integration', () => {
         const ticket = queue.claim('worker-1', 'worker')!;
 
         queue.fail(ticket.id, false); // Retryable
+
+        // Should NOT be available immediately
+        expect(queue.claim('worker-2', 'worker')).toBeNull();
+
+        // Reset for verification
+        // biome-ignore lint/suspicious/noExplicitAny: Access private db
+        (queue as any).db.run('UPDATE tickets SET next_attempt_at = 0 WHERE id = ?', [ticket.id]);
 
         const retried = queue.claim('worker-2', 'worker');
         expect(retried?.id).toBe(ticket.id);

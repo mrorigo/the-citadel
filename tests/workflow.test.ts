@@ -1,5 +1,5 @@
 
-import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from 'bun:test';
 import { join } from 'node:path';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { FormulaRegistry } from '../src/core/formula';
@@ -89,7 +89,14 @@ needs = ["prep"]
 
     afterEach(async () => {
         await rm(testRoot, { recursive: true, force: true });
+    });
+
+    afterAll(() => {
         clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('work_queue');
+        clearGlobalSingleton('formula_registry');
+        // @ts-ignore
+        import('../src/config').then(m => m.resetConfig && m.resetConfig());
     });
 
     it('should instantiate a formula correctly', async () => {

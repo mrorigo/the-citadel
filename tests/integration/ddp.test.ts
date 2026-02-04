@@ -173,6 +173,7 @@ describe('Dynamic Data Piping', () => {
     });
 
     afterEach(() => {
+        if (queue) queue.close();
         if (existsSync(TEST_DIR)) rmSync(TEST_DIR, { recursive: true, force: true });
         clearGlobalSingleton('beads_client');
         clearGlobalSingleton('work_queue');

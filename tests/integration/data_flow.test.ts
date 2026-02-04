@@ -152,6 +152,7 @@ describe('Data Flow Integration', () => {
     });
 
     afterEach(() => {
+        if (queue) queue.close();
         if (existsSync(TEST_DIR)) {
             rmSync(TEST_DIR, { recursive: true, force: true });
         }

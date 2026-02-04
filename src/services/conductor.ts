@@ -81,7 +81,7 @@ export class Conductor {
                         labels: [...currentLabels, 'failed', 'agent-error']
                     });
                 }
-            }, this.queue),
+            }, this.queue, this.config.worker.maxRetries),
             this.config.worker.min_workers
         );
 
@@ -126,7 +126,7 @@ export class Conductor {
                         labels: [...(bead.labels || []), 'evaluator-error']
                     });
                 }
-            }, this.queue),
+            }, this.queue, 3), // Default 3 retries for gatekeeper
             this.config.gatekeeper.min_workers
         );
     }

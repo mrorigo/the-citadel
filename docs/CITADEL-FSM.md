@@ -10,27 +10,29 @@ A Bead can exist in one of four primary statuses:
 stateDiagram-v2
     [*] --> open: Created
     open --> in_progress: Worker Picked Up
+    open --> done: Short-circuit / Skip (Recovery)
     in_progress --> verify: submit_work()
     in_progress --> open: Agent Crash / Zombie Recovery
-    verify --> done: approve_work()
+    verify --> done: approve_work() / fail_work()
     verify --> open: reject_work()
     verify --> verify: Evaluator Crash / Zombie Recovery
     done --> open: Manual Reopen
     done --> [*]
 ```
 
-| Status            | Description                                                                                         |
-| :---------------- | :-------------------------------------------------------------------------------------------------- |
-| **`open`**        | The task is defined and ready for execution (provided dependencies are met).                        |
-| **`in_progress`** | A **Worker Agent** has actively claimed the task and is executing it.                               |
-| **`verify`**      | The Worker has submitted the work. It is now waiting for a **Gatekeeper** (Evaluator) to review it. |
-| **`done`**        | The task has been successfully completed and verified.                                              |
+| Status            | Description                                                                                                                                          |
+| :---------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`open`**        | The task is defined and ready for execution (provided dependencies are met). <br/> *Note: Beads with `molecule:cooking` are hidden from the Router.* |
+| **`in_progress`** | A **Worker Agent** has actively claimed the task and is executing it.                                                                                |
+| **`verify`**      | The Worker has submitted the work. It is now waiting for a **Gatekeeper** (Evaluator) to review it.                                                  |
+| **`done`**        | The task has been successfully completed and verified.                                                                                               |
 
 ## State Validation & Persistence Guard
 
 Transitions between states are guarded by strict rules and a persistence layer that ensures data integrity:
 
-1.  **Strict Transitions**: Beads can only move between states defined in the FSM (e.g., `verify -> open` is allowed; `open -> done` is blocked).
+1.  **Strict Transitions**: Beads can only move between states defined in the FSM (e.g., `verify -> open` is allowed).
+2.  **Short-Circuiting**: `open -> done` is allowed for conditional tasks (e.g. recovery) that the Router determined are no longer necessary.
 2.  **Completion Requirement**: To transition to `done`, a bead normally requires an `acceptance_test` property.
     *   *Exception*: If the bead has the `failed` label (Terminal Failure), this requirement is bypassed.
 3.  **Persistence Guard (v0.1.23)**: The `WorkQueue` enforces idempotency for task completion. Once an agent tool (like `submit_work`) marks a ticket as `completed`, any subsequent automated Hook cleanup attempts are ignored. This prevents final "narration strings" from overwriting structured tool output.
@@ -166,7 +168,8 @@ While the FSM provides strong resilience, the following edge cases and architect
 Citadel uses labels as semantic modifiers to the 4 primary states. This creates "sub-states" that the Conductor logic must check:
 - **`open` + `failed`**: A task that encountered a critical error and is pending manual intervention or a specific retry strategy.
 - **`open` + `agent-incomplete`**: A task that was attempted but where the agent exited prematurely.
-- **`open` + `recovery`**: A conditional task that the Router will either skip (if the blocker succeeds) or allow to run (if the blocker fails).
+- **`open` + `recovery`**: A conditional task that the Router will either skip (via `open -> done`) or allow to run (if it stays `open`).
+- **`open` + `molecule:cooking`**: A temporary state during Molecule instantiation where the Router ignores the head.
 - **`open` + `rejected`**: A task that was rejected by the Gatekeeper and is pending rework by a Worker.
 - **`open` + `auto-recovered`**: A task that was stuck in `in_progress` with no active ticket and was automatically reset by the Router.
 
@@ -181,9 +184,16 @@ When a Gatekeeper fails (e.g., `evaluator-incomplete`), the bead remains in `ver
 - **The Risk**: If the verification failure is systematic (e.g., environmental issues or bad test definitions), this can lead to a **tight retry loop** where evaluate agents are repeatedly invoked against the same failing task.
 - **Future Improvement**: Implementing an exponential backoff or max-retry counter for the `verify` state.
 
-### 4. Recovery Bead Shortcut
+### 4. Molecule Atomicity
+Instantiating complex Molecules is non-atomic at the database level (beads are created before wiring is complete).
+- **The Solution**: The `WorkflowEngine` tags all member beads with `molecule:cooking`.
+- **The Enforcement**: The Router ignores any bead with the `cooking` label.
+- **The Release**: Only after all wiring and piping is finalized does the engine remove the `cooking` label, making the entire molecule "visible" to the Conductor at once.
+
+### 5. Recovery Bead Shortcut
 Recovery beads follow a "Short-Circuit" path:
 - If `blocker.status === 'done'` and no `failed` label is present, the Router automatically transitions the recovery bead to `done` without ever enqueuing it.
+- **Data Integrity**: This transition requires the Router to provide a mock `acceptance_test` (e.g. "Skipped: Dependency Succeeded") to satisfy the FSM's `done` state requirements.
 - This effectively bypasses the sequence diagrams for common success paths.
 
 ### 5. Timeout & Stall Detection

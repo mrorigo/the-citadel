@@ -17,6 +17,7 @@ describe('Hook Mechanism Integration', () => {
 
     afterEach(async () => {
         if (hook) hook.stop();
+        if (queue) queue.close();
         await rm(TEST_DB_HOOKS, { force: true });
     });
 

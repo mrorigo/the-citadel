@@ -55,7 +55,7 @@ export abstract class CoreAgent {
                             // The server likely takes an array.
                             const current = (args.excludePatterns as string[]) || [];
                             // Merge ensuring uniqueness
-                            const merged = Array.from(new Set([...current, ...ignored]));
+                            const merged = Array.from(new Set([...current, ...ignored, '.beads', '.citadel', '.codeflow']));
                             args.excludePatterns = merged;
 
                             logger.info(`[${this.role}] Injected ${merged.length} ignore patterns into search_files`);

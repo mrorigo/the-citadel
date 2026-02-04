@@ -12,12 +12,14 @@ export class Hook {
     private heartbeatTimer: Timer | null = null;
 
     private role: string;
+    private maxRetries: number;
 
-    constructor(agentId: string, role: string, handler: TicketHandler, queue?: WorkQueue) {
+    constructor(agentId: string, role: string, handler: TicketHandler, queue?: WorkQueue, maxRetries: number = 10) {
         this.agentId = agentId;
         this.role = role;
         this.handler = handler;
         this.queue = queue || getQueue();
+        this.maxRetries = maxRetries;
     }
 
     start() {
@@ -40,7 +42,11 @@ export class Hook {
             try {
                 processed = await this.cycle();
             } catch (error) {
-                console.error(`Hook ${this.agentId} error in loop:`, error);
+                if (this.isRunning) {
+                    console.error(`Hook ${this.agentId} error in loop:`, error);
+                } else {
+                    // Ignore errors during shutdown (e.g. DB closed)
+                }
             }
 
             if (this.isRunning) {
@@ -68,8 +74,8 @@ export class Hook {
             this.queue.complete(ticket.id, output);
         } catch (error) {
             console.error(`Hook ${this.agentId} task failed:`, error);
-            // 5. Mark failed
-            this.queue.fail(ticket.id, false);
+            // 5. Mark failed with maxRetries limit
+            this.queue.fail(ticket.id, false, this.maxRetries);
         } finally {
             this.stopHeartbeat();
         }

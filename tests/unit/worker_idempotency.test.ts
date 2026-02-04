@@ -37,6 +37,9 @@ describe('WorkerAgent Idempotency', () => {
     let mockQueue: Partial<WorkQueue>;
 
     afterAll(() => {
+        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('work_queue');
+        clearGlobalSingleton('formula_registry');
         mock.restore();
     });
 

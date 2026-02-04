@@ -25,6 +25,16 @@ export class RouterAgent extends CoreAgent {
                 }
 
                 try {
+                    const active = getQueue().getActiveTicket(beadId);
+                    if (active) {
+                        if (active.target_role === args.queue) {
+                            return { success: true, message: `Bead ${beadId} is already in ${args.queue} queue (ticket ${active.id})` };
+                        }
+                        // If it's in a different queue, we might allow enqueuing to the new one? 
+                        // Usually no, as beads have a single active lifecycle step.
+                        return { success: false, error: `Bead ${beadId} already has an active ticket (${active.id}) for role ${active.target_role}` };
+                    }
+
                     getQueue().enqueue(beadId, args.priority ?? 2, args.queue);
                     return { success: true, message: `Enqueued ${beadId} to ${args.queue}` };
                 } catch (error: unknown) {

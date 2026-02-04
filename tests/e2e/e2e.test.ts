@@ -1,4 +1,4 @@
-import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from 'bun:test';
 import { rm, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
@@ -95,12 +95,13 @@ const { BeadsClient, setBeadsInstance } = await import('../../src/core/beads');
 describe('E2E Lifecycle', () => {
     let conductor: InstanceType<typeof Conductor>;
     let beadsClient: InstanceType<typeof BeadsClient>;
+    let queueInstance: InstanceType<typeof WorkQueue>;
 
     beforeEach(async () => {
         await rm(TEST_ENV, { recursive: true, force: true });
         await mkdir(TEST_BEADS_PATH, { recursive: true });
 
-        const queueInstance = new WorkQueue(TEST_QUEUE_PATH);
+        queueInstance = new WorkQueue(TEST_QUEUE_PATH);
         setQueueInstance(queueInstance);
 
         // Inject into MockRouter
@@ -191,9 +192,17 @@ describe('E2E Lifecycle', () => {
 
     afterEach(async () => {
         if (conductor) conductor.stop();
+        if (queueInstance) queueInstance.close();
         // @ts-ignore
         delete globalThis.__TEST_QUEUE__;
         await rm(TEST_ENV, { recursive: true, force: true });
+    });
+
+    afterAll(async () => {
+        for (const key of Object.keys(localRegistry)) {
+            delete localRegistry[key];
+        }
+        mock.restore();
     });
 
 
