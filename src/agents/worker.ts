@@ -8,6 +8,8 @@ import { logger } from '../core/logger';
 import { getQueue } from '../core/queue';
 import { getFormulaRegistry } from '../core/formula';
 import { jsonSchemaToZod } from '../core/schema-utils';
+import { getConfig } from '../config';
+
 
 const execAsync = promisify(exec);
 
@@ -95,6 +97,21 @@ export class WorkerAgent extends CoreAgent {
                 logger.debug(`[Worker] Running command: ${command}`);
                 try {
                     const { stdout, stderr } = await execAsync(command);
+
+                    // Post-Git Sync
+                    if (command.trim().startsWith('git ')) {
+                        let autoSync = true;
+                        try {
+                            const config = getConfig();
+                            autoSync = config.beads.autoSync !== false;
+                        } catch { /* ignore */ }
+
+                        if (autoSync) {
+                            logger.info(`[Worker] Git operation detected. Triggering Beads sync.`);
+                            await getBeads().sync(true);
+                        }
+                    }
+
                     return { success: true, stdout: stdout.trim(), stderr: stderr.trim() };
                 } catch (error: unknown) {
                     const err = error as { message: string; stdout?: string; stderr?: string };

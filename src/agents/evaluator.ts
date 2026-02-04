@@ -4,6 +4,9 @@ import { getBeads } from '../core/beads';
 import { z } from 'zod';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
+import { logger } from '../core/logger';
+import { getConfig } from '../config';
+
 
 const execAsync = promisify(exec);
 
@@ -70,6 +73,21 @@ export class EvaluatorAgent extends CoreAgent {
             async ({ command }) => {
                 try {
                     const { stdout, stderr } = await execAsync(command);
+
+                    // Post-Git Sync
+                    if (command.trim().startsWith('git ')) {
+                        let autoSync = true;
+                        try {
+                            const config = getConfig();
+                            autoSync = config.beads.autoSync !== false;
+                        } catch { /* ignore */ }
+
+                        if (autoSync) {
+                            logger.info(`[Evaluator] Git operation detected. Triggering Beads sync.`);
+                            await getBeads().sync(true);
+                        }
+                    }
+
                     return { success: true, stdout, stderr };
                 } catch (error: unknown) {
                     const errorMessage = error instanceof Error ? error.message : String(error);

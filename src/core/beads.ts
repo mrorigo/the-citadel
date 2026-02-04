@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { getConfig } from '../config';
 import type { CitadelConfig } from '../config/schema';
 import { getGlobalSingleton, setGlobalSingleton } from './registry';
+import { logger } from './logger';
 
 const execAsync = promisify(exec);
 
@@ -88,7 +89,7 @@ export class BeadsClient {
         this.binary = binary || config?.beads.binary || 'bd';
     }
 
-    protected async runCommand(args: string): Promise<string> {
+    protected async runCommand(args: string, retryCount = 0): Promise<string> {
         // Use --sandbox mode to avoid daemon issues in Docker containers
         // Sandbox mode operates in "direct mode" without requiring a daemon
         const command = `${this.binary} --sandbox ${args}`;
@@ -97,7 +98,7 @@ export class BeadsClient {
         const cwd = this.basePath.endsWith('.beads') ? resolve(this.basePath, '..') : this.basePath;
 
         try {
-            const { stdout, stderr } = await execAsync(command, { cwd });
+            const { stdout, stderr } = await this.execute(command, cwd);
             if (stderr && !stdout) {
                 // Some tools print info to stderr?
                 // Assuming strictly JSON output on stdout for --json commands
@@ -105,12 +106,41 @@ export class BeadsClient {
             return stdout.trim();
         } catch (error: unknown) {
             const err = error as Error;
+
+            // Staleness detection and recovery
+            const isStale = err.message.includes('Database out of sync with JSONL') ||
+                err.message.includes('bd sync --import-only');
+
+            if (isStale && retryCount === 0) {
+                let autoSync = true;
+                try {
+                    const config = getConfig();
+                    autoSync = config.beads.autoSync !== false;
+                } catch { /* ignore if config fails */ }
+
+                if (autoSync) {
+                    logger.warn(`[Beads] Staleness detected. Triggering auto-sync and retry.`);
+                    await this.sync(true); // Default to import-only for speed/safety
+                    return this.runCommand(args, retryCount + 1);
+                }
+            }
+
             throw new Error(`Beads command failed: ${command}\n${err.message}`);
         }
     }
 
     async init(): Promise<void> {
         await this.runCommand('init');
+    }
+
+    protected async execute(command: string, cwd: string): Promise<{ stdout: string; stderr: string }> {
+        return execAsync(command, { cwd });
+    }
+
+    async sync(importOnly = true): Promise<void> {
+        const flag = importOnly ? '--import-only' : '';
+        await this.runCommand(`sync ${flag}`);
+        logger.info(`[Beads] Database synchronized (importOnly=${importOnly})`);
     }
 
     async doctor(): Promise<boolean> {
