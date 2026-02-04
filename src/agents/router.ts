@@ -1,11 +1,12 @@
+import type { LanguageModel } from 'ai';
 import { CoreAgent } from '../core/agent';
 import { getQueue } from '../core/queue';
 import { z } from 'zod';
 import { getWorkflowEngine } from '../services/workflow-engine';
 
 export class RouterAgent extends CoreAgent {
-    constructor() {
-        super('router');
+    constructor(model?: LanguageModel) {
+        super('router', model);
         this.requiresExplicitCompletion = true;
 
         // Register Tools

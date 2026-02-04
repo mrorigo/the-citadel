@@ -26,7 +26,15 @@ export abstract class CoreAgent {
     }
 
     private mcpLoaded = false;
-    private async ensureMCPTools() {
+    protected async executeGenerateText(messages: ModelMessage[]) {
+        return generateText({
+            model: this.model,
+            tools: this.tools,
+            messages: messages,
+        });
+    }
+
+    private async registerBuiltinTools() {
         if (this.mcpLoaded) return;
 
         const config = getConfig();
@@ -39,7 +47,7 @@ export abstract class CoreAgent {
 
             for (const tool of tools) {
                 const toolName = `${tool.serverName}_${tool.name}`;
-                logger.info(`[${this.role}] Registering MCP tool: ${toolName}`);
+                logger.debug(`[${this.role}] Registering MCP tool: ${toolName}`);
 
                 this.registerTool(
                     toolName,
@@ -101,7 +109,7 @@ export abstract class CoreAgent {
         logger.info(`[${this.role}] Running...`, { role: this.role });
 
         // Ensure MCP tools are loaded
-        await this.ensureMCPTools();
+        await this.registerBuiltinTools();
 
         // 1. Load Project Awareness
         const projectContext = await getProjectContext().resolveContext(process.cwd(), process.cwd());
@@ -150,11 +158,7 @@ export abstract class CoreAgent {
 
         // Max steps 50 to prevent infinite loops but allow complex tasks
         for (let i = 0; i < 50; i++) {
-            const result = await generateText({
-                model: this.model,
-                tools: this.tools,
-                messages: messages,
-            });
+            const result = await this.executeGenerateText(messages);
 
             // Construct Assistant Message from result
             // We must manually add the assistant's response to history so the subsequent tool-result message is valid.

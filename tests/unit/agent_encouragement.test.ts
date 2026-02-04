@@ -6,13 +6,7 @@ import { LanguageModel } from 'ai';
 import { loadConfig, resetConfig } from '../../src/config';
 import { clearGlobalSingleton } from '../../src/core/registry';
 
-// Mock the 'ai' module
 const mockGenerateText = mock();
-mock.module('ai', () => ({
-    generateText: mockGenerateText,
-    tool: (opts: any) => opts,
-    jsonSchema: (s: any) => s,
-}));
 
 class EncouragedAgent extends CoreAgent {
     constructor(model?: LanguageModel) {
@@ -32,6 +26,10 @@ class EncouragedAgent extends CoreAgent {
             z.object({}),
             async () => ({ success: true })
         );
+    }
+
+    protected async executeGenerateText(messages: any[]) {
+        return mockGenerateText({ messages });
     }
 }
 
@@ -105,6 +103,9 @@ describe('Agent Encouragement Mechanism', () => {
     it('should NOT remind if requiresExplicitCompletion is false', async () => {
         class LazyAgent extends CoreAgent {
             constructor() { super('worker'); this.requiresExplicitCompletion = false; }
+            protected async executeGenerateText(messages: any[]) {
+                return mockGenerateText({ messages });
+            }
         }
         mockGenerateText.mockResolvedValueOnce({ text: 'Done.', toolCalls: [] });
 

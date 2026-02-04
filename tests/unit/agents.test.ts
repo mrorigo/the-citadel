@@ -1,12 +1,16 @@
 import { describe, it, expect, mock, beforeAll } from 'bun:test';
 
 // Mock generateText to avoid calling real LLM
-mock.module('ai', () => ({
-    generateText: mock(async () => ({ text: 'Mocked Plan' })),
-    jsonSchema: (schema: any) => schema,
-    // biome-ignore lint/suspicious/noExplicitAny: Mocking tool arguments
-    tool: (args: any) => args, // Return args as the tool for inspection
-}));
+const mockModel = {
+    specificationVersion: 'v2',
+    provider: 'mock',
+    modelId: 'mock-model',
+    doGenerate: async () => ({
+        content: [{ type: 'text', text: 'Mocked Result' }],
+        finishReason: 'stop',
+        usage: { promptTokens: 0, completionTokens: 0 }
+    })
+} as any;
 
 import { loadConfig, resetConfig } from '../../src/config';
 
@@ -20,7 +24,7 @@ describe('Agents Unit Tests', () => {
     });
 
     it('RouterAgent should have enqueue_task tool', async () => {
-        const agent = new RouterAgent();
+        const agent = new RouterAgent(mockModel);
         // Since we mocked tool() to return args, we can inspect 'tools'
         // biome-ignore lint/suspicious/noExplicitAny: Accessing private property for testing
         const tools = (agent as any).tools;
@@ -29,7 +33,7 @@ describe('Agents Unit Tests', () => {
     });
 
     it('WorkerAgent should have report_progress and submit_work tools', async () => {
-        const agent = new WorkerAgent();
+        const agent = new WorkerAgent(mockModel);
         // biome-ignore lint/suspicious/noExplicitAny: Accessing private property for testing
         const tools = (agent as any).tools;
         expect(tools).toHaveProperty('report_progress');

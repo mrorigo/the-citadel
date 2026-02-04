@@ -146,7 +146,7 @@ describe('MCP Tools Integration', () => {
         const agent = new WorkerAgent();
         // Trigger MCP tool loading (private method normally called in run)
         // biome-ignore lint/suspicious/noExplicitAny: access private for test
-        await (agent as any).ensureMCPTools();
+        await (agent as any).registerBuiltinTools();
 
         // biome-ignore lint/suspicious/noExplicitAny: access private for test
         const echoTool = (agent as any).tools.testServer_echo;
