@@ -1,6 +1,6 @@
 {
   "name": "the-citadel",
-  "version": "0.1.35",
+  "version": "0.1.36",
   "description": "A deterministic agent orchestration system for Knowledge Work",
   "module": "src/index.ts",
   "type": "module",

@@ -1,7 +1,7 @@
 import { generateText, tool, jsonSchema, type Tool, type LanguageModel, type ModelMessage, type ToolCallPart, type ToolResultPart, type TextPart } from 'ai';
 import { getAgentModel } from './llm';
 import type { AgentRole } from '../config/schema';
-import type { z } from 'zod';
+import { z } from 'zod';
 import { logger } from './logger';
 import { getProjectContext } from '../services/project-context';
 import { getConfig } from '../config';
@@ -301,7 +301,18 @@ If you are still working, continue with your next step.`
                         output: toolOutput,
                     } as ToolResultPart);
                 } catch (error: unknown) {
-                    const errorMessage = error instanceof Error ? error.message : String(error);
+                    let errorMessage = error instanceof Error ? error.message : String(error);
+
+                    // Enhanced Zod Error Handling
+                    if (error instanceof z.ZodError) {
+                        const schemaDescription = (tool as any).parameters
+                            ? JSON.stringify((tool as any).parameters.description || 'See tool definition') // Basic schema hint
+                            : 'No schema available';
+
+                        const formattedIssues = error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join('; ');
+                        errorMessage = `Validation Error: Invalid arguments. Issues: [${formattedIssues}]. Please correct your input and retry.`;
+                    }
+
                     logger.error(`[${this.role}] Tool execution failed: ${tc.toolName}`, { error: errorMessage });
                     toolResults.push({
                         type: 'tool-result',
