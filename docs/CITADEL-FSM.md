@@ -33,7 +33,7 @@ Transitions between states are guarded by strict rules and a persistence layer t
 
 1.  **Strict Transitions**: Beads can only move between states defined in the FSM (e.g., `verify -> open` is allowed).
 2.  **Short-Circuiting**: `open -> done` is allowed for conditional tasks (e.g. recovery) that the Router determined are no longer necessary.
-2.  **Completion Requirement**: To transition to `done`, a bead normally requires an `acceptance_test` property.
+2.  **Completion Requirement**: To transition to `done`, a bead **strictly requires** an `acceptance_test` property. This is enforced at the tool layer (e.g., `approve_work` schema).
     *   *Exception*: If the bead has the `failed` label (Terminal Failure), this requirement is bypassed.
 3.  **Persistence Guard (v0.1.23)**: The `WorkQueue` enforces idempotency for task completion. Once an agent tool (like `submit_work`) marks a ticket as `completed`, any subsequent automated Hook cleanup attempts are ignored. This prevents final "narration strings" from overwriting structured tool output.
 
@@ -157,6 +157,9 @@ sequenceDiagram
 | **Gatekeeper Rejection**   | EvaluatorAgent (`reject_work`)             | Reset to open    | `open` + `rejected`               |
 
 This robust state machine ensures that **no task is ever left behind** (Zombified), regardless of LLM stability or runtime errors.
+
+### 5. Self-Correction Loop (v0.1.36+)
+While the FSM defines outer transitions between agents, `CoreAgent` implements an **Inner Feedback Loop**. If an agent makes an invalid tool call (e.g., Gatekeeper forgets `acceptance_test`), the system catches the Zod error and returns it to the agent, prompting an immediate retry with the correct schema. This prevents unnecessary "reject" cycles or crashes.
 
 ---
 

@@ -126,7 +126,7 @@ A **Convoy** is a long-lived context (Meta-Epic) used to group unrelated Molecul
 ### 3. Agents (The Workforce)
 - **RouterAgent**: The foreman. Analyzes requests, instantiates Formulas, and assigns tasks.
 - **WorkerAgent**: The executor. Picks up `open` Beads, executes tasks (research, writing, coding, analysis) and can **recursively breakdown work** (Dynamic Bonding).
-- **EvaluatorAgent**: The editor/verifier. Verifies `verify` Beads against acceptance criteria (accuracy, style, functionality) before closing them.
+- **EvaluatorAgent**: The editor/verifier. Verifies `verify` Beads against acceptance criteria (accuracy, style, functionality) before closing them. **Requires explicit `acceptance_test` details for every approval.**
 
 ---
 
@@ -241,6 +241,9 @@ Analyze the dataset..."
 
 **Output (Structured Results):**
 Workers can return structured JSON outputs instead of just text summaries. These outputs are stored in the queue and can be used by subsequent steps or for automated verification.
+
+**Self-Correction & Improved Tool Feedback:**
+The Citadel features an "Agent Encouragement" mechanism. If an agent calls a tool with invalid arguments (e.g., missing a required field like `acceptance_test`), the system returns a detailed **Validation Error** containing specific Zod feedback. This allows the agent to understand exactly why a call failed and "self-correct" by retrying with corrected parameters immediately within the same run.
 
 **Dynamic Piping:**
 Chain steps together by referencing outputs from previous steps.
