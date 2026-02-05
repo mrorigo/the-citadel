@@ -84,7 +84,7 @@ export class EvaluatorAgent extends CoreAgent {
 
                         if (autoSync) {
                             logger.info(`[Evaluator] Git operation detected. Triggering Beads sync.`);
-                            await getBeads().sync(true);
+                            await getBeads().sync();
                         }
                     }
 

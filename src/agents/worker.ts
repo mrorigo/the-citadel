@@ -108,7 +108,7 @@ export class WorkerAgent extends CoreAgent {
 
                         if (autoSync) {
                             logger.info(`[Worker] Git operation detected. Triggering Beads sync.`);
-                            await getBeads().sync(true);
+                            await getBeads().sync();
                         }
                     }
 
