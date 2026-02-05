@@ -120,7 +120,7 @@ export class BeadsClient {
 
                 if (autoSync) {
                     logger.warn(`[Beads] Staleness detected. Triggering auto-sync and retry.`);
-                    await this.sync(true); // Default to import-only for speed/safety
+                    await this.sync(); // Default to import-only for speed/safety
                     return this.runCommand(args, retryCount + 1);
                 }
             }
@@ -137,10 +137,9 @@ export class BeadsClient {
         return execAsync(command, { cwd });
     }
 
-    async sync(importOnly = true): Promise<void> {
-        const flag = importOnly ? '--import-only' : '';
-        await this.runCommand(`sync ${flag}`);
-        logger.info(`[Beads] Database synchronized (importOnly=${importOnly})`);
+    async sync(): Promise<void> {
+        await this.runCommand(`sync`);
+        logger.info(`[Beads] Database synchronized`);
     }
 
     async doctor(): Promise<boolean> {
