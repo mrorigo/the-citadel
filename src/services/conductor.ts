@@ -231,6 +231,17 @@ export class Conductor {
         for (const bead of inProgressBeads) {
             const active = queue.getActiveTicket(bead.id);
             if (!active) {
+                // RACE CONDITION FIX: Apply grace period
+                // If a ticket was COMPLETED within the last 5 seconds, don't reset yet.
+                // This gives the worker time to update the bead status via the CLI.
+                const latest = queue.getLatestTicket(bead.id);
+                const GRACE_PERIOD_MS = 5000;
+
+                if (latest && latest.status === 'completed' && latest.completed_at && (Date.now() - latest.completed_at) < GRACE_PERIOD_MS) {
+                    logger.debug(`[Router] Deferring reset of bead ${bead.id} (within 5s grace period of ticket completion)`, { beadId: bead.id });
+                    continue;
+                }
+
                 logger.warn(`[Router] Resetting stuck bead ${bead.id} (in_progress with no active ticket)`, { beadId: bead.id });
                 await beadsClient.update(bead.id, {
                     status: 'open',

@@ -271,6 +271,18 @@ export class WorkQueue {
     }
 
     /**
+     * Get the latest ticket for a bead (regardless of status)
+     */
+    getLatestTicket(beadId: string): Ticket | null {
+        return this.db.query(`
+            SELECT * FROM tickets 
+            WHERE bead_id = ?
+            ORDER BY created_at DESC
+            LIMIT 1
+        `).get(beadId) as Ticket | null;
+    }
+
+    /**
      * Reset tickets for a specific bead
      */
     resetBead(beadId: string): void {
