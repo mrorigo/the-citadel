@@ -109,7 +109,7 @@ export class BeadsClient {
 
             // Staleness detection and recovery
             const isStale = err.message.includes('Database out of sync with JSONL') ||
-                err.message.includes('bd sync --import-only');
+                err.message.includes('bd sync');
 
             if (isStale && retryCount === 0) {
                 let autoSync = true;

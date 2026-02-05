@@ -493,9 +493,8 @@
             <p>Workers can spawn new Beads to fan out work while staying accountable.</p>
           </div>
           <div class="card">
-
-            <h3>Project awareness</h3>
-            <p>AGENTS.md rules merge automatically to keep outputs aligned with local standards.</p>
+            <h3>Dynamic context</h3>
+            <p>Instructions merge dynamically from AGENTS.md, role overrides, formula prompts, and tag-based SOPs.</p>
           </div>
           <div class="card">
             <h3>Data piping</h3>
@@ -563,6 +562,19 @@ id = "decision"
 title = "Act on Score"
 needs = ["analyze"]
 context = { score = "{{steps.analyze.output.score}}" }
+            </code>
+          </div>
+          <div class="formula-panel">
+            <h3>Prompt injection</h3>
+            <code>
+[prompts]
+worker = "Always perform dry-run first"
+
+[[steps]]
+id = "deploy"
+title = "Deploy to Prod"
+labels = ["tag:production"]
+# Merges global + role + tag + prompts
             </code>
           </div>
         </div>
