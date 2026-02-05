@@ -225,6 +225,7 @@ To customize a specific agent role project-wide, create a file in `.citadel/inst
 #### Tag-based Specialization
 If you have specific tools or domains (like Git, Research, or SQL), you can create tag-based instruction files. Any bead with a `tag:NAME` label will automatically pull in `.citadel/instructions/tag-NAME.md`.
 
+**Example 1: Specialized Git Instructions**
 ```markdown
 # .citadel/instructions/tag-git.md
 - Use short, descriptive commit messages.
@@ -232,6 +233,19 @@ If you have specific tools or domains (like Git, Research, or SQL), you can crea
 ```
 
 When a Worker picks up a task labeled `tag:git`, it will receive these additional specialized instructions automatically.
+
+**Example 2: Planning & Acceptance Criteria (`tag:planning`)**
+For tasks that involve creating a plan, you can enforce strict acceptance criteria requirements. The system includes a default `tag-planning.md` instruction that is triggered by `tag:planning`.
+
+```markdown
+# .citadel/instructions/tag-planning.md
+## Acceptance Criteria Requirement
+When submitting your plan (via `submit_work`), you **MUST** include a `verification_plan` or `acceptance_criteria` section.
+- This defines EXACTLY how the Gatekeeper will verify your work.
+- **Failure to include this will result in immediate rejection.**
+```
+
+Workers handling `tag:planning` tasks are thus "primed" to provide the structured output the Gatekeeper demands.
 
 ### 6. Structured Data Flow
 The Citadel supports passing rich data between steps, enabling complex chaining and branching.

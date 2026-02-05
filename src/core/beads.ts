@@ -70,6 +70,7 @@ export interface CreateOptions {
     parent?: string; // Parent ID for molecules
     type?: string; // bead type (epic, story, task, convoy, etc)
     context?: Record<string, unknown>;
+    labels?: string[];
 }
 
 // --- Client ---
@@ -316,8 +317,21 @@ export class BeadsClient {
         const bead = this.parseRaw(output);
 
         // Apply extra fields if needed via update for robustness
+        const updates: Partial<Bead> = {};
+        let hasUpdates = false;
+
         if (options.acceptance_test) {
-            await this.update(bead.id, { acceptance_test: options.acceptance_test });
+            updates.acceptance_test = options.acceptance_test;
+            hasUpdates = true;
+        }
+
+        if (options.labels && options.labels.length > 0) {
+            updates.labels = options.labels;
+            hasUpdates = true;
+        }
+
+        if (hasUpdates) {
+            await this.update(bead.id, updates);
         }
 
         if (options.blockers?.length) {

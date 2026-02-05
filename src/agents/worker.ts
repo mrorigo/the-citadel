@@ -57,12 +57,16 @@ export class WorkerAgent extends CoreAgent {
                 parentBeadId: z.string().describe('The ID of the current bead (becoming the parent)'),
                 title: z.string().describe('Title of the subtask'),
                 priority: z.number().optional().describe('Priority (0-3)'),
+                tags: z.array(z.string()).optional().describe('Tags/Labels to apply (e.g., ["tag:planning", "tag:refactor"])'),
+                description: z.string().optional().describe('Detailed description of the subtask'),
             }),
-            async ({ parentBeadId, title, priority }) => {
+            async ({ parentBeadId, title, priority, tags, description }) => {
                 try {
                     const bead = await getBeads().create(title, {
                         parent: parentBeadId,
-                        priority: (priority as 0 | 1 | 2 | 3) ?? 2
+                        priority: (priority as 0 | 1 | 2 | 3) ?? 2,
+                        labels: tags,
+                        description: description
                     });
                     await getBeads().addDependency(parentBeadId, bead.id);
                     return { success: true, beadId: bead.id, message: `Created subtask ${bead.id} blocking ${parentBeadId}` };

@@ -1,6 +1,6 @@
 {
   "name": "the-citadel",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "A deterministic agent orchestration system for Knowledge Work",
   "module": "src/index.ts",
   "type": "module",
@@ -20,7 +20,8 @@
     "citadel": "./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    ".citadel/instructions"
   ],
   "scripts": {
     "build": "bun build ./src/index.ts --outdir ./dist --target node && tsc --emitDeclarationOnly --declaration --outDir ./dist --noEmit false",

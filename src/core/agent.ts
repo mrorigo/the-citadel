@@ -207,11 +207,14 @@ If you are still working, continue with your next step.`
                 }
 
                 if (!tool) {
+                    const hint = toolName.includes("read_file") ? "Did you mean `filesystem_read_text_file`?" : (
+                        toolName.includes("write_file") ? "Did you mean `filesystem_write_text_file`?" : ""
+                    );
                     toolResults.push({
                         type: 'tool-result',
                         toolCallId: tc.toolCallId,
                         toolName: tc.toolName,
-                        output: { type: 'error-text', value: `Tool ${tc.toolName} not found` },
+                        output: { type: 'error-text', value: `Tool ${tc.toolName} not found. ${hint}` },
                     } as ToolResultPart);
                     continue;
                 }
