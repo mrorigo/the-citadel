@@ -151,8 +151,8 @@ describe('MCP Tools Integration', () => {
         // biome-ignore lint/suspicious/noExplicitAny: access private for test
         const echoTool = (agent as any).tools.testServer_echo;
         expect(echoTool).toBeDefined();
-        expect(echoTool.parameters).toBeDefined();
-        expect(echoTool.parameters.jsonSchema).toEqual({ type: 'object' });
+        expect(echoTool.inputSchema).toBeDefined();
+        expect(echoTool.inputSchema.jsonSchema).toEqual({ type: 'object' });
 
         // Test execution bridge
         const result = await echoTool.execute({ message: 'hello' });

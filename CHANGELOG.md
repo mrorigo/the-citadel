@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.4.0] - 2026-02-06
+
+### Added
+- **Dynamic Tool Injection Architecture**: 
+  - Refactored `CoreAgent` and role-specific agents to use factory-based tool creation with injected `AgentContext`.
+  - Tools now implicitly handle mandatory parameters like `beadId` and `parentBeadId`, significantly reducing LLM cognitive load and omission errors.
+  - Implemented async dynamic tool loading to support formula-defined output schemas.
+- **Project Health Sweep**:
+  - Achieved a perfectly clean Biome lint report across the entire codebase.
+  - Hardened type safety by eliminating `any` usage in `WorkerPool` and `CoreAgent`.
+  - Standardized modern Node.js imports and role-specific tool consolidation.
+
+### Improved
+- **AI SDK v6 Alignment**: Migrated all tool definitions and registration logic to the new `inputSchema` pattern required by AI SDK 6.0.
+- **Instruction Precision**: Audited and updated all system prompts and instruction templates to remove stale requirements for agents to provide `beadId` manually.
+
+## [0.3.2] - 2026-02-06
+
+### Added
+- Stricter filesystem operations filtering
+
+## [0.3.1] - 2026-02-06
+
+### Added
+- **Retry on Crash**: Added retry logic for `` tool to automatically retry the command if it crashes.
+
+
+
+
 ## [0.1.35] - 2026-02-04
 
 ### Improved

@@ -1,69 +1,31 @@
-import type { LanguageModel } from 'ai';
-import { CoreAgent } from '../core/agent';
-import { getQueue } from '../core/queue';
-import { z } from 'zod';
-import { getWorkflowEngine } from '../services/workflow-engine';
+import type { LanguageModel } from "ai";
+import { type AgentContext, CoreAgent } from "../core/agent";
+import {
+    createEnqueueTaskTool,
+    createInstantiateFormulaTool,
+} from "../tools/router";
 
 export class RouterAgent extends CoreAgent {
     constructor(model?: LanguageModel) {
-        super('router', model);
+        super("router", model);
         this.requiresExplicitCompletion = true;
 
-        // Register Tools
-        this.registerTool(
-            'enqueue_task',
-            'Enqueue a bead for execution. Use queue="worker" for open tasks, queue="gatekeeper" for verify tasks.',
-            z.object({
-                beadId: z.string().optional().describe('The ID of the bead to enqueue (defaults to current bead from context)'),
-                reasoning: z.string().describe('Why this task should be enqueued'),
-                queue: z.enum(['worker', 'gatekeeper']).describe('REQUIRED: worker for open tasks, gatekeeper for verify tasks'),
-                priority: z.number().min(0).max(3).optional().describe('Priority (0-3, default 2)'),
-            }),
-            async (args: { beadId?: string; reasoning: string; queue: 'worker' | 'gatekeeper'; priority?: number }, context?: { beadId?: string }) => {
-                // Use beadId from args, or fall back to context
-                const beadId = args.beadId || context?.beadId;
-                if (!beadId) {
-                    return { success: false, error: 'beadId must be provided either as parameter or in context' };
-                }
-
-                try {
-                    const active = getQueue().getActiveTicket(beadId);
-                    if (active) {
-                        if (active.target_role === args.queue) {
-                            return { success: true, message: `Bead ${beadId} is already in ${args.queue} queue (ticket ${active.id})` };
-                        }
-                        // If it's in a different queue, we might allow enqueuing to the new one? 
-                        // Usually no, as beads have a single active lifecycle step.
-                        return { success: false, error: `Bead ${beadId} already has an active ticket (${active.id}) for role ${active.target_role}` };
-                    }
-
-                    getQueue().enqueue(beadId, args.priority ?? 2, args.queue);
-                    return { success: true, message: `Enqueued ${beadId} to ${args.queue}` };
-                } catch (error: unknown) {
-                    const err = error as Error;
-                    return { success: false, error: err.message };
-                }
-            }
+        // Register default tools for easy access/discovery
+        this.registerSdkTool("enqueue_task", createEnqueueTaskTool({}));
+        this.registerSdkTool(
+            "instantiate_formula",
+            createInstantiateFormulaTool({}),
         );
+    }
 
-        this.registerTool(
-            'instantiate_formula',
-            'Instantiate a named workflow formula (e.g., system_migration)',
-            z.object({
-                formulaName: z.string().describe('The name of the formula to run'),
-                variables: z.object({}).passthrough().optional().default({}).describe('Variables to inject into the formula (e.g., { "target_system": "Auth" })'),
-                parentConvoyId: z.string().optional().describe('ID of the Convoy to assign this molecule to (optional)'),
-            }),
-            async ({ formulaName, variables, parentConvoyId }) => {
-                try {
-                    const moleculeId = await getWorkflowEngine().instantiateFormula(formulaName, variables as Record<string, string>, parentConvoyId);
-                    return { success: true, moleculeId, status: 'created' };
-                } catch (error: unknown) {
-                    const err = error as Error;
-                    return { success: false, error: err.message };
-                }
-            }
-        );
+    protected override async getDynamicTools(
+        context?: AgentContext,
+    ): Promise<Record<string, import("ai").Tool>> {
+        const ctx = context || {};
+        return {
+            enqueue_task: createEnqueueTaskTool(ctx),
+            instantiate_formula: createInstantiateFormulaTool(ctx),
+        };
     }
 
     protected override getSystemPrompt(defaultPrompt: string): string {

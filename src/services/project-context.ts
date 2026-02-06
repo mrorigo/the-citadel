@@ -1,256 +1,291 @@
-import { readFile } from 'node:fs/promises';
-import { join, dirname, resolve } from 'node:path';
-import { existsSync } from 'node:fs';
-import { load } from 'js-yaml';
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
+import { load } from "js-yaml";
 
 export interface AgentsMdFrontmatter {
-    ignore?: string[];
-    read_only?: string[];
-    forbidden?: string[];
+	ignore?: string[];
+	read_only?: string[];
+	forbidden?: string[];
 }
 
 export interface AgentsMdConfig {
-    raw: string;
-    sections: Record<string, string>;
-    commands: {
-        setup: string[];
-        test: string[];
-        lint: string[];
-        build: string[];
-        other: string[];
-    };
-    rules: string[];
-    frontmatter?: AgentsMdFrontmatter;
+	raw: string;
+	sections: Record<string, string>;
+	commands: {
+		setup: string[];
+		test: string[];
+		lint: string[];
+		build: string[];
+		other: string[];
+	};
+	rules: string[];
+	frontmatter?: AgentsMdFrontmatter;
 }
 
 export type AgentsMdContext = {
-    sourcePath: string;
-    config: AgentsMdConfig;
+	sourcePath: string;
+	config: AgentsMdConfig;
 } | null;
 
 export class ProjectContextService {
-    private cache: Map<string, AgentsMdContext> = new Map();
+	private cache: Map<string, AgentsMdContext> = new Map();
 
-    /**
-     * Resolve the most relevant AGENTS.md context for a given target path.
-     * Follows the "closest-file-wins" rule but falls back to root-level AGENTS.md for global policies.
-     */
-    async resolveContext(targetPath: string, rootDir: string): Promise<AgentsMdContext> {
-        let currentDir = resolve(targetPath);
-        const rootPath = resolve(rootDir);
+	/**
+	 * Resolve the most relevant AGENTS.md context for a given target path.
+	 * Follows the "closest-file-wins" rule but falls back to root-level AGENTS.md for global policies.
+	 */
+	async resolveContext(
+		targetPath: string,
+		rootDir: string,
+	): Promise<AgentsMdContext> {
+		let currentDir = resolve(targetPath);
+		const rootPath = resolve(rootDir);
 
-        // 1. Find the closest AGENTS.md
-        let closestConfig: AgentsMdConfig | null = null;
-        let closestPath: string | null = null;
+		// 1. Find the closest AGENTS.md
+		let closestConfig: AgentsMdConfig | null = null;
+		let closestPath: string | null = null;
 
-        const maxSteps = 20;
-        let steps = 0;
+		const maxSteps = 20;
+		let steps = 0;
 
-        while (currentDir.startsWith(rootPath) && steps < maxSteps) {
-            steps++;
-            const candidatePath = join(currentDir, 'AGENTS.md');
+		while (currentDir.startsWith(rootPath) && steps < maxSteps) {
+			steps++;
+			const candidatePath = join(currentDir, "AGENTS.md");
 
-            if (this.cache.has(candidatePath)) {
-                const cached = this.cache.get(candidatePath);
-                if (cached) {
-                    closestConfig = cached.config;
-                    closestPath = cached.sourcePath;
-                    break;
-                }
-            } else if (existsSync(candidatePath)) {
-                try {
-                    const content = await readFile(candidatePath, 'utf-8');
-                    closestConfig = this.parseAgentsMd(content);
-                    closestPath = candidatePath;
-                    // Cache indiv file
-                    this.cache.set(candidatePath, { sourcePath: candidatePath, config: closestConfig });
-                    break;
-                } catch (e) {
-                    console.error(`[ProjectContext] Failed to read ${candidatePath}`, e);
-                }
-            }
+			if (this.cache.has(candidatePath)) {
+				const cached = this.cache.get(candidatePath);
+				if (cached) {
+					closestConfig = cached.config;
+					closestPath = cached.sourcePath;
+					break;
+				}
+			} else if (existsSync(candidatePath)) {
+				try {
+					const content = await readFile(candidatePath, "utf-8");
+					closestConfig = this.parseAgentsMd(content);
+					closestPath = candidatePath;
+					// Cache indiv file
+					this.cache.set(candidatePath, {
+						sourcePath: candidatePath,
+						config: closestConfig,
+					});
+					break;
+				} catch (e) {
+					console.error(`[ProjectContext] Failed to read ${candidatePath}`, e);
+				}
+			}
 
-            if (currentDir === rootPath) break;
-            currentDir = dirname(currentDir);
-        }
+			if (currentDir === rootPath) break;
+			currentDir = dirname(currentDir);
+		}
 
-        // 2. If we found nothing, return null
-        if (!closestConfig || !closestPath) {
-            return null;
-        }
+		// 2. If we found nothing, return null
+		if (!closestConfig || !closestPath) {
+			return null;
+		}
 
-        // 3. If the closest is the root, return it
-        if (dirname(closestPath) === rootPath) {
-            return { sourcePath: closestPath, config: closestConfig };
-        }
+		// 3. If the closest is the root, return it
+		if (dirname(closestPath) === rootPath) {
+			return { sourcePath: closestPath, config: closestConfig };
+		}
 
-        // 4. Otherwise, check for root AGENTS.md to merge as fallback
-        const rootAgentPath = join(rootPath, 'AGENTS.md');
-        let rootConfig: AgentsMdConfig | null = null;
+		// 4. Otherwise, check for root AGENTS.md to merge as fallback
+		const rootAgentPath = join(rootPath, "AGENTS.md");
+		let rootConfig: AgentsMdConfig | null = null;
 
-        if (this.cache.has(rootAgentPath)) {
-            rootConfig = this.cache.get(rootAgentPath)?.config || null;
-        } else if (existsSync(rootAgentPath)) {
-            try {
-                const content = await readFile(rootAgentPath, 'utf-8');
-                rootConfig = this.parseAgentsMd(content);
-                this.cache.set(rootAgentPath, { sourcePath: rootAgentPath, config: rootConfig });
-            } catch (e) {
-                console.error(`[ProjectContext] Failed to read root ${rootAgentPath}`, e);
-            }
-        }
+		if (this.cache.has(rootAgentPath)) {
+			rootConfig = this.cache.get(rootAgentPath)?.config || null;
+		} else if (existsSync(rootAgentPath)) {
+			try {
+				const content = await readFile(rootAgentPath, "utf-8");
+				rootConfig = this.parseAgentsMd(content);
+				this.cache.set(rootAgentPath, {
+					sourcePath: rootAgentPath,
+					config: rootConfig,
+				});
+			} catch (e) {
+				console.error(
+					`[ProjectContext] Failed to read root ${rootAgentPath}`,
+					e,
+				);
+			}
+		}
 
-        if (rootConfig) {
-            return {
-                sourcePath: closestPath, // Primary source is still the closest one
-                config: this.mergeConfigs(closestConfig, rootConfig)
-            };
-        }
+		if (rootConfig) {
+			return {
+				sourcePath: closestPath, // Primary source is still the closest one
+				config: this.mergeConfigs(closestConfig, rootConfig),
+			};
+		}
 
-        return { sourcePath: closestPath, config: closestConfig };
-    }
+		return { sourcePath: closestPath, config: closestConfig };
+	}
 
-    private mergeConfigs(child: AgentsMdConfig, parent: AgentsMdConfig): AgentsMdConfig {
-        return {
-            raw: `${child.raw}\n\n${parent.raw}`, // Keep full context
-            sections: { ...parent.sections, ...child.sections }, // Child overrides parent sections
-            commands: {
-                setup: [...child.commands.setup, ...parent.commands.setup],
-                test: [...child.commands.test, ...parent.commands.test],
-                lint: [...child.commands.lint, ...parent.commands.lint],
-                build: [...child.commands.build, ...parent.commands.build],
-                other: [...child.commands.other, ...parent.commands.other],
-            },
-            rules: [...child.rules, ...parent.rules], // Accumulate rules
-            frontmatter: {
-                ignore: [...(child.frontmatter?.ignore || []), ...(parent.frontmatter?.ignore || [])],
-                read_only: [...(child.frontmatter?.read_only || []), ...(parent.frontmatter?.read_only || [])],
-                forbidden: [...(child.frontmatter?.forbidden || []), ...(parent.frontmatter?.forbidden || [])],
-            }
-        };
-    }
+	private mergeConfigs(
+		child: AgentsMdConfig,
+		parent: AgentsMdConfig,
+	): AgentsMdConfig {
+		return {
+			raw: `${child.raw}\n\n${parent.raw}`, // Keep full context
+			sections: { ...parent.sections, ...child.sections }, // Child overrides parent sections
+			commands: {
+				setup: [...child.commands.setup, ...parent.commands.setup],
+				test: [...child.commands.test, ...parent.commands.test],
+				lint: [...child.commands.lint, ...parent.commands.lint],
+				build: [...child.commands.build, ...parent.commands.build],
+				other: [...child.commands.other, ...parent.commands.other],
+			},
+			rules: [...child.rules, ...parent.rules], // Accumulate rules
+			frontmatter: {
+				ignore: [
+					...(child.frontmatter?.ignore || []),
+					...(parent.frontmatter?.ignore || []),
+				],
+				read_only: [
+					...(child.frontmatter?.read_only || []),
+					...(parent.frontmatter?.read_only || []),
+				],
+				forbidden: [
+					...(child.frontmatter?.forbidden || []),
+					...(parent.frontmatter?.forbidden || []),
+				],
+			},
+		};
+	}
 
-    /**
-     * Parse AGENTS.md content into a structured config.
-     */
-    parseAgentsMd(content: string): AgentsMdConfig {
-        const sections: Record<string, string> = {};
-        const commands = {
-            setup: [] as string[],
-            test: [] as string[],
-            lint: [] as string[],
-            build: [] as string[],
-            other: [] as string[]
-        };
-        const rules: string[] = [];
-        let frontmatter: AgentsMdFrontmatter = {};
+	/**
+	 * Parse AGENTS.md content into a structured config.
+	 */
+	parseAgentsMd(content: string): AgentsMdConfig {
+		const sections: Record<string, string> = {};
+		const commands = {
+			setup: [] as string[],
+			test: [] as string[],
+			lint: [] as string[],
+			build: [] as string[],
+			other: [] as string[],
+		};
+		const rules: string[] = [];
+		let frontmatter: AgentsMdFrontmatter = {};
 
-        // Frontmatter Extraction
-        if (content.startsWith('---')) {
-            const end = content.indexOf('---', 3);
-            if (end !== -1) {
-                const yamlBlock = content.slice(3, end);
-                try {
-                    const parsed = load(yamlBlock) as AgentsMdFrontmatter;
-                    if (parsed && typeof parsed === 'object') {
-                        frontmatter = {
-                            ignore: Array.isArray(parsed.ignore) ? parsed.ignore : [],
-                            read_only: Array.isArray(parsed.read_only) ? parsed.read_only : [],
-                            forbidden: Array.isArray(parsed.forbidden) ? parsed.forbidden : [],
-                        };
-                    }
-                } catch (e) {
-                    console.error('[ProjectContext] Failed to parse frontmatter YAML', e);
-                }
-            }
-        }
+		// Frontmatter Extraction
+		if (content.startsWith("---")) {
+			const end = content.indexOf("---", 3);
+			if (end !== -1) {
+				const yamlBlock = content.slice(3, end);
+				try {
+					const parsed = load(yamlBlock) as AgentsMdFrontmatter;
+					if (parsed && typeof parsed === "object") {
+						frontmatter = {
+							ignore: Array.isArray(parsed.ignore) ? parsed.ignore : [],
+							read_only: Array.isArray(parsed.read_only)
+								? parsed.read_only
+								: [],
+							forbidden: Array.isArray(parsed.forbidden)
+								? parsed.forbidden
+								: [],
+						};
+					}
+				} catch (e) {
+					console.error("[ProjectContext] Failed to parse frontmatter YAML", e);
+				}
+			}
+		}
 
-        // Simple heuristic parsing
-        const lines = content.split('\n');
-        let currentSection = 'intro';
+		// Simple heuristic parsing
+		const lines = content.split("\n");
+		let currentSection = "intro";
 
-        for (const line of lines) {
-            // Heading detection
-            if (line.startsWith('#')) {
-                currentSection = line.replace(/^#+\s*/, '').toLowerCase().trim();
-                continue;
-            }
+		for (const line of lines) {
+			// Heading detection
+			if (line.startsWith("#")) {
+				currentSection = line
+					.replace(/^#+\s*/, "")
+					.toLowerCase()
+					.trim();
+				continue;
+			}
 
-            // Append to generic section text
-            if (!sections[currentSection]) sections[currentSection] = '';
-            sections[currentSection] += `${line}\n`;
+			// Append to generic section text
+			if (!sections[currentSection]) sections[currentSection] = "";
+			sections[currentSection] += `${line}\n`;
 
-            // Command extraction (heuristic: code blocks or indented lines often contain commands)
-            // Ideally we look for fenced code blocks, but line-by-line is harder.
-            // Let's rely on regex for finding commands in the whole block later or simplistic keyword matching?
-            // "Run `npm test`" -> extract `npm test`
-        }
+			// Command extraction (heuristic: code blocks or indented lines often contain commands)
+			// Ideally we look for fenced code blocks, but line-by-line is harder.
+			// Let's rely on regex for finding commands in the whole block later or simplistic keyword matching?
+			// "Run `npm test`" -> extract `npm test`
+		}
 
-        // Regex extraction over full content
-        // 1. Backticked commands
-        const commandRegex = /`(?:npm|pnpm|yarn|bun|make|cargo|gradle|\.\/)([^`]+)`/g;
-        let match: RegExpExecArray | null;
+		// Regex extraction over full content
+		// 1. Backticked commands
+		const commandRegex =
+			/`(?:npm|pnpm|yarn|bun|make|cargo|gradle|\.\/)([^`]+)`/g;
+		let match: RegExpExecArray | null;
 
-        const processCommand = (cmd: string) => {
-            cmd = cmd.trim();
-            if (!cmd) return;
-            if (cmd.includes('test')) commands.test.push(cmd);
-            else if (cmd.includes('lint')) commands.lint.push(cmd);
-            else if (cmd.includes('build')) commands.build.push(cmd);
-            else if (cmd.includes('install') || cmd.includes('setup')) commands.setup.push(cmd);
-            else commands.other.push(cmd);
-        };
+		const processCommand = (cmd: string) => {
+			cmd = cmd.trim();
+			if (!cmd) return;
+			if (cmd.includes("test")) commands.test.push(cmd);
+			else if (cmd.includes("lint")) commands.lint.push(cmd);
+			else if (cmd.includes("build")) commands.build.push(cmd);
+			else if (cmd.includes("install") || cmd.includes("setup"))
+				commands.setup.push(cmd);
+			else commands.other.push(cmd);
+		};
 
-        match = commandRegex.exec(content);
-        while (match !== null) {
-            processCommand(match[0].replace(/`/g, ''));
-            match = commandRegex.exec(content);
-        }
+		match = commandRegex.exec(content);
+		while (match !== null) {
+			processCommand(match[0].replace(/`/g, ""));
+			match = commandRegex.exec(content);
+		}
 
-        // 2. Fenced code blocks (bash/sh/zsh/shell)
-        const codeBlockRegex = /```(?:bash|sh|zsh|shell|cmd|powershell)\s*([\s\S]*?)```/g;
-        match = codeBlockRegex.exec(content);
-        while (match !== null) {
-            const blockContent = match[1] || '';
-            const lines = blockContent.split('\n');
-            for (const line of lines) {
-                // Heuristic: ignore comments and empty lines, take anything that looks like a command start
-                const trimmed = line.trim();
-                if (trimmed && !trimmed.startsWith('#')) {
-                    processCommand(trimmed);
-                }
-            }
-            match = codeBlockRegex.exec(content);
-        }
+		// 2. Fenced code blocks (bash/sh/zsh/shell)
+		const codeBlockRegex =
+			/```(?:bash|sh|zsh|shell|cmd|powershell)\s*([\s\S]*?)```/g;
+		match = codeBlockRegex.exec(content);
+		while (match !== null) {
+			const blockContent = match[1] || "";
+			const lines = blockContent.split("\n");
+			for (const line of lines) {
+				// Heuristic: ignore comments and empty lines, take anything that looks like a command start
+				const trimmed = line.trim();
+				if (trimmed && !trimmed.startsWith("#")) {
+					processCommand(trimmed);
+				}
+			}
+			match = codeBlockRegex.exec(content);
+		}
 
-        // Rule extraction (imperative keywords)
-        const ruleRegex = /(?:Always|Never|Must|Ensure|Verify|Done =)\s+([^.\n]+)/gi;
-        match = ruleRegex.exec(content);
-        while (match !== null) {
-            rules.push(match[0].trim());
-            match = ruleRegex.exec(content);
-        }
+		// Rule extraction (imperative keywords)
+		const ruleRegex =
+			/(?:Always|Never|Must|Ensure|Verify|Done =)\s+([^.\n]+)/gi;
+		match = ruleRegex.exec(content);
+		while (match !== null) {
+			rules.push(match[0].trim());
+			match = ruleRegex.exec(content);
+		}
 
-        return {
-            raw: content,
-            sections,
-            commands,
-            rules,
-            frontmatter
-        };
-    }
+		return {
+			raw: content,
+			sections,
+			commands,
+			rules,
+			frontmatter,
+		};
+	}
 }
 
 let _instance: ProjectContextService | null = null;
 
 // Export for testing
 export function setProjectContextInstance(instance: ProjectContextService) {
-    _instance = instance;
+	_instance = instance;
 }
 
 export function getProjectContext(): ProjectContextService {
-    if (!_instance) {
-        _instance = new ProjectContextService();
-    }
-    return _instance;
+	if (!_instance) {
+		_instance = new ProjectContextService();
+	}
+	return _instance;
 }

@@ -59,7 +59,8 @@ describe('WorkerAgent Integration Coverage', () => {
 
         mockQueue = {
             getActiveTicket: mock(() => ({ id: 'ticket-1' })),
-            complete: mock(() => ({}))
+            complete: mock(() => ({})),
+            enqueue: mock(() => ({}))
         };
 
         mockRegistry = {
@@ -83,7 +84,7 @@ describe('WorkerAgent Integration Coverage', () => {
 
     it('should report progress', async () => {
         const reportProgress = (agent as any).tools['report_progress'];
-        const result = await reportProgress.execute({ beadId: 'b1', message: 'Working' });
+        const result = await reportProgress.execute({ message: 'Working' }, { toolCallId: 'call-1', messages: [], beadId: 'b1' } as any);
 
         expect(result.success).toBe(true);
         expect(mockBeads.update).toHaveBeenCalledWith('b1', { status: 'in_progress' });
@@ -91,8 +92,9 @@ describe('WorkerAgent Integration Coverage', () => {
 
     it('should delegate tasks', async () => {
         const delegateTask = (agent as any).tools['delegate_task'];
-        const result = await delegateTask.execute({ parentBeadId: 'p1', title: 'Subtask' });
+        const result = await delegateTask.execute({ parentBeadId: 'p1', title: 'Subtask' }, { toolCallId: 'call-2', messages: [], beadId: 'p1' } as any);
 
+        if (!result.success) console.error('Delegate failure:', result);
         expect(result.success).toBe(true);
         expect(mockBeads.create).toHaveBeenCalled();
         expect(mockBeads.addDependency).toHaveBeenCalledWith('p1', 'new-bead');
@@ -101,10 +103,10 @@ describe('WorkerAgent Integration Coverage', () => {
     it('should handle delegation errors', async () => {
         mockBeads.create.mockImplementationOnce(() => { throw new Error('Create failed'); });
         const delegateTask = (agent as any).tools['delegate_task'];
-        const result = await delegateTask.execute({ parentBeadId: 'p1', title: 'Subtask' });
+        const result = await delegateTask.execute({ parentBeadId: 'p1', title: 'Subtask' }, { toolCallId: 'call-3', messages: [], beadId: 'p1' } as any);
 
         expect(result.success).toBe(false);
-        expect(result.error).toBe('Create failed');
+        expect(result.error).toBe('Failed to delegate: Create failed');
     });
 
     it('should run commands successfully', async () => {
@@ -126,7 +128,7 @@ describe('WorkerAgent Integration Coverage', () => {
 
     it('should handle handleSubmitWork when ticket exists', async () => {
         const submitWork = (agent as any).tools['submit_work'];
-        const result = await submitWork.execute({ beadId: 'b1', summary: 'Done', output: { foo: 'bar' } });
+        const result = await submitWork.execute({ summary: 'Done', output: { foo: 'bar' } }, { toolCallId: 'call-4', messages: [], beadId: 'b1' } as any);
 
         expect(result.success).toBe(true);
         expect(mockBeads.update).toHaveBeenCalledWith('b1', { status: 'verify' });
@@ -138,7 +140,7 @@ describe('WorkerAgent Integration Coverage', () => {
         const submitWork = (agent as any).tools['submit_work'];
 
         // Now throws an error instead of silently failing
-        await expect(submitWork.execute({ beadId: 'b1', summary: 'Done' }))
+        await expect(submitWork.execute({ summary: 'Done' }, { toolCallId: 'call-5', messages: [], beadId: 'b1' } as any))
             .rejects.toThrow('No active ticket found for b1');
         expect(mockQueue.complete).not.toHaveBeenCalled();
     });
@@ -155,10 +157,9 @@ describe('WorkerAgent Integration Coverage', () => {
         };
 
         const result = await submitWork.execute({
-            beadId: 'b1',
             summary: 'Plan created',
             output: planOutput
-        });
+        }, { toolCallId: 'call-6', messages: [], beadId: 'b1' } as any);
 
         expect(result.success).toBe(true);
         expect(mockBeads.update).toHaveBeenCalledWith('b1', { status: 'verify' });
@@ -169,7 +170,7 @@ describe('WorkerAgent Integration Coverage', () => {
         await agent.run('test', { beadId: 'test-bead' });
 
         const submitWork = (agent as any).tools['submit_work'];
-        const schema = submitWork.parameters as z.ZodObject<any>;
+        const schema = submitWork.inputSchema as z.ZodObject<any>;
         const outputField = schema.shape.output;
 
         expect(outputField instanceof z.ZodOptional).toBe(true);
@@ -183,7 +184,7 @@ describe('WorkerAgent Integration Coverage', () => {
         await agent.run('test', { beadId: 'missing' });
 
         const submitWork = (agent as any).tools['submit_work'];
-        const outputField = (submitWork.parameters as any).shape.output;
+        const outputField = (submitWork.inputSchema as any).shape.output;
 
         expect(outputField instanceof z.ZodOptional).toBe(true);
         // Default schema is union of string and string (since outputSchema defaults to z.string())

@@ -16,9 +16,8 @@ import { setQueueInstance, type WorkQueue } from '../../src/core/queue';
 import { setFormulaRegistry, type FormulaRegistry } from '../../src/core/formula';
 import { clearGlobalSingleton } from '../../src/core/registry';
 import { loadConfig } from '../../src/config';
-import type { z } from 'zod';
+import { z } from 'zod';
 import type { LanguageModel } from 'ai';
-import type { CoreTool } from '../../src/core/tool';
 
 const mockModel = {
     specificationVersion: 'v1',
@@ -69,12 +68,10 @@ describe('WorkerAgent Summary Conflation Fix', () => {
     });
 
     it('should successfully PARSE missing top-level summary (fix verified)', async () => {
-        const submitWork = (agent as unknown as { tools: Record<string, CoreTool> }).tools.submit_work;
-        // Re-fetch schema from tool definition map
-        const schema = submitWork.parameters as z.ZodObject<z.ZodRawShape>;
+        const submitWork = (agent as any).tools.submit_work;
+        const schema = submitWork.inputSchema as z.ZodObject<z.ZodRawShape>;
 
         const input = {
-            beadId: 'b1',
             output: {
                 summary: 'Nested Summary',
                 steps: []
@@ -86,63 +83,58 @@ describe('WorkerAgent Summary Conflation Fix', () => {
     });
 
     it('should extract nested summary in handler', async () => {
-        const submitWork = (agent as unknown as { tools: Record<string, CoreTool> }).tools.submit_work;
+        const submitWork = (agent as any).tools.submit_work;
 
         // Mock update to verify success
         const result = await submitWork.execute({
-            beadId: 'b1',
             output: {
                 summary: 'Extracted Summary',
                 data: 'test'
             }
-        });
+        }, { toolCallId: 'call-1', messages: [], beadId: 'b1' } as any);
 
         expect(result.success).toBe(true);
         expect((result as Record<string, unknown>).summary).toBe('Extracted Summary');
         expect((result as Record<string, unknown>).message).toBe('Work submitted successfully.');
-        // @ts-expect-error
         expect(mockBeads.update).toHaveBeenCalledWith('b1', { status: 'verify' });
     });
 
     it('should extract summary from output.analysis', async () => {
-        const submitWork = (agent as unknown as { tools: Record<string, CoreTool> }).tools.submit_work;
+        const submitWork = (agent as any).tools.submit_work;
 
         const result = await submitWork.execute({
-            beadId: 'b2',
             output: {
                 analysis: 'This is the analysis',
                 steps: []
             }
-        });
+        }, { toolCallId: 'call-2', messages: [], beadId: 'b2' } as any);
 
         expect(result.success).toBe(true);
         expect((result as Record<string, unknown>).summary).toBe('This is the analysis');
     });
 
     it('should generate fallback summary for structured output', async () => {
-        const submitWork = (agent as unknown as { tools: Record<string, CoreTool> }).tools.submit_work;
+        const submitWork = (agent as any).tools.submit_work;
 
         const result = await submitWork.execute({
-            beadId: 'b3',
             output: {
                 key1: 'val1',
                 key2: 'val2'
             }
-        });
+        }, { toolCallId: 'call-3', messages: [], beadId: 'b3' } as any);
 
         expect(result.success).toBe(true);
         expect((result as Record<string, unknown>).summary).toContain('Completed work with structured output');
     });
 
     it('should still fail if no summary AND no meaningful output', async () => {
-        const submitWork = (agent as unknown as { tools: Record<string, CoreTool> }).tools.submit_work;
+        const submitWork = (agent as any).tools.submit_work;
 
         try {
             await submitWork.execute({
-                beadId: 'b4',
                 // Missing output entirely or empty object
                 output: {}
-            });
+            }, { toolCallId: 'call-4', messages: [], beadId: 'b4' } as any);
             throw new Error('Should have failed');
         } catch (e: unknown) {
             expect((e as Error).message).toContain("Missing required field: 'summary'");

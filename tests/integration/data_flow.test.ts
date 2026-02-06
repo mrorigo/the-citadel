@@ -213,10 +213,9 @@ describe('Data Flow Integration', () => {
 
         // Execute tool directly
         await submitTool.execute({
-            beadId: bead.id,
             summary: 'Job done',
             output: outputData
-        });
+        }, { toolCallId: 'call-1', messages: [], beadId: bead.id } as any);
 
         // 5. Verify Queue State
         const completedTicket = queue.getOutput(bead.id);
