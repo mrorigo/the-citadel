@@ -20,7 +20,7 @@ export const TicketSchema = z.object({
 	bead_id: z.string(),
 	status: TicketStatusSchema,
 	priority: z.number().min(0).max(3),
-	target_role: z.enum(["router", "worker", "supervisor", "gatekeeper"]),
+	target_role: z.enum(["router", "worker", "gatekeeper"]),
 	assignee_id: z.string().nullable(),
 	created_at: z.number(),
 	started_at: z.number().nullable(),

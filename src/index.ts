@@ -69,7 +69,7 @@ export default {
             model: 'llama3:8b',
             mcpTools: ['filesystem:read_text_file', 'filesystem:list_directory']
         },
-        supervisor: { provider: 'ollama', model: 'llama3:8b' },
+
     },
     mcpServers: {
         filesystem: {
@@ -188,7 +188,7 @@ program
 			console.log("Citadel Conductor started. Press Ctrl+C to stop.");
 
 			// Prevent process exit
-			await new Promise(() => {});
+			await new Promise(() => { });
 		} catch (error) {
 			console.error("Failed to start Conductor:", error);
 			process.exit(1);

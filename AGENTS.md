@@ -1,75 +1,84 @@
-# Agent Instructions
+# Citadel Development Guide & Agent Instructions
 
-This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
+This document outlines the architectural patterns, testing strategies, and development rules specific to the **The Citadel** repository.
 
-## Setup Commands
+## 🏗️ Core Architecture Patterns
 
-Run these to get started:
-- `bun install`
+### 1. Dependency Injection vs. Singletons
+While the system uses singletons for runtime convenience (via `src/core/registry.ts`), **Dependency Injection (DI)** is preferred for testability.
 
-## Test Commands
+- **Pattern**: Core classes like `CoreAgent` accept optional dependencies in their constructor.
+- **Usage**:
+  ```typescript
+  // Runtime (uses singleton default)
+  const agent = new WorkerAgent(model); 
+  
+  // Testing (injects mock)
+  const mockBeads = { ... };
+  const agent = new WorkerAgent(model, mockBeads);
+  ```
 
-Run these to verify correctness:
-- `bun test tests/`
+### 2. Beads Client (`bd`)
+- **JSONL Source of Truth**: The system relies exclusively on `.beads/issues.jsonl`.
+- **`--no-db` Mode**: All `bd` commands MUST use the `--no-db` flag to prevent SQLite corruption and stack overflow crashes in the underlying Go binary.
+- **Integration**: `BeadsClient` wraps the CLI. Do not spawn child processes for `bd` manually; use `BeadsClient.runCommand()`.
 
-## Lint Commands
+### 3. Context Management
+- **Token Counting**: `CoreAgent` automatically tracks token usage and reports it to the Bead via comments.
+- **History Pruning**: Configurable in `citadel.config.ts`. The agent automatically prunes history but preserves:
+    - System prompt
+    - The most recent `tool-call` / `tool-result` pairs (to avoid hanging tool calls).
 
-Run these to verify checks:
-- `bunx biome lint .`
+## 🧪 Testing Strategy (Non-Obvious patterns)
 
-## Build Commands
+### 1. Unit Test Isolation
+Global singletons (`beads_client`, `work_queue`) persist across tests if not managed. 
 
-Run these to verify types:
-- `bun run tsc --noEmit`
+**Rule**: Always clean up globals in `beforeEach` or `afterAll`.
 
-## Development Rules
+```typescript
+import { clearGlobalSingleton } from '../../src/core/registry';
 
-### Critical Rules
-- **STRICT TYPING**: 
-    - NEVER use `any`
-    - NEVER use `// biome-ignore` to hide type errors
-    - Always define proper interfaces
-    - If you are stuck on a type error, FIX IT by understanding the type data, do not bypass it.
-- **FAILURE HANDLING**:
-    - Gatekeepers: Use `fail_work` for terminal failures that require recovery steps.
-    - Workers: Respect the `recovery` label on beads.
-- **MCP TOOLS**: Agents have access to external tools from MCP servers. Use them similarly to native tools.
-    - **Filesystem**: Use `filesystem_read_text_file`, `filesystem_write_file`, `filesystem_edit_file`, and `filesystem_list_directory` for file operations.
-- Work is NOT complete until all checks pass.
-
-### Agent-Specific Instructions
-
-#### Gatekeeper (EvaluatorAgent)
-- Use `approve_work` when acceptance criteria are met.
-- Use `reject_work` for fixable issues (sends task back to in-progress).
-- Use `fail_work` for **terminal failures**. This marks the task as `done` but applies a `failed` label, triggering any defined `on_failure` recovery steps in the workflow.
-
-### Quick Reference (Beads)
-
-```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --status in_progress  # Claim work
-bd close <id>         # Complete work
-bd sync               # Sync with git
+beforeEach(() => {
+    clearGlobalSingleton('beads_client');
+    clearGlobalSingleton('work_queue');
+    // ... setup mocks
+});
 ```
 
-### Landing the Plane (Session Completion)
+### 2. Mocking AI SDK
+We use a mock provider pattern for `LanguageModel`. 
+**Important**: The `specificationVersion` must be compatible with the AI SDK version installed.
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+```typescript
+const mockModel = {
+    specificationVersion: 'v1', // or 'v3' depending on SDK version
+    provider: 'mock',
+    modelId: 'mock-model',
+    doGenerate: async () => ({ ... })
+} as unknown as LanguageModel;
+```
 
-**MANDATORY WORKFLOW:**
+### 3. E2E Testing & Global Overrides
+For E2E tests (`tests/e2e/`), we run the full `Conductor` loop in-process. To bridge the gap between valid `WorkerAgents` (running in the loop) and the test assertions, we sometimes attach mocks to `globalThis`.
 
-1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
-3. **Update issue status** - Close finished work, update in-progress items
-4. **PUSH TO REMOTE** - This is MANDATORY:
-   ```bash
-   git pull --rebase
-   bd sync
-   git push
-   git status  # MUST show "up to date with origin"
-   ```
-5. **Clean up** - Clear stashes, prune remote branches
-6. **Verify** - All changes committed AND pushed
-7. **Hand off** - Provide context for next session
+- **Example**: `globalThis.__TEST_QUEUE__` is used to inspect queue state during E2E runs.
+
+## 🛡️ Development Rules
+
+1. **Strict Linting (Biome)**:
+   - Run `bunx biome lint .`
+   - **NO `any`**: Do not use `any`. Define a type or use `unknown` with narrowing.
+   - **NO `biome-ignore`**: Fix the issue properly.
+
+2. **Tool implementation**:
+   - Tools must validate inputs using `zod`.
+   - Tool outputs must be strictly typed.
+   - Use `AgentContext` to access `beadId` inside tools (auto-injected).
+
+3. **Release Flow**:
+   - Bump version in `package.json`.
+   - Update `CHANGELOG.md`.
+   - Commit.
+   - Tag `vX.Y.Z`.
+   - `git push && git push --tags`.

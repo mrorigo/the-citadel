@@ -33,11 +33,7 @@ export const ConfigSchema = z.object({
 			model: z.string(),
 			mcpTools: z.array(z.string()).optional(),
 		}),
-		supervisor: z.object({
-			provider: z.enum(["openai", "anthropic", "ollama"]),
-			model: z.string(),
-			mcpTools: z.array(z.string()).optional(),
-		}),
+
 		gatekeeper: z.object({
 			provider: z.enum(["openai", "anthropic", "ollama"]),
 			model: z.string(),

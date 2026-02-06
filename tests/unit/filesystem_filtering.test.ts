@@ -125,7 +125,8 @@ describe('Filesystem Tool Filtering', () => {
 
         // resultWrapper should be { type: ..., value: ... }
         // The actual value returned by tool.execute is inside .value
-        const actualOutput = resultWrapper.value;
+        // CoreAgent stringifies the output, so we need to parse it back
+        const actualOutput = JSON.parse(resultWrapper.value);
 
         // The output of list_directory (after filtering) is { content: [ { type: 'text', text: ... } ] } 
         // OR it might have been normalized to just text if list_directory returns string? 

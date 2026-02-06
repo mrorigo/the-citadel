@@ -22,10 +22,7 @@ export default defineConfig({
             model: 'gpt-oss:120b-cloud',
             mcpTools: ['filesystem:*'],
         },
-        supervisor: {
-            provider: 'ollama',
-            model: 'gpt-oss:120b-cloud',
-        },
+
         gatekeeper: {
             provider: 'ollama',
             model: 'gpt-oss:120b-cloud',
