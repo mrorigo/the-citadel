@@ -2,16 +2,12 @@ import type { LanguageModel } from 'ai';
 import { CoreAgent } from '../core/agent';
 import { getBeads } from '../core/beads';
 import { z } from 'zod';
-import { exec } from 'node:child_process';
-import { promisify } from 'node:util';
 import { logger } from '../core/logger';
 import { getQueue } from '../core/queue';
 import { getFormulaRegistry } from '../core/formula';
 import { jsonSchemaToZod } from '../core/schema-utils';
-import { getConfig } from '../config';
+import { runCommandTool } from '../tools/shell';
 
-
-const execAsync = promisify(exec);
 
 export class WorkerAgent extends CoreAgent {
     constructor(model?: LanguageModel) {
@@ -78,55 +74,14 @@ export class WorkerAgent extends CoreAgent {
         );
 
         // --- Shell Execution ---
+
+
+        // --- Shell Execution ---
         this.registerTool(
-            'run_command',
-            'Execute a shell command',
-            z.object({
-                command: z.string().optional().describe('The shell command to execute as a single string (e.g., "ls -la", "npm test")'),
-                cmd: z.union([z.string(), z.array(z.string())]).optional().describe('Alternative: command as string or array of arguments'),
-            }).passthrough(), // Allow extra params like timeout
-            async (args: { command?: string; cmd?: string | string[];[key: string]: unknown }) => {
-                // Normalize: accept both 'command' and 'cmd', convert arrays to strings
-                let command: string | undefined;
-                if (args.command) {
-                    command = args.command;
-                } else if (args.cmd) {
-                    command = Array.isArray(args.cmd) ? args.cmd.join(' ') : args.cmd;
-                }
-
-                if (!command) {
-                    return { success: false, error: 'Either "command" or "cmd" parameter must be provided' };
-                }
-
-                logger.debug(`[Worker] Running command: ${command}`);
-                try {
-                    const { stdout, stderr } = await execAsync(command);
-
-                    // Post-Git Sync
-                    if (command.trim().startsWith('git ')) {
-                        let autoSync = true;
-                        try {
-                            const config = getConfig();
-                            autoSync = config.beads.autoSync !== false;
-                        } catch { /* ignore */ }
-
-                        if (autoSync) {
-                            logger.info(`[Worker] Git operation detected. Triggering Beads sync.`);
-                            await getBeads().sync();
-                        }
-                    }
-
-                    return { success: true, stdout: stdout.trim(), stderr: stderr.trim() };
-                } catch (error: unknown) {
-                    const err = error as { message: string; stdout?: string; stderr?: string };
-                    return {
-                        success: false,
-                        error: err.message || String(error),
-                        stdout: err.stdout,
-                        stderr: err.stderr
-                    };
-                }
-            }
+            runCommandTool.name,
+            runCommandTool.description,
+            runCommandTool.schema,
+            runCommandTool.handler
         );
     }
 

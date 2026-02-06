@@ -80,4 +80,35 @@ describe('EvaluatorAgent Tool Schema', () => {
         });
         expect(result.success).toBe(true);
     });
+
+    it('should validate run_command schema with string', () => {
+        const schemas = (agent as any).schemas;
+        const schema = schemas['run_command'];
+        const result = schema.safeParse({
+            command: 'echo test'
+        });
+        expect(result.success).toBe(true);
+    });
+
+    it('should validate run_command schema with cmd array', () => {
+        const schemas = (agent as any).schemas;
+        const schema = schemas['run_command'];
+        const result = schema.safeParse({
+            cmd: ['echo', 'test']
+        });
+        expect(result.success).toBe(true);
+    });
+
+    it('should normalize run_command args with cmd array', async () => {
+        const tools = (agent as any).tools;
+        const tool = tools['run_command'];
+
+        // We can just run a safe command like 'echo' to verify it works (and proves normalization)
+        const result = await tool.execute({
+            cmd: ['echo', 'test_normalization']
+        });
+
+        expect(result.success).toBe(true);
+        expect(result.stdout.trim()).toBe('test_normalization');
+    });
 });

@@ -2,13 +2,7 @@ import type { LanguageModel } from 'ai';
 import { CoreAgent } from '../core/agent';
 import { getBeads } from '../core/beads';
 import { z } from 'zod';
-import { exec } from 'node:child_process';
-import { promisify } from 'node:util';
-import { logger } from '../core/logger';
-import { getConfig } from '../config';
-
-
-const execAsync = promisify(exec);
+import { runCommandTool } from '../tools/shell';
 
 export class EvaluatorAgent extends CoreAgent {
     constructor(model?: LanguageModel) {
@@ -66,34 +60,13 @@ export class EvaluatorAgent extends CoreAgent {
             }
         );
 
+
+
         this.registerTool(
-            'run_command',
-            'Execute a shell command (e.g. to run tests)',
-            z.object({ command: z.string() }),
-            async ({ command }) => {
-                try {
-                    const { stdout, stderr } = await execAsync(command);
-
-                    // Post-Git Sync
-                    if (command.trim().startsWith('git ')) {
-                        let autoSync = true;
-                        try {
-                            const config = getConfig();
-                            autoSync = config.beads.autoSync !== false;
-                        } catch { /* ignore */ }
-
-                        if (autoSync) {
-                            logger.info(`[Evaluator] Git operation detected. Triggering Beads sync.`);
-                            await getBeads().sync();
-                        }
-                    }
-
-                    return { success: true, stdout, stderr };
-                } catch (error: unknown) {
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    return { success: false, error: errorMessage };
-                }
-            }
+            runCommandTool.name,
+            runCommandTool.description,
+            runCommandTool.schema,
+            runCommandTool.handler
         );
     }
     protected override getSystemPrompt(defaultPrompt: string): string {

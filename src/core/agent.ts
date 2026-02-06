@@ -102,6 +102,8 @@ export abstract class CoreAgent {
 
     /**
      * Check permissions based on AGENTS.md frontmatter.
+     * NOTE: It could be useful to return the actual path that was blocked, this 
+     *       would give agent more context to fix the issue.
      */
     // biome-ignore lint/suspicious/noExplicitAny: args is dynamic based on tool
     protected async checkPermissions(toolName: string, args: any): Promise<{ allowed: boolean; error?: string }> {
@@ -333,7 +335,7 @@ If you are still working, continue with your next step.`
                         const input = tc.input as Record<string, any>;
 
                         // Inject beadId if missing
-                        if (context.beadId && !input.beadId) {
+                        if (context.beadId && (!input.beadId || input.beadId !== context.beadId)) {
                             input.beadId = context.beadId;
                         }
 
