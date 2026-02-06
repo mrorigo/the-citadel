@@ -7,6 +7,8 @@ import { getConfig } from '../config';
 import { getMCPService } from '../services/mcp';
 import { getIgnoredPatterns } from './gitignore';
 import { getInstructionService } from './instruction';
+import { getProjectContext } from '../services/project-context';
+import { minimatch } from 'minimatch';
 
 export interface AgentContext {
     beadId?: string;
@@ -96,6 +98,95 @@ export abstract class CoreAgent {
      */
     protected getSystemPrompt(defaultPrompt: string): string {
         return defaultPrompt;
+    }
+
+    /**
+     * Check permissions based on AGENTS.md frontmatter.
+     */
+    // biome-ignore lint/suspicious/noExplicitAny: args is dynamic based on tool
+    protected async checkPermissions(toolName: string, args: any): Promise<{ allowed: boolean; error?: string }> {
+        // 1. Identify target paths
+        const targets: string[] = [];
+        if (args.path && typeof args.path === 'string') targets.push(args.path);
+        if (args.source && typeof args.source === 'string') targets.push(args.source);
+        if (args.destination && typeof args.destination === 'string') targets.push(args.destination);
+        // For run_command, we check the command string for restricted paths (heuristic)
+        if (toolName.includes('run_command') && args.command && typeof args.command === 'string') {
+            // We can't easily resolve paths from a command string without parsing it, 
+            // but we can check if it contains substrings that match known restricted patterns?
+            // Actually, the simplest (and safest) approach for run_command is to block it if ANY restricted 
+            // file matches the current working directory, OR if we validly detect a path in the arg.
+            // But valid path detection in shell string is hard.
+            // Let's rely on the heuristics: if the command string *contains* a restricted path literal.
+            // This is imperfect but safer than nothing.
+        }
+
+        if (targets.length === 0 && !toolName.includes('run_command')) return { allowed: true };
+
+        // For simplicity in this reference implementation, we assume CWD is process.cwd()
+        // currently the cwd for agents is fixed to the project root
+        const cwd = process.cwd();
+        const projectContext = await getProjectContext().resolveContext(cwd, cwd);
+
+        if (!projectContext?.config.frontmatter) return { allowed: true };
+
+        const { ignore, read_only, forbidden } = projectContext.config.frontmatter;
+
+        // Helper to check globs
+        const matches = (path: string, patterns: string[]) => {
+            for (const pattern of patterns) {
+                if (minimatch(path, pattern, { dot: true })) return true; // Standard glob match
+                if (path.includes(pattern)) return true; // Simple substring match for safety
+            }
+            return false;
+        };
+
+        // Check Targets
+        for (const target of targets) {
+            // Forbidden
+            if (forbidden && matches(target, forbidden)) {
+                return { allowed: false, error: `Access to '${target}' is FORBIDDEN by AGENTS.md` };
+            }
+
+            // Read Only (Write Protection)
+            if (read_only && matches(target, read_only)) {
+                const isWrite = toolName.includes('write') || toolName.includes('edit') || toolName.includes('delete');
+                if (isWrite) {
+                    return { allowed: false, error: `Modification of '${target}' is READ-ONLY by AGENTS.md` };
+                }
+            }
+
+            // Ignore (Visibility Protection)
+            if (ignore && matches(target, ignore)) {
+                const isRead = toolName.includes('read') || toolName.includes('list') || toolName.includes('search');
+                if (isRead) {
+                    // We could return allowed: false, OR we could silently filter.
+                    // The spec says "Treated as non-existent".
+                    // For a direct read, that means "Not Found" error is appropriate (or just blocked).
+                    return { allowed: false, error: `File '${target}' is IGNORED (hidden) by AGENTS.md` };
+                }
+            }
+        }
+
+        // Check Command Strings (Heuristic)
+        if (toolName.includes('run_command') && args.command) {
+            const cmd = args.command as string;
+            if (forbidden) {
+                for (const pat of forbidden) {
+                    if (cmd.includes(pat)) return { allowed: false, error: `Command contains forbidden pattern '${pat}'` };
+                }
+            }
+            if (read_only) {
+                // For read-only, we must assume commands are writes unless we know otherwise?
+                // Or just block if they touch read-only files?
+                // Let's be conservative: if a command explicitly references a read-only file, block it to be safe.
+                for (const pat of read_only) {
+                    if (cmd.includes(pat)) return { allowed: false, error: `Command references read-only file '${pat}'` };
+                }
+            }
+        }
+
+        return { allowed: true };
     }
 
     /**
@@ -260,6 +351,20 @@ If you are still working, continue with your next step.`
                         messages,
                         ...(context || {})
                     };
+                    // --- ENFORCEMENT POINT ---
+                    const perm = await this.checkPermissions(toolName, validatedInput);
+                    if (!perm.allowed) {
+                        logger.warn(`[${this.role}] Permission denied for ${toolName}: ${perm.error}`);
+                        toolResults.push({
+                            type: 'tool-result',
+                            toolCallId: tc.toolCallId,
+                            toolName: tc.toolName,
+                            output: { type: 'error-text', value: `Permission Denied: ${perm.error}` },
+                        } as ToolResultPart);
+                        continue;
+                    }
+                    // -------------------------
+
                     // biome-ignore lint/suspicious/noExplicitAny: Context is dynamic
                     const output = await tool.execute(validatedInput, toolContext as any);
 

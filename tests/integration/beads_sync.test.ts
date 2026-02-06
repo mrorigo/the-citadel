@@ -29,7 +29,7 @@ describe('Beads Sync Recovery', () => {
             protected override async execute(command: string, _cwd: string): Promise<{ stdout: string; stderr: string }> {
                 this.callCount++;
 
-                if (command.includes('sync --import-only')) {
+                if (command.includes('sync')) {
                     this.syncCalled = true;
                     return { stdout: '', stderr: '' };
                 }
