@@ -109,6 +109,7 @@ export abstract class CoreAgent {
     protected async checkPermissions(toolName: string, args: any): Promise<{ allowed: boolean; error?: string }> {
         // 1. Identify target paths
         const targets: string[] = [];
+        if (args.paths && Array.isArray(args.paths)) targets.push(...args.paths);
         if (args.path && typeof args.path === 'string') targets.push(args.path);
         if (args.source && typeof args.source === 'string') targets.push(args.source);
         if (args.destination && typeof args.destination === 'string') targets.push(args.destination);
@@ -353,7 +354,7 @@ If you are still working, continue with your next step.`
                         messages,
                         ...(context || {})
                     };
-                    // --- ENFORCEMENT POINT ---
+                    // --- ENFORCEMENT POINT (Input) ---
                     const perm = await this.checkPermissions(toolName, validatedInput);
                     if (!perm.allowed) {
                         logger.warn(`[${this.role}] Permission denied for ${toolName}: ${perm.error}`);
@@ -365,10 +366,52 @@ If you are still working, continue with your next step.`
                         } as ToolResultPart);
                         continue;
                     }
+
+                    // Inject Excludes for Search/Tree
+                    if (toolName.includes('search_files') || toolName.includes('directory_tree')) {
+                        const projectContext = await getProjectContext().resolveContext(process.cwd(), process.cwd());
+                        if (projectContext?.config.frontmatter) {
+                            const { forbidden, ignore } = projectContext.config.frontmatter;
+                            const excludes = [...(forbidden || []), ...(ignore || [])];
+                            if (excludes.length > 0) {
+                                // Assume tool supports 'exclude' or 'excludes' or 'excludePatterns'
+                                // Common convention for search/tree tools
+                                (validatedInput as any).exclude = excludes;
+                                (validatedInput as any).excludes = excludes;
+                                (validatedInput as any).excludePatterns = excludes;
+                            }
+                        }
+                    }
                     // -------------------------
 
                     // biome-ignore lint/suspicious/noExplicitAny: Context is dynamic
                     const output = await tool.execute(validatedInput, toolContext as any);
+
+                    // --- ENFORCEMENT POINT (Output) ---
+                    if (toolName.includes('list_directory') && output.content && Array.isArray(output.content)) {
+                        const projectContext = await getProjectContext().resolveContext(process.cwd(), process.cwd());
+                        if (projectContext?.config.frontmatter?.forbidden) {
+                            const forbidden = projectContext.config.frontmatter.forbidden;
+                            output.content = output.content.map((part: any) => {
+                                if (part.type === 'text') {
+                                    const lines = part.text.split('\n');
+                                    const filteredLines = lines.filter((line: string) => {
+                                        // Line format is typically "[DIR] name" or "[FILE] name"
+                                        // Or just standard ls output. 
+                                        // We check if the line contains any forbidden pattern
+                                        for (const pattern of forbidden) {
+                                            if (minimatch(line, pattern, { dot: true, matchBase: true })) return false;
+                                            if (line.includes(pattern)) return false;
+                                        }
+                                        return true;
+                                    });
+                                    return { type: 'text', text: filteredLines.join('\n') };
+                                }
+                                return part;
+                            });
+                        }
+                    }
+                    // -------------------------
 
                     // Check for explicit finish signals if tool returns them? 
                     // Not standard, but we can convention.

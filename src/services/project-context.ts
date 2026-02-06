@@ -243,6 +243,11 @@ export class ProjectContextService {
 
 let _instance: ProjectContextService | null = null;
 
+// Export for testing
+export function setProjectContextInstance(instance: ProjectContextService) {
+    _instance = instance;
+}
+
 export function getProjectContext(): ProjectContextService {
     if (!_instance) {
         _instance = new ProjectContextService();
