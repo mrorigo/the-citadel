@@ -164,7 +164,9 @@ export abstract class CoreAgent {
     ): Promise<{ allowed: boolean; error?: string }> {
         // 1. Identify target paths
         const targets: string[] = [];
-        if (args.paths && Array.isArray(args.paths)) {
+        if (!args || typeof args !== 'object') return { allowed: true };
+
+        if ('paths' in args && Array.isArray(args.paths)) {
             targets.push(...(args.paths as string[]));
         }
         if (args.path && typeof args.path === "string") targets.push(args.path);
@@ -313,6 +315,41 @@ export abstract class CoreAgent {
 
         // Max steps 50 to prevent infinite loops but allow complex tasks
         for (let i = 0; i < 50; i++) {
+            // Prune History
+            const config = getConfig();
+            const { maxHistoryMessages = 20, maxToolResponseSize = 50000, maxMessageSize = 100000 } = config.context || {};
+
+            if (messages.length > maxHistoryMessages) {
+                const systemMessage = messages[0];
+                const lastN = messages.slice(-maxHistoryMessages);
+
+                // Safety Check: Avoid splitting Tool Call / Tool Result pairs
+                // If the first message in our slice is a 'tool' result, we likely dropped the 'assistant' call.
+                // We should grab the preceding message too.
+                if (lastN.length > 0 && lastN[0] && lastN[0].role === 'tool') {
+                    // Find the index of this tool result in the original array
+                    const toolResult = lastN[0];
+                    const originalIndex = messages.indexOf(toolResult);
+                    if (originalIndex > 0) {
+                        // Grab the message before it (the assistant tool call)
+                        const preceding = messages[originalIndex - 1];
+                        // If it's not already in lastN, unshift it
+                        if (preceding && preceding !== toolResult) {
+                            lastN.unshift(preceding);
+                        }
+                    }
+                }
+
+                // Reconstruct: Keep System + Recent Context
+                // We use splice to modify in place or just reassign? `messages` is a local const array reference but mutable content.
+                // We reassign the array content.
+                messages.length = 0;
+                messages.push(...lastN);
+                if (systemMessage) {
+                    messages.unshift(systemMessage);
+                }
+            }
+
             const result = await this.executeGenerateText(messages);
 
             // Construct Assistant Message from result
@@ -334,6 +371,12 @@ export abstract class CoreAgent {
 
             // Only push if there is content
             if (assistantContent.length > 0) {
+                // Size Check (Basic estimation)
+                const contentStr = JSON.stringify(assistantContent);
+                if (contentStr.length > maxMessageSize) {
+                    logger.warn(`[${this.role}] Message size ${contentStr.length} exceeds limit ${maxMessageSize}. Truncating logic not fully implemented for mixed content, but proceeding.`);
+                    // TODO: Implement smart truncation for assistant messages if needed
+                }
                 messages.push({ role: "assistant", content: assistantContent });
             }
 
@@ -547,10 +590,17 @@ If you are still working, continue with your next step.`,
                         completionToolCalled = true;
                     }
 
-                    const toolOutput =
-                        typeof output === "string"
-                            ? { type: "text" as const, value: output }
-                            : { type: "json" as const, value: output };
+                    // --- TRUNCATION LOGIC ---
+                    let toolOutputValue = typeof output === "string" ? output : JSON.stringify(output);
+
+                    if (toolOutputValue.length > maxToolResponseSize) {
+                        const truncated = toolOutputValue.substring(0, maxToolResponseSize);
+                        toolOutputValue = `${truncated}\n... [Output truncated. Total size: ${toolOutputValue.length} characters (Limit: ${maxToolResponseSize})]`;
+                        logger.warn(`[${this.role}] Tool ${toolName} output truncated from ${toolOutputValue.length} to ${maxToolResponseSize}`);
+                    }
+                    // ------------------------
+
+                    const toolOutput = { type: "text" as const, value: toolOutputValue };
 
                     toolResults.push({
                         type: "tool-result",

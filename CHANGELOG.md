@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [0.4.1] - 2026-02-06
+
+### Added
+- **Context Management Strategy**: Implemented configurable limits for agent history and message sizes to prevent context window overflow and reduce costs.
+  - Added `context` configuration object to `citadel.config.ts`.
+  - **History Pruning**: `CoreAgent` now automatically prunes message history exceeding `maxHistoryMessages` (default: 20/30) while intelligently preserving the system prompt and tool-call/result pairs.
+  - **Output Truncation**: Large tool outputs are now truncated if they exceed `maxToolResponseSize` (default: 50k/100k chars), preventing agents from choking on massive file reads or command outputs.
+  - **Message Size Safety**: Added safeguards against excessively large single messages.
+
 ## [0.4.0] - 2026-02-06
 
 ### Added

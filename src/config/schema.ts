@@ -95,6 +95,16 @@ export const ConfigSchema = z.object({
 			maxLogs: z.number().default(1000),
 		})
 		.default({ maxLogs: 1000 }),
+
+	context: z.object({
+		maxHistoryMessages: z.number().default(50),
+		maxToolResponseSize: z.number().default(50000), // Characters
+		maxMessageSize: z.number().default(100000), // Characters
+	}).default({
+		maxHistoryMessages: 20,
+		maxToolResponseSize: 50000,
+		maxMessageSize: 100000,
+	}),
 });
 
 export type CitadelConfig = z.infer<typeof ConfigSchema>;
