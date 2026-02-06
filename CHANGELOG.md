@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [0.4.3] - 2026-02-06
+
+### Fixed
+- **Critical Crash Fix**: Enforced `--no-db` mode for all `bd` logic to prevent "Split Stack Overflow" crashes in the underlying Go SQLite driver. This eliminates potential database corruption during high-load state transitions.
+- **Robustness**: `bd` interactions now rely exclusively on `issues.jsonl` (JSONL-only mode), ensuring stability across all environments.
+
 ## [0.4.2] - 2026-02-06
 
 ### Added

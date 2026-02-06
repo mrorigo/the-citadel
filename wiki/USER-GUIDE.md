@@ -425,12 +425,14 @@ Configure the underlying state engine.
 *   **`autoSync`**: Automatically sync state with Git (default: true).
 
 ```typescript
-beads: {
     path: '.beads',
     binary: '/usr/local/bin/bd',
     autoSync: true
 }
 ```
+
+> **Note on Storage Mode**: The Citadel forces `bd` to run in `--no-db` mode effectively treating `.beads/issues.jsonl` as the single source of truth. This avoids potential SQLite corruption issues during agent crashes, and a potential race condition bug in `bd` itself. The `beads.db` file is ignored if it exists.
+
 
 ### 6. Context Management
 Control the amount of information passed to agents to manage costs and prevent context overflow.

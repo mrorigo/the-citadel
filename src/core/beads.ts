@@ -110,7 +110,8 @@ export class BeadsClient {
     protected async runCommand(args: string, retryCount = 0): Promise<string> {
         // Use --sandbox mode to avoid daemon issues in Docker containers
         // Sandbox mode operates in "direct mode" without requiring a daemon
-        const command = `${this.binary} --sandbox ${args}`;
+        // Use --no-db to avoid SQLite crashes ("split stack overflow") and corruption
+        const command = `${this.binary} --sandbox --no-db ${args}`;
 
         // Determine CWD: The folder containing .beads folder, or the basePath itself if it is the root
         const cwd = this.basePath.endsWith(".beads")
@@ -150,8 +151,9 @@ export class BeadsClient {
                 }
             }
 
-            // Flaky binary recovery (Split Stack Overflow)
-            // Error behavior reported by user: "It usually works on the second attempt"
+            // Flaky binary recovery (Split Stack Overflow) - RETRY LOGIC KEPT JUST IN CASE
+            // Even with --no-db, if the binary is unstable, we might want to keep this.
+            // But --no-db should prevent the specific sqlite split stack.
             if (
                 err.message.includes("fatal error: runtime: split stack overflow") &&
                 retryCount < 2
@@ -167,7 +169,7 @@ export class BeadsClient {
     }
 
     async init(): Promise<void> {
-        await this.runCommand("init");
+        await this.runCommand("init"); // runCommand adds --no-db
     }
 
     protected async execute(
