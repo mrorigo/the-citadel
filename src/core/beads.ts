@@ -126,6 +126,13 @@ export class BeadsClient {
                 }
             }
 
+            // Flaky binary recovery (Split Stack Overflow)
+            // Error behavior reported by user: "It usually works on the second attempt"
+            if (err.message.includes('fatal error: runtime: split stack overflow') && retryCount < 2) {
+                logger.warn(`[Beads] 'split stack overflow' detected. Retrying command (attempt ${retryCount + 1}).`);
+                return this.runCommand(args, retryCount + 1);
+            }
+
             throw new Error(`Beads command failed: ${command}\n${err.message}`);
         }
     }
