@@ -29,5 +29,8 @@
     "citadel-forge",
     "tests",
     "dist"
+  ],
+  "include": [
+    "src"
   ]
 }
