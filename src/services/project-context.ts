@@ -1,6 +1,13 @@
 import { readFile } from 'node:fs/promises';
 import { join, dirname, resolve } from 'node:path';
 import { existsSync } from 'node:fs';
+import { load } from 'js-yaml';
+
+export interface AgentsMdFrontmatter {
+    ignore?: string[];
+    read_only?: string[];
+    forbidden?: string[];
+}
 
 export interface AgentsMdConfig {
     raw: string;
@@ -13,6 +20,7 @@ export interface AgentsMdConfig {
         other: string[];
     };
     rules: string[];
+    frontmatter?: AgentsMdFrontmatter;
 }
 
 export type AgentsMdContext = {
@@ -113,7 +121,12 @@ export class ProjectContextService {
                 build: [...child.commands.build, ...parent.commands.build],
                 other: [...child.commands.other, ...parent.commands.other],
             },
-            rules: [...child.rules, ...parent.rules] // Accumulate rules
+            rules: [...child.rules, ...parent.rules], // Accumulate rules
+            frontmatter: {
+                ignore: [...(child.frontmatter?.ignore || []), ...(parent.frontmatter?.ignore || [])],
+                read_only: [...(child.frontmatter?.read_only || []), ...(parent.frontmatter?.read_only || [])],
+                forbidden: [...(child.frontmatter?.forbidden || []), ...(parent.frontmatter?.forbidden || [])],
+            }
         };
     }
 
@@ -130,6 +143,27 @@ export class ProjectContextService {
             other: [] as string[]
         };
         const rules: string[] = [];
+        let frontmatter: AgentsMdFrontmatter = {};
+
+        // Frontmatter Extraction
+        if (content.startsWith('---')) {
+            const end = content.indexOf('---', 3);
+            if (end !== -1) {
+                const yamlBlock = content.slice(3, end);
+                try {
+                    const parsed = load(yamlBlock) as AgentsMdFrontmatter;
+                    if (parsed && typeof parsed === 'object') {
+                        frontmatter = {
+                            ignore: Array.isArray(parsed.ignore) ? parsed.ignore : [],
+                            read_only: Array.isArray(parsed.read_only) ? parsed.read_only : [],
+                            forbidden: Array.isArray(parsed.forbidden) ? parsed.forbidden : [],
+                        };
+                    }
+                } catch (e) {
+                    console.error('[ProjectContext] Failed to parse frontmatter YAML', e);
+                }
+            }
+        }
 
         // Simple heuristic parsing
         const lines = content.split('\n');
@@ -201,7 +235,8 @@ export class ProjectContextService {
             raw: content,
             sections,
             commands,
-            rules
+            rules,
+            frontmatter
         };
     }
 }
