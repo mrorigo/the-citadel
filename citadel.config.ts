@@ -76,4 +76,10 @@ export default defineConfig({
     bridge: {
         maxLogs: 1000,
     },
+
+    context: {
+        maxHistoryMessages: 30,
+        maxToolResponseSize: 100000,
+        maxMessageSize: 200000,
+    },
 });

@@ -21,6 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **AI SDK v6 Alignment**: Migrated all tool definitions and registration logic to the new `inputSchema` pattern required by AI SDK 6.0.
 - **Instruction Precision**: Audited and updated all system prompts and instruction templates to remove stale requirements for agents to provide `beadId` manually.
 
+## [0.4.1] - 2026-02-06
+
+### Added
+- **Context Management Strategy**: Implemented configurable limits for agent history and message sizes to prevent context window overflow and reduce costs.
+  - Added `context` configuration object to `citadel.config.ts`.
+  - **History Pruning**: `CoreAgent` now automatically prunes message history exceeding `maxHistoryMessages` (default: 20/30) while intelligently preserving the system prompt and tool-call/result pairs.
+  - **Output Truncation**: Large tool outputs are now truncated if they exceed `maxToolResponseSize` (default: 50k/100k chars), preventing agents from choking on massive file reads or command outputs.
+  - **Message Size Safety**: Added safeguards against excessively large single messages.
+
 ## [0.3.2] - 2026-02-06
 
 ### Added

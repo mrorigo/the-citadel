@@ -152,7 +152,7 @@ The **Conductor** manages the agent loop.
 citadel start
 ```
 
-### 2. Running Workflows
+### 3. Running Workflows
 You don't talk to agents directly; you assign them work via Beads. To trigger a workflow, simply create a request that the Router understands.
 
 **Natural Language Trigger:**
@@ -175,7 +175,7 @@ bd create "Prepare Q3 Business Review for Sales Team"
 4.  It compiles the Formula into a **Molecule** (a graph of Beads).
 5.  **Workers** immediately start claiming the `open` steps.
 
-### 3. Explicit Trigger (CLI)
+### 4. Explicit Trigger (CLI)
 For deterministic execution without relying on the Router to parse intent, use the CLI directly:
 
 ```bash
@@ -188,8 +188,10 @@ _or_
 citadel create "AI Trends Whitepaper" --formula whitepaper --vars topic="Agentic Workflows"
 ```
 
-### 4. Dynamic Bonding
-Workers are not limited to single tasks. If a Worker picks up a large objective, it can recursively spawn child beads.
+### 5. Dynamic Bonding
+Workers are not limited to single tasks. If a Worker picks up a large objective, it can recursively spawn child beads using the `delegate_task` tool.
+
+The system automatically manages the parent-child relationships based on the execution context. This allows for infinite recursive breakdown of work without losing state tracking.
 
 **Example A: Refactoring (Software)**
 1.  Worker claims "Refactor API".
@@ -203,7 +205,13 @@ Workers are not limited to single tasks. If a Worker picks up a large objective,
 3.  Spawns 5 child beads (one per competitor) to gather deep data in parallel.
 4.  Synthesizes the results once all children complete.
 
-### 5. Project Awareness & Custom Instructions
+### 6. Agent Tooling & Context
+The Citadel provides a "Context-Aware" runtime for all agents.
+
+**Automatic Context Injection:**
+When an agent executes a tool (like `submit_work` or `report_progress`), the system automatically injects the current `beadId` and execution environment. Operations are always strictly scoped to the active Bead, preventing cross-task interference.
+
+### 7. Project Awareness & Custom Instructions
 You can "teach" agents about your specific project by placing rules in your repository. The Citadel uses a tiered **Instruction Discovery Service** to build agent prompts dynamically.
 
 #### The Instruction Hierarchy (Priority order)
@@ -247,7 +255,7 @@ When submitting your plan (via `submit_work`), you **MUST** include a `verificat
 
 Workers handling `tag:planning` tasks are thus "primed" to provide the structured output the Gatekeeper demands.
 
-### 6. Structured Data Flow
+### 8. Structured Data Flow
 The Citadel supports passing rich data between steps, enabling complex chaining and branching.
 
 **Input (Context):**
@@ -293,7 +301,7 @@ context = { target = "{{steps.scout.output.coordinates}}" }
 
 ## Advanced: Creating a New Formula
 
-### 6. Writing Formulas
+### 9. Writing Formulas
 
 1.  Create a file in `.citadel/formulas/my_workflow.toml`.
 2.  Define `vars` for any inputs you need.
@@ -302,7 +310,7 @@ context = { target = "{{steps.scout.output.coordinates}}" }
 
 The Router will automatically discover the new formula on its next cycle.
 
-### 7. Smart Molecules
+### 10. Smart Molecules
 Formulas support advanced logic like **Conditions**, **Loops**, and **Resilient Recovery**.
 
 ```toml
@@ -424,7 +432,22 @@ beads: {
 }
 ```
 
-### 6. Bridge Environment
+### 6. Context Management
+Control the amount of information passed to agents to manage costs and prevent context overflow.
+
+*   **`maxHistoryMessages`**: Maximum number of conversation turns to keep in memory (default: 20). Pruning is smart and preserves the System Prompt and tool-result pairs.
+*   **`maxToolResponseSize`**: Maximum characters for a single tool output (default: 50,000). Large outputs are automatically truncated with a warning.
+*   **`maxMessageSize`**: Saftey limit for any single message (default: 100,000).
+
+```typescript
+context: {
+    maxHistoryMessages: 30,
+    maxToolResponseSize: 100000,
+    maxMessageSize: 200000
+}
+```
+
+### 7. Bridge Environment
 *   **`env`**: `'development'` or `'production'`.
 *   **`bridge.maxLogs`**: Number of log lines maintained in TUI memory (default: 1000).
 
