@@ -1,73 +1,40 @@
-import type { LanguageModel } from 'ai';
-import { CoreAgent } from '../core/agent';
-import { getBeads } from '../core/beads';
-import { z } from 'zod';
-import { runCommandTool } from '../tools/shell';
+import type { LanguageModel } from "ai";
+import { type AgentContext, CoreAgent } from "../core/agent";
+import {
+    createApproveWorkTool,
+    createFailWorkTool,
+    createRejectWorkTool,
+} from "../tools/evaluator";
+import { runCommandTool } from "../tools/shell";
 
 export class EvaluatorAgent extends CoreAgent {
     constructor(model?: LanguageModel) {
-        super('gatekeeper', model);
+        super("gatekeeper", model);
         this.requiresExplicitCompletion = true;
 
-        // Approve
-        this.registerTool(
-            'approve_work',
-            'Approve the work and mark the task as done',
-            z.object({
-                beadId: z.string().describe('The ID of the bead being evaluated'),
-                acceptance_test: z.union([z.string(), z.array(z.string())]).describe('REQUIRED: The specific acceptance test/criteria used to verify this work. MUST NOT be null. If no specific test exists, describe the manual verification performed.'),
-                comment: z.string().optional().describe('Optional comment on the approval'),
-            }),
-            async ({ beadId, acceptance_test }) => {
-                const finalTest = Array.isArray(acceptance_test) ? acceptance_test.join('\n') : acceptance_test;
-                await getBeads().update(beadId, { status: 'done', acceptance_test: finalTest });
-                return { success: true, status: 'done' };
-            }
-        );
-
-        // Reject
-        this.registerTool(
-            'reject_work',
-            'Reject the work and send it back for rework',
-            z.object({
-                beadId: z.string().describe('The ID of the bead being rejected'),
-                reason: z.string().describe('REQUIRED: Why the work was rejected'),
-            }),
-            async ({ beadId, reason }) => {
-                const bead = await getBeads().get(beadId);
-                await getBeads().update(beadId, {
-                    status: 'open',
-                    labels: [...(bead.labels || []).filter(l => l !== 'rejected'), 'rejected']
-                });
-                return { success: true, status: 'open', reason };
-            }
-        );
-
-        // Fail
-        this.registerTool(
-            'fail_work',
-            'Mark the work as terminal failure (triggers recovery steps if defined)',
-            z.object({
-                beadId: z.string().describe('The ID of the bead being failed'),
-                reason: z.string().describe('Why the work is considered a terminal failure'),
-            }),
-            async ({ beadId }) => {
-                await getBeads().update(beadId, {
-                    status: 'done',
-                    labels: ['failed']
-                });
-                return { success: true, status: 'done', failed: true };
-            }
-        );
-
-
-
+        // --- Shell Execution (Static) ---
         this.registerTool(
             runCommandTool.name,
             runCommandTool.description,
             runCommandTool.schema,
-            runCommandTool.handler
+            runCommandTool.handler,
         );
+
+        // Register default tools for easy access/discovery
+        this.registerSdkTool("approve_work", createApproveWorkTool({}));
+        this.registerSdkTool("reject_work", createRejectWorkTool({}));
+        this.registerSdkTool("fail_work", createFailWorkTool({}));
+    }
+
+    protected override async getDynamicTools(
+        context?: AgentContext,
+    ): Promise<Record<string, import("ai").Tool>> {
+        const ctx = context || {};
+        return {
+            approve_work: createApproveWorkTool(ctx),
+            reject_work: createRejectWorkTool(ctx),
+            fail_work: createFailWorkTool(ctx),
+        };
     }
     protected override getSystemPrompt(defaultPrompt: string): string {
         return `

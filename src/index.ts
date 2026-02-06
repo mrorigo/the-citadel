@@ -1,52 +1,54 @@
 #!/usr/bin/env bun
-import { Command } from 'commander';
-import { loadConfig } from './config';
-import { Conductor } from './services/conductor';
-import { getQueue } from './core/queue';
-import { mkdir, writeFile, access, unlink } from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
-import { join, resolve, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { startBridge } from './bridge/index';
-import { getWorkflowEngine } from './services/workflow-engine';
-import { getBeads } from './core/beads';
+import { readFileSync } from "node:fs";
+import { access, mkdir, unlink, writeFile } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { Command } from "commander";
+import { startBridge } from "./bridge/index";
+import { loadConfig } from "./config";
+import { getBeads } from "./core/beads";
+import { getQueue } from "./core/queue";
+import { Conductor } from "./services/conductor";
+import { getWorkflowEngine } from "./services/workflow-engine";
 
 // Read version from package.json
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const packageJson = JSON.parse(readFileSync(join(__dirname, '../package.json'), 'utf-8'));
+const packageJson = JSON.parse(
+	readFileSync(join(__dirname, "../package.json"), "utf-8"),
+);
 const version = packageJson.version;
 
 const program = new Command();
 
 program
-    .name('citadel')
-    .description('The Citadel: A deterministic agent orchestration system')
-    .version(version);
+	.name("citadel")
+	.description("The Citadel: A deterministic agent orchestration system")
+	.version(version);
 
 // --- Init Command ---
 
 program
-    .command('init')
-    .description('Initialize a new Citadel project (Foundry Mode)')
-    .action(async () => {
-        try {
-            console.log('🏗️  Initializing The Citadel...');
+	.command("init")
+	.description("Initialize a new Citadel project (Foundry Mode)")
+	.action(async () => {
+		try {
+			console.log("🏗️  Initializing The Citadel...");
 
-            const cwd = process.cwd();
-            const citadelDir = join(cwd, '.citadel');
-            const formulasDir = join(citadelDir, 'formulas');
+			const cwd = process.cwd();
+			const citadelDir = join(cwd, ".citadel");
+			const formulasDir = join(citadelDir, "formulas");
 
-            // 1. Create Directory Structure
-            await mkdir(formulasDir, { recursive: true });
-            console.log('✅ Created .citadel/ structure');
+			// 1. Create Directory Structure
+			await mkdir(formulasDir, { recursive: true });
+			console.log("✅ Created .citadel/ structure");
 
-            // 2. Scaffold Config
-            const configPath = join(cwd, 'citadel.config.ts');
-            try {
-                await access(configPath);
-                console.log('ℹ️  citadel.config.ts already exists');
-            } catch {
-                const configTemplate = `
+			// 2. Scaffold Config
+			const configPath = join(cwd, "citadel.config.ts");
+			try {
+				await access(configPath);
+				console.log("ℹ️  citadel.config.ts already exists");
+			} catch {
+				const configTemplate = `
 export default {
     env: 'development',
     providers: {
@@ -95,17 +97,17 @@ export default {
     },
 };
 `;
-                await writeFile(configPath, configTemplate.trim());
-                console.log('✅ Created citadel.config.ts (Ollama default)');
-            }
+				await writeFile(configPath, configTemplate.trim());
+				console.log("✅ Created citadel.config.ts (Ollama default)");
+			}
 
-            // 3. Scaffold AGENTS.md
-            const agentsPath = join(cwd, 'AGENTS.md');
-            try {
-                await access(agentsPath);
-                console.log('ℹ️  AGENTS.md already exists');
-            } catch {
-                const agentsTemplate = `
+			// 3. Scaffold AGENTS.md
+			const agentsPath = join(cwd, "AGENTS.md");
+			try {
+				await access(agentsPath);
+				console.log("ℹ️  AGENTS.md already exists");
+			} catch {
+				const agentsTemplate = `
 # Project Rules
 
 ## Setup
@@ -120,16 +122,16 @@ export default {
 ## Behavior
 - Always write a plan before coding.
 `;
-                await writeFile(agentsPath, agentsTemplate.trim());
-                console.log('✅ Created AGENTS.md');
-            }
+				await writeFile(agentsPath, agentsTemplate.trim());
+				console.log("✅ Created AGENTS.md");
+			}
 
-            // 4. Scaffold Sample Formula
-            const formulaPath = join(formulasDir, 'hello_world.toml');
-            try {
-                await access(formulaPath);
-            } catch {
-                const formulaTemplate = `
+			// 4. Scaffold Sample Formula
+			const formulaPath = join(formulasDir, "hello_world.toml");
+			try {
+				await access(formulaPath);
+			} catch {
+				const formulaTemplate = `
 formula = "hello_world"
 description = "A friendly greeting workflow"
 
@@ -143,133 +145,139 @@ id = "greet"
 title = "Say Hello to {{name}}"
 description = "Create a file named hello_{{name}}.txt with a greeting."
 `;
-                await writeFile(formulaPath, formulaTemplate.trim());
-                console.log('✅ Created .citadel/formulas/hello_world.toml');
-            }
+				await writeFile(formulaPath, formulaTemplate.trim());
+				console.log("✅ Created .citadel/formulas/hello_world.toml");
+			}
 
-            // 5. Initialize Beads
-            console.log('🔄 Initializing Beads DB...');
-            const beads = getBeads(join(cwd, '.beads'));
-            await beads.init();
-            console.log('✅ Beads initialized');
+			// 5. Initialize Beads
+			console.log("🔄 Initializing Beads DB...");
+			const beads = getBeads(join(cwd, ".beads"));
+			await beads.init();
+			console.log("✅ Beads initialized");
 
-            console.log('\n🚀 Citadel initialized successfully!');
-            console.log('Try running:');
-            console.log('  citadel create "My First Run" -f hello_world -v name=Developer');
-            console.log('  citadel start');
-
-        } catch (error) {
-            console.error('❌ Init failed:', error);
-            process.exit(1);
-        }
-    });
-
-program
-    .command('start')
-    .description('Start the Citadel Conductor service')
-    .action(async () => {
-        try {
-            await loadConfig();
-            const conductor = new Conductor();
-
-            // Handle shutdown gracefully
-            process.on('SIGINT', () => {
-                console.log('\nReceived SIGINT. Stopping...');
-                conductor.stop();
-                process.exit(0);
-            });
-
-            conductor.start();
-
-            // Keep alive
-            console.log('Citadel Conductor started. Press Ctrl+C to stop.');
-
-            // Prevent process exit
-            await new Promise(() => { });
-        } catch (error) {
-            console.error('Failed to start Conductor:', error);
-            process.exit(1);
-        }
-    });
+			console.log("\n🚀 Citadel initialized successfully!");
+			console.log("Try running:");
+			console.log(
+				'  citadel create "My First Run" -f hello_world -v name=Developer',
+			);
+			console.log("  citadel start");
+		} catch (error) {
+			console.error("❌ Init failed:", error);
+			process.exit(1);
+		}
+	});
 
 program
-    .command('reset-queue [beadId]')
-    .description('Reset the Work Queue (Deletes persistence file or specific bead tickets)')
-    .action(async (beadId) => {
-        try {
-            if (beadId) {
-                await loadConfig();
-                const queue = getQueue();
-                console.log(`Resetting tickets for bead: ${beadId}...`);
-                queue.resetBead(beadId);
-                console.log(`Tickets for ${beadId} have been cleared.`);
-            } else {
-                const dbPath = resolve(process.cwd(), '.citadel', 'queue.sqlite');
-                console.log(`Resetting entire queue at ${dbPath}...`);
-                await unlink(dbPath);
-                console.log('Queue reset successfully.');
-            }
-        } catch (error) {
-            if (!beadId && (error as { code?: string }).code === 'ENOENT') {
-                console.log('Queue file not found. Nothing to reset.');
-            } else {
-                console.error('Failed to reset queue:', error);
-            }
-        }
-    });
+	.command("start")
+	.description("Start the Citadel Conductor service")
+	.action(async () => {
+		try {
+			await loadConfig();
+			const conductor = new Conductor();
+
+			// Handle shutdown gracefully
+			process.on("SIGINT", () => {
+				console.log("\nReceived SIGINT. Stopping...");
+				conductor.stop();
+				process.exit(0);
+			});
+
+			conductor.start();
+
+			// Keep alive
+			console.log("Citadel Conductor started. Press Ctrl+C to stop.");
+
+			// Prevent process exit
+			await new Promise(() => {});
+		} catch (error) {
+			console.error("Failed to start Conductor:", error);
+			process.exit(1);
+		}
+	});
 
 program
-    .command('inspect <beadId>')
-    .description('Inspect the active ticket for a bead')
-    .action(async (beadId) => {
-        await loadConfig();
-        const ticket = getQueue().getActiveTicket(beadId);
-        if (ticket) {
-            console.log(JSON.stringify(ticket, null, 2));
-        } else {
-            console.log(`No active ticket found for ${beadId}`);
-        }
-    });
+	.command("reset-queue [beadId]")
+	.description(
+		"Reset the Work Queue (Deletes persistence file or specific bead tickets)",
+	)
+	.action(async (beadId) => {
+		try {
+			if (beadId) {
+				await loadConfig();
+				const queue = getQueue();
+				console.log(`Resetting tickets for bead: ${beadId}...`);
+				queue.resetBead(beadId);
+				console.log(`Tickets for ${beadId} have been cleared.`);
+			} else {
+				const dbPath = resolve(process.cwd(), ".citadel", "queue.sqlite");
+				console.log(`Resetting entire queue at ${dbPath}...`);
+				await unlink(dbPath);
+				console.log("Queue reset successfully.");
+			}
+		} catch (error) {
+			if (!beadId && (error as { code?: string }).code === "ENOENT") {
+				console.log("Queue file not found. Nothing to reset.");
+			} else {
+				console.error("Failed to reset queue:", error);
+			}
+		}
+	});
 
 program
-    .command('bridge')
-    .description('Start The Bridge (TUI Dashboard)')
-    .action(async () => {
-        await startBridge();
-    });
+	.command("inspect <beadId>")
+	.description("Inspect the active ticket for a bead")
+	.action(async (beadId) => {
+		await loadConfig();
+		const ticket = getQueue().getActiveTicket(beadId);
+		if (ticket) {
+			console.log(JSON.stringify(ticket, null, 2));
+		} else {
+			console.log(`No active ticket found for ${beadId}`);
+		}
+	});
 
 program
-    .command('create <title>')
-    .description('Create a new molecule from a formula')
-    .option('-f, --formula <name>', 'Formula name to use')
-    .option('-v, --vars <items...>', 'Variables key=value', [])
-    .action(async (_title, options) => {
-        if (!options.formula) {
-            console.error('Error: --formula is required for citadel create');
-            process.exit(1);
-        }
+	.command("bridge")
+	.description("Start The Bridge (TUI Dashboard)")
+	.action(async () => {
+		await startBridge();
+	});
 
-        await loadConfig();
-        const engine = getWorkflowEngine();
-        await engine.init();
+program
+	.command("create <title>")
+	.description("Create a new molecule from a formula")
+	.option("-f, --formula <name>", "Formula name to use")
+	.option("-v, --vars <items...>", "Variables key=value", [])
+	.action(async (_title, options) => {
+		if (!options.formula) {
+			console.error("Error: --formula is required for citadel create");
+			process.exit(1);
+		}
 
-        // Parse variables
-        const variables: Record<string, string> = {};
-        if (options.vars) {
-            for (const item of options.vars) {
-                const [k, v] = item.split('=');
-                if (k && v) variables[k] = v;
-            }
-        }
+		await loadConfig();
+		const engine = getWorkflowEngine();
+		await engine.init();
 
-        try {
-            const moleculeId = await engine.instantiateFormula(options.formula, variables);
-            console.log(`Successfully created molecule: ${moleculeId}`);
-        } catch (error: unknown) {
-            const err = error as Error;
-            console.error('Failed to instantiate formula:', err.message);
-            process.exit(1);
-        }
-    });
+		// Parse variables
+		const variables: Record<string, string> = {};
+		if (options.vars) {
+			for (const item of options.vars) {
+				const [k, v] = item.split("=");
+				if (k && v) variables[k] = v;
+			}
+		}
+
+		try {
+			const moleculeId = await engine.instantiateFormula(
+				options.formula,
+				variables,
+			);
+			console.log(`Successfully created molecule: ${moleculeId}`);
+		} catch (error: unknown) {
+			const err = error as Error;
+			console.error("Failed to instantiate formula:", err.message);
+			process.exit(1);
+		}
+	});
 
 program.parse(process.argv);

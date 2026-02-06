@@ -35,9 +35,8 @@ describe('EvaluatorAgent Tool Schema', () => {
         expect(approveWork).toBeDefined();
 
         await approveWork!.execute({
-            beadId: 'bead-1',
             acceptance_test: 'Simple test criteria'
-        });
+        }, { toolCallId: 'call-1', messages: [], beadId: 'bead-1' } as any);
 
         expect(mockUpdate).toHaveBeenCalledWith('bead-1', {
             status: 'done',
@@ -51,9 +50,8 @@ describe('EvaluatorAgent Tool Schema', () => {
         expect(approveWork).toBeDefined();
 
         await approveWork!.execute({
-            beadId: 'bead-1',
             acceptance_test: ['Criteria 1', 'Criteria 2']
-        });
+        }, { toolCallId: 'call-2', messages: [], beadId: 'bead-1' } as any);
 
         expect(mockUpdate).toHaveBeenCalledWith('bead-1', {
             status: 'done',
@@ -65,7 +63,6 @@ describe('EvaluatorAgent Tool Schema', () => {
         const schemas = (agent as any).schemas;
         const approveWorkSchema = schemas['approve_work'];
         const result = approveWorkSchema.safeParse({
-            beadId: 'test',
             acceptance_test: 'foo'
         });
         expect(result.success).toBe(true);
@@ -75,7 +72,6 @@ describe('EvaluatorAgent Tool Schema', () => {
         const schemas = (agent as any).schemas;
         const approveWorkSchema = schemas['approve_work'];
         const result = approveWorkSchema.safeParse({
-            beadId: 'test',
             acceptance_test: ['one', 'two']
         });
         expect(result.success).toBe(true);

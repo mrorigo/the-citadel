@@ -196,7 +196,7 @@ description = "Cleaning up after main failure"
 
         // biome-ignore lint/suspicious/noExplicitAny: access private for test
         const failTool = (agent as any).tools.fail_work;
-        await failTool.execute({ beadId, reason: 'Test Reason' });
+        await failTool.execute({ reason: 'Test Reason' }, { toolCallId: 'call-fail', messages: [], beadId } as any);
 
         const updated = store.get(beadId);
         expect(updated.status).toBe('done');

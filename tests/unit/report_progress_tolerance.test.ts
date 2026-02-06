@@ -25,7 +25,7 @@ describe('Report Progress Tolerance', () => {
     it('should work with exact message', async () => {
         const agent = new WorkerAgent();
         const tool = (agent as any).tools['report_progress'];
-        const result = await tool.execute({ beadId: 'test-123', message: 'Starting...' });
+        const result = await tool.execute({ message: 'Starting...' }, { toolCallId: 'call-1', messages: [], beadId: 'test-123' } as any);
         expect(result.success).toBe(true);
         expect(result.message).toContain('Starting...');
     });
@@ -33,7 +33,7 @@ describe('Report Progress Tolerance', () => {
     it('should fallback to reasoning if message is missing', async () => {
         const agent = new WorkerAgent();
         const tool = (agent as any).tools['report_progress'];
-        const result = await tool.execute({ beadId: 'test-123', reasoning: 'Thinking about code...' });
+        const result = await tool.execute({ reasoning: 'Thinking about code...' }, { toolCallId: 'call-2', messages: [], beadId: 'test-123' } as any);
         expect(result.success).toBe(true);
         expect(result.message).toContain('Thinking about code...');
     });
@@ -41,7 +41,7 @@ describe('Report Progress Tolerance', () => {
     it('should use default message if both are missing', async () => {
         const agent = new WorkerAgent();
         const tool = (agent as any).tools['report_progress'];
-        const result = await tool.execute({ beadId: 'test-123' });
+        const result = await tool.execute({}, { toolCallId: 'call-3', messages: [], beadId: 'test-123' } as any);
         expect(result.success).toBe(true);
         expect(result.message).toContain('Working on it...');
     });
@@ -50,11 +50,10 @@ describe('Report Progress Tolerance', () => {
         const agent = new WorkerAgent();
         const tool = (agent as any).tools['report_progress'];
         const result = await tool.execute({
-            beadId: 'test-123',
             message: 'Done',
             extra: 'something',
             metadata: { foo: 'bar' }
-        });
+        }, { toolCallId: 'call-4', messages: [], beadId: 'test-123' } as any);
         expect(result.success).toBe(true);
         expect(result.message).toContain('Done');
     });

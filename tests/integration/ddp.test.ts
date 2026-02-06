@@ -265,8 +265,8 @@ context = { input_num = "{{steps.producer.output.magic_number}}" }
         await worker.run('Work', { beadId: producerId });
 
         // Verify Schema manually
-        const submitTool = (worker as any).tools['submit_work'];
-        const schema = submitTool.parameters;
+        const submitTool = (worker as any).dynamicTools['submit_work'] || (worker as any).tools['submit_work'];
+        const schema = submitTool.inputSchema;
         // Check for magic_number in schema
         // Schema is ZodObject.
         // We can check strictness by seeing if it accepts valid data and rejects invalid.
@@ -276,18 +276,16 @@ context = { input_num = "{{steps.producer.output.magic_number}}" }
         await beads.update(producerId, { status: 'in_progress' });
 
         const validArgs = {
-            beadId: producerId,
             summary: 'Done',
             output: { magic_number: 42 }
         };
-        await submitTool.execute(validArgs, { toolCallId: 'test', messages: [] });
+        await submitTool.execute(validArgs, { toolCallId: 'test', messages: [], beadId: producerId } as any);
 
         let outputTicket = queue.getOutput(producerId);
         expect(outputTicket).toEqual({ magic_number: 42 });
 
         // 2. Invalid Execution (Missing required field)
         const invalidArgs = {
-            beadId: producerId,
             summary: 'Done',
             output: { magic_number: "wrong_type" }
         };

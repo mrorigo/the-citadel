@@ -82,9 +82,8 @@ describe('WorkerAgent Idempotency', () => {
         } as unknown as Bead));
 
         const result = await submitWork.execute({
-            beadId: 'test-bead',
             summary: 'Retry summary'
-        });
+        }, { toolCallId: 'call-1', messages: [], beadId: 'test-bead' } as any);
 
         expect(result.success).toBe(true);
         expect((result as Record<string, unknown>).message).toContain('already submitted');
@@ -110,9 +109,8 @@ describe('WorkerAgent Idempotency', () => {
         mockQueue.getOutput = mock(() => ({ summary: 'Persisted Summary' })); // Output found!
 
         const result = await submitWork.execute({
-            beadId: 'stuck-bead',
             summary: 'Retry summary'
-        });
+        }, { toolCallId: 'call-1', messages: [], beadId: 'stuck-bead' } as any);
 
         // Verify:
         // 1. Should return success
