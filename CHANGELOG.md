@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [0.4.4] - 2026-02-06
+
+### Fixed
+- **Test Suite Stability**: Resolved test regressions and flakiness caused by global state leakage in `CoreAgent`.
+- **CoreAgent Refactor**: Implemented Dependency Injection for `BeadsClient` in `CoreAgent` to isolate tests from the global singleton.
+- **E2E Testing**: Fixed `bd doctor` mock in E2E tests to bypass git working tree checks.
+- **Conductor Tests**: Added missing mocks (`getLatestTicket`) to fix TypeErrors in Conductor integration tests.
+
 ## [0.4.3] - 2026-02-06
 
 ### Fixed

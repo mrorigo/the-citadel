@@ -52,7 +52,8 @@ describe('WorkerAgent Summary Conflation Fix', () => {
         mockBeads = {
             update: mock(async () => ({})),
             get: mock(async () => ({ id: 'test-bead', status: 'open', title: 'test', created_at: '', updated_at: '' })),
-            ready: mock(async () => [])
+            ready: mock(async () => []),
+            addComment: mock(async () => "comment-id")
         } as unknown as Partial<BeadsClient>;
 
         mockQueue = {

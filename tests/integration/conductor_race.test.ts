@@ -25,7 +25,8 @@ const mockQueue = {
     getActiveTicket: mock(() => null),
     claim: mock(() => ({ id: 'ticket-1', bead_id: 'bead-C' })),
     list_active: mock(() => []),
-    reschedule: mock(() => { })
+    reschedule: mock(() => { }),
+    getLatestTicket: mock(() => null),
 };
 
 describe('Conductor Race Condition', () => {

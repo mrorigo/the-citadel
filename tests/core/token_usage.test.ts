@@ -14,28 +14,35 @@ import { CoreAgent } from '../../src/core/agent';
 import { setBeadsInstance, type BeadsClient } from '../../src/core/beads';
 import { clearGlobalSingleton } from '../../src/core/registry';
 import { loadConfig } from '../../src/config';
-import type { LanguageModel } from 'ai';
+import type { LanguageModel, ModelMessage } from 'ai';
 
 // Concrete implementation of CoreAgent for testing
 class TestAgent extends CoreAgent {
-    constructor(model: LanguageModel) {
-        super('worker', model); // Use 'worker' role as it exists in schema
+    constructor(model: LanguageModel, client?: BeadsClient) {
+        super('worker', model, client); // Use 'worker' role as it exists in schema
+    }
+
+    // Override to bypass AI SDK and return controlled result
+    protected async executeGenerateText(messages: ModelMessage[]): Promise<any> {
+        return {
+            text: 'Mocked Result',
+            toolCalls: [],
+            toolResults: [],
+            finishReason: 'stop',
+            usage: {
+                inputTokens: 10,
+                outputTokens: 20,
+                totalTokens: 30
+            }
+        };
     }
 }
 
 const mockModel = {
-    specificationVersion: 'v3',
+    specificationVersion: 'v1',
     provider: 'mock',
     modelId: 'mock-model',
-    doGenerate: async () => ({
-        content: [{ type: 'text', text: 'Mocked Result' }],
-        finishReason: 'stop',
-        usage: {
-            inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
-            outputTokens: { total: 20, text: 20, reasoning: 0 }
-        },
-        rawResponse: {}
-    })
+    doGenerate: async () => ({})
 } as unknown as LanguageModel;
 
 describe('CoreAgent Token Usage Tracking', () => {
@@ -57,8 +64,8 @@ describe('CoreAgent Token Usage Tracking', () => {
             // We'll keep it minimal
         } as unknown as Partial<BeadsClient>;
 
-        setBeadsInstance(mockBeads as BeadsClient);
-        agent = new TestAgent(mockModel);
+        // setBeadsInstance(mockBeads as BeadsClient); // No longer needed with DI, but consistent
+        agent = new TestAgent(mockModel, mockBeads as BeadsClient);
     });
 
     it('should accumulate tokens and report to beads', async () => {

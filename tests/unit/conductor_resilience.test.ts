@@ -63,6 +63,7 @@ describe('Conductor Resilience', () => {
         mockQueue = {
             getActiveTicket: mock(() => null),
             getPendingCount: mock(() => 0),
+            getLatestTicket: mock(() => null),
         };
 
         conductor = new Conductor(mockBeads as unknown as BeadsClient, mockQueue as unknown as WorkQueue);

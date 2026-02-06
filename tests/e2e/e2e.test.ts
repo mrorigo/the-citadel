@@ -112,6 +112,8 @@ describe('E2E Lifecycle', () => {
         globalThis.__TEST_QUEUE__ = queueInstance;
 
         beadsClient = new BeadsClient(TEST_BEADS_PATH);
+        // FORCE doctor to pass in E2E tests (ignores git dirty state)
+        beadsClient.doctor = async () => true;
         setBeadsInstance(beadsClient);
         await beadsClient.init();
 

@@ -19,7 +19,7 @@ import { getIgnoredPatterns } from "./gitignore";
 import { getInstructionService } from "./instruction";
 import { getAgentModel } from "./llm";
 import { logger } from "./logger";
-import { getBeads } from "./beads";
+import { getBeads, type BeadsClient } from "./beads";
 
 export interface AgentContext {
     beadId?: string;
@@ -38,10 +38,12 @@ export abstract class CoreAgent {
     protected dynamicTools: Record<string, Tool> = {};
     protected schemas: Record<string, z.ZodTypeAny> = {};
     protected requiresExplicitCompletion = false;
+    protected beadsClient?: BeadsClient;
 
-    constructor(role: AgentRole, model?: LanguageModel) {
+    constructor(role: AgentRole, model?: LanguageModel, beadsClient?: BeadsClient) {
         this.role = role;
         this.model = model || getAgentModel(role);
+        this.beadsClient = beadsClient;
     }
 
     /**
@@ -673,9 +675,9 @@ If you are still working, continue with your next step.`,
         if (context?.beadId) {
             try {
                 const summary = `**Agent Execution Summary**\n- **Role**: ${this.role}\n- **Input Tokens**: ${totalUsage.inputTokens}\n- **Output Tokens**: ${totalUsage.outputTokens}\n- **Total Tokens**: ${totalUsage.totalTokens}`;
-                // We use getBeads() singleton to report
-                // This is fire-and-forget to avoid blocking return
-                getBeads().addComment(context.beadId, summary).catch(err => {
+                // Usage injected client or global singleton
+                const client = this.beadsClient || getBeads();
+                client.addComment(context.beadId, summary).catch(err => {
                     logger.warn(`[${this.role}] Failed to report token usage to bead ${context.beadId}`, { error: err });
                 });
             } catch (err) {
