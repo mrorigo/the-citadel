@@ -218,9 +218,24 @@ You can "teach" agents about your specific project by placing rules in your repo
 1.  **Global Rules**: Loaded from `AGENTS.md` in the project root.
 2.  **Builtin Defaults**: Hardcoded core safety and persistence rules for each role.
 3.  **Role Overrides**: Files in `.citadel/instructions/role-${role}.md` (e.g., `role-worker.md`).
-4.  **Formula Prompts**: Task-specific instructions defined in a workflow's TOML.
-5.  **Tag-based Instructions**: Triggered by bead labels (e.g., `tag:git` loads `tag-git.md`).
-6.  **Context (Dynamic)**: Instructions passed directly in the bead's JSON context.
+4.  **MCP Resources (Automatic)**: Automatically injected context from MCP servers (e.g., CodeFlow memory).
+5.  **Formula Prompts**: Task-specific instructions defined in a workflow's TOML.
+6.  **Tag-based Instructions**: Triggered by bead labels (e.g., `tag:git` loads `tag-git.md`).
+7.  **Context (Dynamic)**: Instructions passed directly in the bead's JSON context.
+
+#### Automatic Resource Injection
+The Citadel supports automatic injection of MCP resources into the agent context. This allows agents to leverage rich context sources like CodeFlow's Cortex memory system (`memory://top`) or other MCP-exposed knowledge bases automatically.
+
+Resources are aggregated from three levels:
+1.  **Agent Level**: Configured in `citadel.config.ts`.
+2.  **Formula Level**: Declared in `.toml` formula files via `mcp_resources`.
+3.  **Bead Level**: Specified dynamically in the bead's JSON context.
+
+**Example Formula Property:**
+```toml
+[mcp_resources]
+code_flow = ["memory://project-conventions"]
+```
 
 #### Role-Specific Overrides
 To customize a specific agent role project-wide, create a file in `.citadel/instructions/`:

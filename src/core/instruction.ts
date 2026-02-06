@@ -6,6 +6,7 @@ import { getProjectContext } from "../services/project-context";
 import { getBeads } from "./beads";
 import { getFormulaRegistry } from "./formula";
 import { logger } from "./logger";
+import { MCPResourceProvider } from "./mcp-resource-provider";
 
 export interface InstructionContext {
 	role: AgentRole;
@@ -202,6 +203,7 @@ export class InstructionService {
 			new GlobalProvider(),
 			new BuiltinProvider(),
 			new RoleProvider(),
+			new MCPResourceProvider(),
 			new FormulaProvider(),
 			new TagProvider(),
 			new ContextProvider(),

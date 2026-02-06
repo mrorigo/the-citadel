@@ -37,6 +37,7 @@ export const FormulaSchema = z.object({
 	description: z.string(),
 	vars: z.record(z.string(), FormulaVariableSchema).optional(),
 	prompts: z.record(z.string(), z.string()).optional(), // Add this: { worker: "...", router: "..." }
+	mcp_resources: z.record(z.string(), z.array(z.string())).optional(),
 	steps: z.array(FormulaStepSchema),
 });
 

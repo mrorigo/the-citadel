@@ -2,7 +2,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import { ListRootsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import { ListRootsRequestSchema, ReadResourceRequestSchema, ListResourcesRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 import { getConfig } from "../config";
 import { logger } from "../core/logger";
 
@@ -18,7 +18,7 @@ export class MCPService {
 	private clients: Map<string, Client> = new Map();
 	private tools: Map<string, MCPTool[]> = new Map(); // serverName -> tools
 
-	private constructor() {}
+	private constructor() { }
 
 	static getInstance(): MCPService {
 		if (!MCPService.instance) {
@@ -135,6 +135,61 @@ export class MCPService {
 			name: toolName,
 			arguments: args,
 		});
+	}
+
+	async readResource(serverName: string, uri: string): Promise<string[]> {
+		const client = this.clients.get(serverName);
+		if (!client) {
+			logger.warn(`[MCP] Server ${serverName} not connected for resource ${uri}`);
+			return [];
+		}
+
+		try {
+			logger.info(`[MCP] Reading resource ${serverName}:${uri}`);
+			const result = (await client.request(
+				{
+					method: "resources/read",
+					params: { uri },
+				},
+				ReadResourceRequestSchema,
+			)) as any;
+
+			return (result.contents as any[])
+				.map((content: any) => {
+					if ("text" in content && content.text) {
+						return content.text as string;
+					}
+					if ("blob" in content) {
+						logger.warn(`[MCP] Skipping binary resource content for ${uri}`);
+					}
+					return null;
+				})
+				.filter((text: string | null): text is string => text !== null);
+		} catch (error) {
+			logger.error(`[MCP] Failed to read resource ${serverName}:${uri}:`, error);
+			return [];
+		}
+	}
+
+	async listResources(serverName: string): Promise<unknown[]> {
+		const client = this.clients.get(serverName);
+		if (!client) {
+			logger.warn(`[MCP] Server ${serverName} not connected for listResources`);
+			return [];
+		}
+
+		try {
+			const result = (await client.request(
+				{
+					method: "resources/list",
+				},
+				ListResourcesRequestSchema,
+			)) as any;
+			return result.resources as unknown[];
+		} catch (error) {
+			logger.error(`[MCP] Failed to list resources for ${serverName}:`, error);
+			return [];
+		}
 	}
 
 	async shutdown(): Promise<void> {

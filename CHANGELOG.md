@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [0.4.4] - 2026-02-06
+## [0.4.5] - 2026-02-06
+
+### Added
+- **Automatic MCP Resource Injection**:
+  - Implemented `MCPResourceProvider` to automatically inject contextual data from MCP servers into agent prompts.
+  - Added support for resource declaration in `citadel.config.ts`, workflow formulas (.toml), and dynamic bead context.
+  - Extended `MCPService` with full resource reading capabilities including binary content filtering.
+  - Integrated resource injection into the `InstructionService` pipeline.
 
 ### Fixed
 - **Test Suite Stability**: Resolved test regressions and flakiness caused by global state leakage in `CoreAgent`.

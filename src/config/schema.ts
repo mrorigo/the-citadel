@@ -27,17 +27,20 @@ export const ConfigSchema = z.object({
 			provider: z.enum(["openai", "anthropic", "ollama"]),
 			model: z.string(),
 			mcpTools: z.array(z.string()).optional(), // Format: ["server:tool", "server:*"]
+			mcpResources: z.record(z.string(), z.array(z.string())).optional(),
 		}),
 		worker: z.object({
 			provider: z.enum(["openai", "anthropic", "ollama"]),
 			model: z.string(),
 			mcpTools: z.array(z.string()).optional(),
+			mcpResources: z.record(z.string(), z.array(z.string())).optional(),
 		}),
 
 		gatekeeper: z.object({
 			provider: z.enum(["openai", "anthropic", "ollama"]),
 			model: z.string(),
 			mcpTools: z.array(z.string()).optional(),
+			mcpResources: z.record(z.string(), z.array(z.string())).optional(),
 		}),
 	}),
 
