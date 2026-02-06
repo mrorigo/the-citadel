@@ -19,6 +19,7 @@ import { getIgnoredPatterns } from "./gitignore";
 import { getInstructionService } from "./instruction";
 import { getAgentModel } from "./llm";
 import { logger } from "./logger";
+import { getBeads } from "./beads";
 
 export interface AgentContext {
     beadId?: string;
@@ -310,8 +311,16 @@ export abstract class CoreAgent {
 
         let finalResult = "";
 
+
+
         let didRemindForCompletion = false;
         let completionToolCalled = false;
+
+        const totalUsage = {
+            inputTokens: 0,
+            outputTokens: 0,
+            totalTokens: 0,
+        };
 
         // Max steps 50 to prevent infinite loops but allow complex tasks
         for (let i = 0; i < 50; i++) {
@@ -351,6 +360,15 @@ export abstract class CoreAgent {
             }
 
             const result = await this.executeGenerateText(messages);
+
+            console.log('DEBUG: result.usage', JSON.stringify(result.usage));
+
+            // Accumulate Usage
+            if (result.usage) {
+                totalUsage.inputTokens += result.usage.inputTokens || 0;
+                totalUsage.outputTokens += result.usage.outputTokens || 0;
+                totalUsage.totalTokens += result.usage.totalTokens || 0;
+            }
 
             // Construct Assistant Message from result
             // We must manually add the assistant's response to history so the subsequent tool-result message is valid.
@@ -646,6 +664,22 @@ If you are still working, continue with your next step.`,
             if (finished) {
                 logger.info(`[${this.role}] Task finished explicitly via tool.`);
                 break;
+            }
+        }
+
+
+
+        // Report Token Usage if linked to a bead
+        if (context?.beadId) {
+            try {
+                const summary = `**Agent Execution Summary**\n- **Role**: ${this.role}\n- **Input Tokens**: ${totalUsage.inputTokens}\n- **Output Tokens**: ${totalUsage.outputTokens}\n- **Total Tokens**: ${totalUsage.totalTokens}`;
+                // We use getBeads() singleton to report
+                // This is fire-and-forget to avoid blocking return
+                getBeads().addComment(context.beadId, summary).catch(err => {
+                    logger.warn(`[${this.role}] Failed to report token usage to bead ${context.beadId}`, { error: err });
+                });
+            } catch (err) {
+                logger.warn(`[${this.role}] Error preparing token usage report`, { error: err });
             }
         }
 

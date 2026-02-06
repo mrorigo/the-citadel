@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+
+## [0.4.2] - 2026-02-06
+
+### Added
+- **Token Usage Counting**:
+  - `CoreAgent` now tracks input, output, and total tokens across all LLM steps in a task execution.
+  - Automatically posts a summary comment to the associated Bead via the `bd` CLI upon task completion.
+
 ## [0.4.1] - 2026-02-06
 
 ### Added
