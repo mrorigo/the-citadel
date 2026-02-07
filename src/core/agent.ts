@@ -67,7 +67,7 @@ export abstract class CoreAgent {
         });
     }
 
-    private async registerBuiltinTools() {
+    protected async registerBuiltinTools() {
         if (this.mcpLoaded) return;
 
         const config = getConfig();
@@ -277,7 +277,7 @@ export abstract class CoreAgent {
      * - Handles tool execution manually for better control/logging
      */
     async run(prompt: string, context?: AgentContext): Promise<string> {
-        logger.info(`[${this.role}] Running...`, { role: this.role });
+        logger.info(`[${this.role}] Running...`, { role: this.role, prompt: prompt.length > 400 ? prompt.slice(0, 400) + "..." : prompt });
 
         // Ensure MCP tools are loaded
         await this.registerBuiltinTools();
@@ -332,33 +332,32 @@ export abstract class CoreAgent {
 
             if (messages.length > maxHistoryMessages) {
                 const systemMessage = messages[0];
-                const lastN = messages.slice(-maxHistoryMessages);
+                const userRequest = messages[1];
+
+                // Keep system + request + last N to reach maxHistoryMessages
+                const lastNCount = Math.max(0, maxHistoryMessages - 2);
+                const lastN = messages.slice(-lastNCount);
 
                 // Safety Check: Avoid splitting Tool Call / Tool Result pairs
                 // If the first message in our slice is a 'tool' result, we likely dropped the 'assistant' call.
                 // We should grab the preceding message too.
-                if (lastN.length > 0 && lastN[0] && lastN[0].role === 'tool') {
-                    // Find the index of this tool result in the original array
+                if (lastN.length > 0 && lastN[0] && lastN[0].role === "tool") {
                     const toolResult = lastN[0];
                     const originalIndex = messages.indexOf(toolResult);
                     if (originalIndex > 0) {
-                        // Grab the message before it (the assistant tool call)
                         const preceding = messages[originalIndex - 1];
-                        // If it's not already in lastN, unshift it
-                        if (preceding && preceding !== toolResult) {
+                        if (preceding && preceding !== userRequest && preceding !== systemMessage) {
                             lastN.unshift(preceding);
                         }
                     }
                 }
 
-                // Reconstruct: Keep System + Recent Context
-                // We use splice to modify in place or just reassign? `messages` is a local const array reference but mutable content.
-                // We reassign the array content.
+                // Reconstruct: Keep System + Request + Recent Context
                 messages.length = 0;
+                if (systemMessage) messages.push(systemMessage);
+                if (userRequest && userRequest !== systemMessage)
+                    messages.push(userRequest);
                 messages.push(...lastN);
-                if (systemMessage) {
-                    messages.unshift(systemMessage);
-                }
             }
 
             const result = await this.executeGenerateText(messages);
