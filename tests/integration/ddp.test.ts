@@ -46,37 +46,31 @@ const FORMULAS_DIR = resolve(TEST_DIR, '.citadel/formulas');
 class MockPearlsClient extends PearlsClient {
     public store: Map<string, any> = new Map();
 
-    protected override async runCommand(args: string): Promise<string> {
-        // console.log(`[MockPearlsClient] runCommand: ${args}`);
+    protected override async runCommand(args: string[]): Promise<string> {
+        const cmd = args[0];
+
         // Create
-        if (args.startsWith('create')) {
-            const titleMatch = args.match(/create "([^"]+)"/);
-            const title = titleMatch ? titleMatch[1] : 'Untitled';
-
+        if (cmd === 'create') {
+            const title = args[1] || 'Untitled';
             const id = `pearl-${Math.random().toString(36).substr(2, 9)}`;
-
             const pearl: any = {
                 id, title, status: 'open', priority: 2,
                 description: '', labels: [], metadata: {}, links: [],
                 created_at: new Date().toISOString(), updated_at: new Date().toISOString()
             };
+            const descIdx = args.indexOf('--description');
+            if (descIdx !== -1 && args[descIdx + 1]) {
+                pearl.description = args[descIdx + 1];
+            }
             this.store.set(id, pearl);
             return JSON.stringify(pearl);
         }
 
         // Meta Set
-        if (args.startsWith('meta set')) {
-            const parts = args.split(' ');
-            const id = parts[2];
-            const key = parts[3];
-            let valueStr = args.substring(args.indexOf(key) + key.length + 1);
-            if (valueStr.includes('--format')) {
-                valueStr = valueStr.substring(0, valueStr.indexOf('--format')).trim();
-            }
-            if (valueStr.startsWith('"') && valueStr.endsWith('"')) {
-                valueStr = valueStr.substring(1, valueStr.length - 1);
-            }
-            const value = JSON.parse(valueStr.replace(/\\"/g, '"'));
+        if (cmd === 'meta' && args[1] === 'set') {
+            const id = args[2];
+            const key = args[3];
+            const value = JSON.parse(args[4]);
             const pearl = this.store.get(id);
             if (pearl) {
                 if (!pearl.metadata) pearl.metadata = {};
@@ -87,73 +81,54 @@ class MockPearlsClient extends PearlsClient {
         }
 
         // Update
-        if (args.startsWith('update')) {
-            const idPart = args.split(' ')[1];
-            if (!idPart) throw new Error('Missing ID');
-            let pearl = this.store.get(idPart);
+        if (cmd === 'update') {
+            const id = args[1];
+            let pearl = this.store.get(id);
             if (!pearl) throw new Error('Not found');
-
             pearl = { ...pearl };
-            if (!pearl.labels) pearl.labels = [];
-
-            // Handle labels
-            if (args.includes('--add-label')) {
-                const parts = args.split(' ');
-                for (let i = 0; i < parts.length; i++) {
-                    if (parts[i] === '--add-label' && parts[i + 1]) {
-                        const rawLabel = parts[i + 1];
-                        if (rawLabel) {
-                            const label = rawLabel.replace(/^"|"$/g, '');
-                            if (!pearl.labels.includes(label)) {
-                                pearl.labels.push(label);
-                            }
-                        }
-                    }
+            for (let i = 0; i < args.length; i++) {
+                if (args[i] === '--add-label' && args[i + 1]) {
+                    if (!pearl.labels.includes(args[i + 1])) pearl.labels.push(args[i + 1]);
+                }
+                if (args[i] === '--remove-label' && args[i + 1]) {
+                    pearl.labels = pearl.labels.filter((l: any) => l !== args[i + 1]);
+                }
+                if (args[i] === '--status' && args[i + 1]) {
+                    const s = args[i + 1];
+                    if (s === 'closed') pearl.status = 'closed';
+                    else if (s === 'in_progress') pearl.status = 'in_progress';
+                    else if (s === 'open') pearl.status = 'open';
+                }
+                if (args[i] === '--description' && args[i + 1]) {
+                    pearl.description = args[i + 1];
                 }
             }
-
-            // Handle description update
-            const descMatch = args.match(/--description "((?:[^"\\]|\\.)*)"/);
-            if (descMatch && descMatch[1]) {
-                pearl.description = descMatch[1].replace(/\\"/g, '"');
-            }
-
-            // Handle status
-            if (args.includes('--status closed')) pearl.status = 'closed';
-            else if (args.includes('--status in_progress')) pearl.status = 'in_progress';
-            else if (args.includes('--status verify')) pearl.status = 'verify'; // Simplified for mock
-
-            this.store.set(idPart, pearl);
+            this.store.set(id, pearl);
             return JSON.stringify(pearl);
         }
 
-        // Show/Get
-        if (args.startsWith('show')) {
-            const parts = args.split(' ');
-            if (parts.length > 1) {
-                const id = parts[1];
-                if (id) {
-                    return JSON.stringify(this.store.get(id));
-                }
+        // Link
+        if (cmd === 'link') {
+            const childId = args[1];
+            const parentId = args[2];
+            const type = args[3] || 'blocks';
+            const child = this.store.get(childId);
+            if (child) {
+                child.links = child.links || [];
+                child.links.push({ target_id: parentId, link_type: type });
+                this.store.set(childId, child);
             }
+            return JSON.stringify({ status: 'ok' });
         }
 
-        // Link (Pearls dep add replacement)
-        if (args.startsWith('link')) {
-            const parts = args.split(' ');
-            if (parts.length >= 4) {
-                const child = parts[1];
-                const parent = parts[2];
-                if (child && parent) {
-                    const c = this.store.get(child);
-                    if (c) {
-                        c.links = c.links || [];
-                        c.links.push({ target_id: parent, link_type: parts[3] || 'blocks' });
-                        this.store.set(child, c);
-                    }
-                }
-                return JSON.stringify({ status: 'ok' });
-            }
+        // Show
+        if (cmd === 'show') {
+            return JSON.stringify(this.store.get(args[1]));
+        }
+
+        // List
+        if (cmd === 'list') {
+            return JSON.stringify(Array.from(this.store.values()));
         }
 
         return '';

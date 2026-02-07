@@ -52,60 +52,43 @@ const DB_PATH = resolve(TEST_DIR, 'queue.sqlite');
 class MockPearlsClient extends PearlsClient {
     private pearls: Map<string, any> = new Map();
 
-    protected override async runCommand(args: string): Promise<string> {
-        console.log(`[Mock] runCommand: ${args}`);
-        if (args.startsWith('create')) {
-            const titleMatch = args.match(/create "([^"]+)"/);
-            const title = titleMatch ? titleMatch[1] : 'Untitled';
+    protected override async runCommand(args: string[]): Promise<string> {
+        const cmd = args[0];
+        console.log(`[Mock] runCommand: ${args.join(" ")}`);
 
+        if (cmd === 'create') {
+            const title = args[1] || 'Untitled';
             let description = '';
-            const descMatch = args.match(/--description "((?:[^"\\]|\\.)*)"/);
-            if (descMatch && descMatch[1]) {
-                description = descMatch[1].replace(/\\"/g, '"');
+            const descIdx = args.indexOf('--description');
+            if (descIdx !== -1 && args[descIdx + 1]) {
+                description = args[descIdx + 1];
             }
 
             const id = `pearl-${Math.random().toString(36).substr(2, 9)}`;
             const pearl: any = {
-                id,
-                title,
-                status: 'open',
-                priority: 2,
-                description,
-                labels: [],
-                metadata: {},
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+                id, title, status: 'open', priority: 2,
+                description, labels: [], metadata: {},
+                created_at: new Date().toISOString(), updated_at: new Date().toISOString()
             };
             this.pearls.set(id, pearl);
             console.log(`[Mock] Created pearl ${id}`);
             return JSON.stringify(pearl);
         }
 
-        if (args.startsWith('show')) {
-            const id = args.split(' ')[1];
-            if (!id) throw new Error('Missing ID');
+        if (cmd === 'show') {
+            const id = args[1];
             const pearl = this.pearls.get(id);
             if (!pearl) throw new Error('Not found');
             return JSON.stringify(pearl);
         }
 
-        if (args.startsWith('meta set')) {
-            const parts = args.split(' ');
-            const id = parts[2];
-            const key = parts[3];
-            let valueStr = args.substring(args.indexOf(key) + key.length + 1);
-            if (valueStr.includes('--format')) {
-                valueStr = valueStr.substring(0, valueStr.indexOf('--format')).trim();
-            }
+        if (cmd === 'meta' && args[1] === 'set') {
+            const id = args[2];
+            const key = args[3];
+            const valueStr = args[4];
             console.log(`[Mock] Meta set: id=${id}, key=${key}, rawValue=${valueStr}`);
-            if (valueStr.startsWith('"') && valueStr.endsWith('"')) {
-                valueStr = valueStr.substring(1, valueStr.length - 1);
-            }
-            // Value is JSON stringified and escaped
             try {
-                const value = JSON.parse(valueStr.replace(/\\"/g, '"'));
-                console.log(`[Mock] Parsed meta value:`, value);
-
+                const value = JSON.parse(valueStr);
                 const pearl = this.pearls.get(id);
                 if (pearl) {
                     if (!pearl.metadata) pearl.metadata = {};
@@ -119,38 +102,32 @@ class MockPearlsClient extends PearlsClient {
             return JSON.stringify({ status: 'ok' });
         }
 
-        if (args.startsWith('update')) {
-            const id = args.split(' ')[1];
-            if (!id) throw new Error('Missing ID');
-            console.log(`[Mock] Updating pearl ${id} with args: ${args}`);
+        if (cmd === 'update') {
+            const id = args[1];
             let pearl: any = this.pearls.get(id);
             if (!pearl) throw new Error('Not found ' + id);
 
             pearl = { ...pearl };
             if (!pearl.labels) pearl.labels = [];
 
-            if (args.includes('--status closed')) {
-                pearl.status = 'closed';
-            }
-            else if (args.includes('--add-label verify')) {
-                pearl.status = 'in_progress';
-                if (!pearl.labels.includes('verify')) pearl.labels.push('verify');
-                console.log(`[Mock] Status set to in_progress + verify label`);
-            }
-            else if (args.includes('--remove-label verify')) {
-                if (args.includes('--status in_progress')) pearl.status = 'in_progress';
-                if (args.includes('--status open')) pearl.status = 'open';
-                pearl.labels = pearl.labels.filter((l: string) => l !== 'verify');
-                console.log(`[Mock] Status set to ${pearl.status} (verify removed)`);
-            }
-            else if (args.includes('--status in_progress')) {
-                pearl.status = 'in_progress';
-            }
-
-            if (args.includes('--description')) {
-                const descMatch = args.match(/--description "((?:[^"\\]|\\.)*)"/);
-                if (descMatch && descMatch[1]) {
-                    pearl.description = descMatch[1].replace(/\\"/g, '"');
+            for (let i = 0; i < args.length; i++) {
+                if (args[i] === '--status' && args[i + 1]) {
+                    const s = args[i + 1];
+                    if (s === 'closed') pearl.status = 'closed';
+                    else if (s === 'in_progress') pearl.status = 'in_progress';
+                }
+                if (args[i] === '--add-label' && args[i + 1]) {
+                    const label = args[i + 1];
+                    if (!pearl.labels.includes(label)) pearl.labels.push(label);
+                    if (label === 'verify') pearl.status = 'in_progress';
+                }
+                if (args[i] === '--remove-label' && args[i + 1]) {
+                    const label = args[i + 1];
+                    pearl.labels = pearl.labels.filter((l: any) => l !== label);
+                    if (label === 'verify') pearl.status = 'in_progress';
+                }
+                if (args[i] === '--description' && args[i + 1]) {
+                    pearl.description = args[i + 1];
                 }
             }
 

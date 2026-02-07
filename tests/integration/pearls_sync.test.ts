@@ -22,8 +22,8 @@ describe('Pearls Sync', () => {
         class MockPearlsClient extends PearlsClient {
             public syncCalled = false;
 
-            protected override async execute(command: string, _cwd: string): Promise<{ stdout: string; stderr: string }> {
-                if (command.includes('sync')) {
+            protected override async execute(command: string, args: string[], _cwd: string): Promise<{ stdout: string; stderr: string }> {
+                if (args.includes('sync')) {
                     this.syncCalled = true;
                     return { stdout: 'OK', stderr: '' };
                 }

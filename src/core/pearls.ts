@@ -1,13 +1,10 @@
-import { exec } from "node:child_process";
+import { spawn } from "node:child_process";
 import { resolve } from "node:path";
-import { promisify } from "node:util";
 import { z } from "zod";
 import { getConfig } from "../config";
 import type { CitadelConfig } from "../config/schema";
 import { logger } from "./logger";
 import { getGlobalSingleton, setGlobalSingleton } from "./registry";
-
-const execAsync = promisify(exec);
 
 // --- Types ---
 
@@ -104,45 +101,68 @@ export class PearlsClient {
         this.binary = binary || config?.pearls?.binary || "prl";
     }
 
-    protected async runCommand(args: string): Promise<string> {
-        const command = `${this.binary} ${args}`;
-
+    protected async runCommand(args: string[]): Promise<string> {
         // Determine CWD: The folder containing .pearls folder, or the basePath itself if it is the root
         const cwd = this.basePath.endsWith(".pearls")
             ? resolve(this.basePath, "..")
             : this.basePath;
 
         try {
-            const { stdout, stderr } = await this.execute(command, cwd);
+            const { stdout, stderr } = await this.execute(this.binary, args, cwd);
             if (stderr && !stdout && !stderr.includes("warning")) {
                 // Some tools print info to stderr?
             }
             return stdout.trim();
         } catch (error: unknown) {
             const err = error as Error;
-            throw new Error(`Pearls command failed: ${command}\n${err.message}`);
+            throw new Error(`Pearls command failed: ${this.binary} ${args.join(" ")}\n${err.message}`);
         }
     }
 
     async init(): Promise<void> {
-        await this.runCommand("init");
+        await this.runCommand(["init"]);
     }
 
     protected async execute(
         command: string,
+        args: string[],
         cwd: string,
     ): Promise<{ stdout: string; stderr: string }> {
-        return execAsync(command, { cwd });
+        return new Promise((resolve, reject) => {
+            const child = spawn(command, args, { cwd });
+            let stdout = "";
+            let stderr = "";
+
+            child.stdout.on("data", (data) => {
+                stdout += data.toString();
+            });
+
+            child.stderr.on("data", (data) => {
+                stderr += data.toString();
+            });
+
+            child.on("close", (code) => {
+                if (code === 0) {
+                    resolve({ stdout, stderr });
+                } else {
+                    reject(new Error(`Process exited with code ${code}\n${stderr}`));
+                }
+            });
+
+            child.on("error", (err) => {
+                reject(err);
+            });
+        });
     }
 
     async sync(): Promise<void> {
-        await this.runCommand(`sync`);
+        await this.runCommand(["sync"]);
         logger.info(`[Pearls] Database synchronized`);
     }
 
     async doctor(): Promise<boolean> {
         try {
-            const output = await this.runCommand("doctor --format json");
+            const output = await this.runCommand(["doctor", "--format", "json"]);
             return !output.toLowerCase().includes("error");
         } catch (_error) {
             return false;
@@ -344,14 +364,14 @@ export class PearlsClient {
     }
 
     async list(status?: PearlStatus): Promise<Pearl[]> {
-        let cliStatus = "";
-        if (status === "done") cliStatus = "closed";
-        else if (status === "verify") cliStatus = "in_progress";
-        else if (status === "in_progress") cliStatus = "in_progress";
-        else if (status === "open") cliStatus = "open";
+        const args = ["list"];
+        if (status === "done") args.push("--status", "closed");
+        else if (status === "verify") args.push("--status", "in_progress");
+        else if (status === "in_progress") args.push("--status", "in_progress");
+        else if (status === "open") args.push("--status", "open");
 
-        const flag = cliStatus ? `--status ${cliStatus}` : "";
-        const output = await this.runCommand(`list ${flag} --format json`);
+        args.push("--format", "json");
+        const output = await this.runCommand(args);
         const pearls = this.parseRawList(output);
 
         if (status) {
@@ -361,28 +381,27 @@ export class PearlsClient {
     }
 
     async ready(): Promise<Pearl[]> {
-        const output = await this.runCommand("ready --format json");
+        const output = await this.runCommand(["ready", "--format", "json"]);
         return this.parseRawList(output);
     }
 
     async getAll(): Promise<Pearl[]> {
-        const output = await this.runCommand("list --format json");
+        const output = await this.runCommand(["list", "--format", "json"]);
         return this.parseRawList(output);
     }
 
     async get(id: string): Promise<Pearl> {
-        const output = await this.runCommand(`show ${id} --format json`);
+        const output = await this.runCommand(["show", id, "--format", "json"]);
         return this.parseRaw(output);
     }
 
     async create(title: string, options: CreateOptions = {}): Promise<Pearl> {
-        let args = `create "${title}"`;
-        if (options.priority !== undefined) args += ` --priority ${options.priority}`;
+        const args = ["create", title];
+        if (options.priority !== undefined) args.push("--priority", options.priority.toString());
         if (options.description) {
-            const escaped = options.description.replace(/"/g, '\\"');
-            args += ` --description "${escaped}"`;
+            args.push("--description", options.description);
         }
-        args += " --format json";
+        args.push("--format", "json");
 
         const output = await this.runCommand(args);
         const pearl = this.parseRaw(output);
@@ -394,24 +413,24 @@ export class PearlsClient {
         if (options.context) updates.context = options.context;
 
         for (const [key, val] of Object.entries(updates)) {
-            const escaped = JSON.stringify(val).replace(/"/g, '\\"');
-            await this.runCommand(`meta set ${pearl.id} ${key} "${escaped}" --format json`);
+            const valStr = JSON.stringify(val);
+            await this.runCommand(["meta", "set", pearl.id, key, valStr, "--format", "json"]);
         }
 
         if (options.labels?.length) {
             for (const label of options.labels) {
-                await this.runCommand(`update ${pearl.id} --add-label "${label}" --format json`);
+                await this.runCommand(["update", pearl.id, "--add-label", label, "--format", "json"]);
             }
         }
 
         if (options.blockers?.length) {
             for (const blockerId of options.blockers) {
-                await this.runCommand(`link ${pearl.id} ${blockerId} blocks --format json`);
+                await this.runCommand(["link", pearl.id, blockerId, "blocks", "--format", "json"]);
             }
         }
 
         if (options.parent) {
-            await this.runCommand(`link ${pearl.id} ${options.parent} parent_child --format json`);
+            await this.runCommand(["link", pearl.id, options.parent, "parent_child", "--format", "json"]);
         }
 
         return this.get(pearl.id);
@@ -439,7 +458,7 @@ export class PearlsClient {
             }
         }
 
-        let args = `update ${id}`;
+        const args = ["update", id];
 
         if (changes.status) {
             if (!current) current = await this.get(id);
@@ -459,31 +478,30 @@ export class PearlsClient {
             else if (current.status === "open") currentCliStatus = "open";
 
             if (targetCliStatus && targetCliStatus !== currentCliStatus) {
-                args += ` --status ${targetCliStatus}`;
+                args.push("--status", targetCliStatus);
             }
 
             // Handle labels for 'verify'
             if (changes.status === "verify") {
-                args += ` --add-label verify`;
+                args.push("--add-label", "verify");
             } else if (changes.status === "in_progress") {
-                args += ` --remove-label verify`;
+                args.push("--remove-label", "verify");
             } else if (changes.status === "open") {
-                args += ` --remove-label verify`;
+                args.push("--remove-label", "verify");
             }
         }
 
         if (changes.title) {
-            args += ` --title "${changes.title}"`;
+            args.push("--title", changes.title);
         }
 
         if (changes.description) {
-            const escaped = changes.description.replace(/"/g, '\\"');
-            args += ` --description "${escaped}"`;
+            args.push("--description", changes.description);
         }
 
         if (changes.labels) {
             for (const label of changes.labels) {
-                args += ` --add-label "${label}"`;
+                args.push("--add-label", label);
             }
         }
 
@@ -491,27 +509,27 @@ export class PearlsClient {
         if (changes.remove_labels) {
             // @ts-expect-error
             for (const label of changes.remove_labels) {
-                args += ` --remove-label "${label}"`;
+                args.push("--remove-label", label);
             }
         }
 
-        args += ` --format json`;
+        args.push("--format", "json");
         const output = await this.runCommand(args);
 
         // Update meta fields
         if (changes.acceptance_test) {
-            const escaped = JSON.stringify(changes.acceptance_test).replace(/"/g, '\\"');
-            await this.runCommand(`meta set ${id} acceptance_test "${escaped}" --format json`);
+            const valStr = JSON.stringify(changes.acceptance_test);
+            await this.runCommand(["meta", "set", id, "acceptance_test", valStr, "--format", "json"]);
         }
 
         if (changes.type) {
-            const escaped = JSON.stringify(changes.type).replace(/"/g, '\\"');
-            await this.runCommand(`meta set ${id} type "${escaped}" --format json`);
+            const valStr = JSON.stringify(changes.type);
+            await this.runCommand(["meta", "set", id, "type", valStr, "--format", "json"]);
         }
 
         if (changes.context) {
-            const escaped = JSON.stringify(changes.context).replace(/"/g, '\\"');
-            await this.runCommand(`meta set ${id} context "${escaped}" --format json`);
+            const valStr = JSON.stringify(changes.context);
+            await this.runCommand(["meta", "set", id, "context", valStr, "--format", "json"]);
         }
 
         if (!output) return this.get(id);
@@ -537,12 +555,11 @@ export class PearlsClient {
     }
 
     async addDependency(childId: string, parentId: string): Promise<void> {
-        await this.runCommand(`link ${childId} ${parentId} blocks`);
+        await this.runCommand(["link", childId, parentId, "blocks"]);
     }
 
     async addComment(id: string, comment: string): Promise<string> {
-        const escaped = comment.replace(/"/g, '\\"');
-        return this.runCommand(`comments add ${id} "${escaped}"`);
+        return this.runCommand(["comments", "add", id, comment]);
     }
 }
 
