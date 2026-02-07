@@ -17,8 +17,8 @@ describe('WorkQueue Idempotency', () => {
     });
 
     it('should NOT overwrite output if complete() is called twice', () => {
-        const beadId = 'test-bead-1';
-        queue.enqueue(beadId, 1, 'worker');
+        const pearlId = 'test-pearl-1';
+        queue.enqueue(pearlId, 1, 'worker');
 
         const ticket = queue.claim('agent-1', 'worker');
         expect(ticket).not.toBeNull();
@@ -29,7 +29,7 @@ describe('WorkQueue Idempotency', () => {
         queue.complete(ticket.id, structuredOutput);
 
         // Verify it was saved
-        const result1 = queue.getOutput(beadId);
+        const result1 = queue.getOutput(pearlId);
         expect(result1).toEqual(structuredOutput);
 
         // Second completion (simulating Hook finish with Narration string)
@@ -37,14 +37,14 @@ describe('WorkQueue Idempotency', () => {
         queue.complete(ticket.id, narrationString);
 
         // Verify it was NOT overwritten
-        const result2 = queue.getOutput(beadId);
+        const result2 = queue.getOutput(pearlId);
         expect(result2).toEqual(structuredOutput);
         expect(result2).not.toEqual(narrationString);
     });
 
     it('should NOT re-queue if fail() is called after complete()', () => {
-        const beadId = 'test-bead-2';
-        queue.enqueue(beadId, 1, 'worker');
+        const pearlId = 'test-pearl-2';
+        queue.enqueue(pearlId, 1, 'worker');
 
         const ticket = queue.claim('agent-2', 'worker');
         expect(ticket).not.toBeNull();
@@ -57,7 +57,7 @@ describe('WorkQueue Idempotency', () => {
         queue.fail(ticket.id, false);
 
         // Verify it remains completed and NOT re-queued
-        const ticketAfter = queue.getActiveTicket(beadId);
+        const ticketAfter = queue.getActiveTicket(pearlId);
         expect(ticketAfter).toBeNull(); // No active ticket means it stayed completed or at least didn't go back to queued
 
         // Explicitly check status by querying if needed, but getActiveTicket(queued/processing) is enough

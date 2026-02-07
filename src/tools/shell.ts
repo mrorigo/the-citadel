@@ -2,7 +2,7 @@ import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import { z } from "zod";
 import { getConfig } from "../config";
-import { getBeads } from "../core/beads";
+import { getPearls } from "../core/pearls";
 import { logger } from "../core/logger";
 
 const execAsync = promisify(exec);
@@ -56,14 +56,14 @@ export const runCommandTool = {
 				let autoSync = true;
 				try {
 					const config = getConfig();
-					autoSync = config.beads.autoSync !== false;
+					autoSync = config.pearls.autoSync !== false;
 				} catch {
 					/* ignore */
 				}
 
 				if (autoSync) {
-					logger.info(`[Shell] Git operation detected. Triggering Beads sync.`);
-					await getBeads().sync();
+					logger.info(`[Shell] Git operation detected. Triggering Pearls sync.`);
+					await getPearls().sync();
 				}
 			}
 

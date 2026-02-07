@@ -17,7 +17,7 @@
 - **Performance:** Native TypeScript execution without transpilation overhead
 - **Built-in tooling:** Bundler, test runner, package manager unified
 - **Speed:** Significantly faster startup and execution compared to Node.js
-- **SQLite native:** Built-in SQLite support (useful for Beads local cache)
+- **SQLite native:** Built-in SQLite support (useful for Pearls local cache)
 
 ---
 ****
@@ -104,11 +104,11 @@ import { anthropic } from '@ai-sdk/anthropic';
 
 ---
 
-## 4. Integration with Beads
+## 4. Integration with Pearls
 
-The Citadel consumes and produces Beads (tickets) stored in `.beads/issues.jsonl`.
+The Citadel consumes and produces Pearls (tickets) stored in `.pearls/issues.jsonl`.
 
-### Beads CLI Interface
+### Pearls CLI Interface
 ```bash
 # Reading tasks
 bd ready --json           # Get ready tasks (no blockers)
@@ -125,13 +125,13 @@ bd close <id>             # Mark complete
 We will wrap the `bd` CLI or parse the JSONL directly:
 
 ```typescript
-interface Bead {
+interface Pearl {
   id: string;              // e.g., "bd-a1b2"
   title: string;
   status: 'open' | 'in_progress' | 'verify' | 'done';
   priority: 0 | 1 | 2 | 3;
   assignee?: string;
-  blockers?: string[];     // IDs of blocking beads
+  blockers?: string[];     // IDs of blocking pearls
   acceptance_test?: string;
   created_at: string;
   updated_at: string;
@@ -152,7 +152,7 @@ the-citadel/
 │   │   ├── supervisor.ts  # The Supervisor (health monitoring)
 │   │   └── gatekeeper.ts  # The Gatekeeper (merge management)
 │   ├── core/
-│   │   ├── beads.ts       # Beads integration layer
+│   │   ├── pearls.ts       # Pearls integration layer
 │   │   ├── dag.ts         # DAG/Molecule execution engine
 │   │   └── queue.ts       # Work queue system (Hooks)
 │   ├── agents/
@@ -256,9 +256,9 @@ export default {
     load_factor: 1.0,
   },
 
-  // Beads integration
-  beads: {
-    path: '.beads',
+  // Pearls integration
+  pearls: {
+    path: '.pearls',
     autoSync: true,
   },
 };
@@ -269,7 +269,7 @@ export default {
 ## 7. Key Constraints
 
 ### From PRD Requirements
-1. **Stateless Workers:** No memory between tasks; context from Beads only
+1. **Stateless Workers:** No memory between tasks; context from Pearls only
 2. **Deterministic DAGs:** Agents execute within pre-defined workflows
 3. **Serial Merges:** Gatekeeper processes merges one at a time
 4. **Acceptance Tests:** Every ticket must have a verifiable test

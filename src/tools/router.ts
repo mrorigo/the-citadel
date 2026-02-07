@@ -7,10 +7,10 @@ import type { AgentContext } from "../core/agent";
 
 export const createEnqueueTaskTool = (_context: AgentContext) => {
     const parameters = z.object({
-        beadId: z
+        pearlId: z
             .string()
             .optional()
-            .describe("The ID of the bead to enqueue (defaults to current bead)"),
+            .describe("The ID of the pearl to enqueue (defaults to current pearl)"),
         reasoning: z.string().describe("Why this task should be enqueued"),
         queue: z
             .enum(["worker", "gatekeeper"])
@@ -25,37 +25,37 @@ export const createEnqueueTaskTool = (_context: AgentContext) => {
 
     return tool({
         description:
-            'Enqueue a bead for execution. Use queue="worker" for open tasks, queue="gatekeeper" for verify tasks.',
+            'Enqueue a pearl for execution. Use queue="worker" for open tasks, queue="gatekeeper" for verify tasks.',
         inputSchema: parameters,
         // biome-ignore lint/suspicious/noExplicitAny: context provided by AI SDK
         execute: async (args: z.infer<typeof parameters>, toolContext: any) => {
-            const beadId = args.beadId || toolContext.beadId;
-            if (!beadId) {
+            const pearlId = args.pearlId || toolContext.pearlId;
+            if (!pearlId) {
                 return {
                     success: false,
-                    error: "beadId must be provided either as parameter or in context",
+                    error: "pearlId must be provided either as parameter or in context",
                 };
             }
 
             try {
-                const active = getQueue().getActiveTicket(beadId);
+                const active = getQueue().getActiveTicket(pearlId);
                 if (active) {
                     if (active.target_role === args.queue) {
                         return {
                             success: true,
-                            message: `Bead ${beadId} is already in ${args.queue} queue (ticket ${active.id})`,
+                            message: `Pearl ${pearlId} is already in ${args.queue} queue (ticket ${active.id})`,
                         };
                     }
                     return {
                         success: false,
-                        error: `Bead ${beadId} already has an active ticket (${active.id}) for role ${active.target_role}`,
+                        error: `Pearl ${pearlId} already has an active ticket (${active.id}) for role ${active.target_role}`,
                     };
                 }
 
-                getQueue().enqueue(beadId, args.priority ?? 2, args.queue);
+                getQueue().enqueue(pearlId, args.priority ?? 2, args.queue);
                 return {
                     success: true,
-                    message: `Enqueued ${beadId} to ${args.queue}`,
+                    message: `Enqueued ${pearlId} to ${args.queue}`,
                 };
             } catch (error: unknown) {
                 const err = error as Error;
@@ -67,11 +67,11 @@ export const createEnqueueTaskTool = (_context: AgentContext) => {
 
 export const createInstantiateFormulaTool = (_context: AgentContext) => {
     const parameters = z.object({
-        beadId: z
+        pearlId: z
             .string()
             .optional()
             .describe(
-                "The ID of the bead to instantiate the formula for (optional if in context)",
+                "The ID of the pearl to instantiate the formula for (optional if in context)",
             ),
         formulaName: z.string().describe("The name of the formula to run"),
         variables: z
@@ -96,13 +96,13 @@ export const createInstantiateFormulaTool = (_context: AgentContext) => {
                 formulaName,
                 variables,
                 parentConvoyId,
-                beadId: argBeadId,
+                pearlId: argPearlId,
             } = args;
-            const beadId = argBeadId || toolContext.beadId;
-            // Note: beadId is optional here for backward compat, but log it if present
-            if (beadId)
+            const pearlId = argPearlId || toolContext.pearlId;
+            // Note: pearlId is optional here for backward compat, but log it if present
+            if (pearlId)
                 logger.info(
-                    `[Router] Instantiating formula ${formulaName} for bead ${beadId}`,
+                    `[Router] Instantiating formula ${formulaName} for pearl ${pearlId}`,
                 );
 
             try {

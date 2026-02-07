@@ -1,10 +1,10 @@
 # Citadel Finite State Machine (FSM)
 
-This document describes the lifecycle of a **Bead** (task) within The Citadel, detailing the states, transitions, and the actors (Conductor, Router, Worker, Gatekeeper) responsible for moving beads through the system.
+This document describes the lifecycle of a **Pearl** (task) within The Citadel, detailing the states, transitions, and the actors (Conductor, Router, Worker, Gatekeeper) responsible for moving pearls through the system.
 
-## Bead States
+## Pearl States
 
-A Bead can exist in one of four primary statuses:
+A Pearl can exist in one of four primary statuses:
 
 ```mermaid
 stateDiagram-v2
@@ -22,7 +22,7 @@ stateDiagram-v2
 
 | Status            | Description                                                                                                                                          |
 | :---------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`open`**        | The task is defined and ready for execution (provided dependencies are met). <br/> *Note: Beads with `molecule:cooking` are hidden from the Router.* |
+| **`open`**        | The task is defined and ready for execution (provided dependencies are met). <br/> *Note: Pearls with `molecule:cooking` are hidden from the Router.* |
 | **`in_progress`** | A **Worker Agent** has actively claimed the task and is executing it.                                                                                |
 | **`verify`**      | The Worker has submitted the work. It is now waiting for a **Gatekeeper** (Evaluator) to review it.                                                  |
 | **`done`**        | The task has been successfully completed and verified.                                                                                               |
@@ -31,17 +31,17 @@ stateDiagram-v2
 
 Transitions between states are guarded by strict rules and a persistence layer that ensures data integrity:
 
-1.  **Strict Transitions**: Beads can only move between states defined in the FSM (e.g., `verify -> open` is allowed).
+1.  **Strict Transitions**: Pearls can only move between states defined in the FSM (e.g., `verify -> open` is allowed).
 2.  **Short-Circuiting**: `open -> done` is allowed for conditional tasks (e.g. recovery) that the Router determined are no longer necessary.
-2.  **Completion Requirement**: To transition to `done`, a bead **strictly requires** an `acceptance_test` property. This is enforced at the tool layer (e.g., `approve_work` schema).
-    *   *Exception*: If the bead has the `failed` label (Terminal Failure), this requirement is bypassed.
+2.  **Completion Requirement**: To transition to `done`, a pearl **strictly requires** an `acceptance_test` property. This is enforced at the tool layer (e.g., `approve_work` schema).
+    *   *Exception*: If the pearl has the `failed` label (Terminal Failure), this requirement is bypassed.
 3.  **Persistence Guard (v0.1.23)**: The `WorkQueue` enforces idempotency for task completion. Once an agent tool (like `submit_work`) marks a ticket as `completed`, any subsequent automated Hook cleanup attempts are ignored. This prevents final "narration strings" from overwriting structured tool output.
 
 ---
 
 ## Lifecycle: The Worker
 
-The **Worker** is responsible for transforming an `open` bead into a `verify` bead.
+The **Worker** is responsible for transforming an `open` pearl into a `verify` pearl.
 
 ```mermaid
 sequenceDiagram
@@ -49,22 +49,22 @@ sequenceDiagram
     participant Q as WorkQueue
     participant W as Worker Hook
     participant A as Worker Agent
-    participant B as Beads DB
+    participant B as Pearls DB
 
     Note over C: Cycle: Router
     C->>B: ready() (status=open & blockers=done)
-    B-->>C: [Bead A]
-    C->>Q: Enqueue Ticket (Bead A)
+    B-->>C: [Pearl A]
+    C->>Q: Enqueue Ticket (Pearl A)
 
     Note over C: Cycle: Scale Pools
     C->>Q: Claim Ticket
-    Q-->>W: Ticket (Bead A)
+    Q-->>W: Ticket (Pearl A)
     
     rect rgb(20, 20, 40)
         Note right of W: Worker Hook Start
         W->>B: Update status -> 'in_progress'
         
-        W->>A: run(Bead A)
+        W->>A: run(Pearl A)
         
         alt Agent Success
             A->>A: Tools (filesystem, etc.)
@@ -75,7 +75,7 @@ sequenceDiagram
         end
         
         Note right of W: Post-Run Check (Zombie Prevention)
-        W->>B: get(Bead A)
+        W->>B: get(Pearl A)
         B-->>W: Current Status
         
         alt Status is 'in_progress' (Zombie)
@@ -88,7 +88,7 @@ sequenceDiagram
 
 1.  **Pickup**: When the Conductor's Worker Hook claims a ticket, it immediately sets `status = 'in_progress'`.
 2.  **Success**: The `WorkerAgent` MUST call the `submit_work` tool. This tool updates `status = 'verify'`.
-3.  **Zombie Prevention**: If the `WorkerAgent` exits (crashes, timeouts, or LLM refuses to tool-call) *without* transitioning the bead, the Worker Hook detects this state mismatch. It explicitly rolls the bead back to `status = 'open'` (adding an `agent-incomplete` label) so it can be retried.
+3.  **Zombie Prevention**: If the `WorkerAgent` exits (crashes, timeouts, or LLM refuses to tool-call) *without* transitioning the pearl, the Worker Hook detects this state mismatch. It explicitly rolls the pearl back to `status = 'open'` (adding an `agent-incomplete` label) so it can be retried.
 
 ---
 
@@ -102,21 +102,21 @@ sequenceDiagram
     participant Q as WorkQueue
     participant G as Gatekeeper Hook
     participant E as Evaluator Agent
-    participant B as Beads DB
+    participant B as Pearls DB
 
     Note over C: Cycle: Router
     C->>B: list('verify')
-    B-->>C: [Bead A]
-    C->>Q: Enqueue Ticket (Bead A)
+    B-->>C: [Pearl A]
+    C->>Q: Enqueue Ticket (Pearl A)
 
     Note over C: Cycle: Scale Pools
     C->>Q: Claim Ticket
-    Q-->>G: Ticket (Bead A)
+    Q-->>G: Ticket (Pearl A)
     
     rect rgb(20, 40, 20)
         Note right of G: Gatekeeper Hook Start
         
-        G->>E: run(Bead A)
+        G->>E: run(Pearl A)
         
         alt Validation Pass
             E->>B: Tool: approve_work() -> status='done'
@@ -127,7 +127,7 @@ sequenceDiagram
         end
         
         Note right of G: Post-Run Check
-        G->>B: get(Bead A)
+        G->>B: get(Pearl A)
         
         alt Status is 'verify' (Zombie)
             G->>B: Update status -> 'verify' <br/> labels=['evaluator-incomplete']
@@ -138,9 +138,9 @@ sequenceDiagram
 
 ### Critical Transitions
 
-1.  **Pickup**: The Gatekeeper picks up beads in `verify` status.
-2.  **Approval**: If the **EvaluatorAgent** calls `approve_work`, the bead becomes `done`.
-3.  **Rejection**: If the **EvaluatorAgent** calls `reject_work`, the bead becomes `open` (with a `rejected` label). This allows the Router to immediately re-queue the work for a new Worker attempt.
+1.  **Pickup**: The Gatekeeper picks up pearls in `verify` status.
+2.  **Approval**: If the **EvaluatorAgent** calls `approve_work`, the pearl becomes `done`.
+3.  **Rejection**: If the **EvaluatorAgent** calls `reject_work`, the pearl becomes `open` (with a `rejected` label). This allows the Router to immediately re-queue the work for a new Worker attempt.
 4.  **Zombie Prevention**: If the agent exits without decision, the Hook detects that the status is still `verify`. It adds an `evaluator-incomplete` label but keeps the status as `verify` so it is immediately eligible for re-evaluation by another Gatekeeper.
 
 ---
@@ -153,7 +153,7 @@ sequenceDiagram
 | **Worker No-Op**           | Conductor Worker Hook (post-run logic)     | Rollback to open | `open` + `agent-incomplete`       |
 | **Gatekeeper Crash**       | Conductor Gatekeeper Hook (try/catch)      | Log error        | `verify` + `evaluator-error`      |
 | **Gatekeeper No-Op**       | Conductor Gatekeeper Hook (post-run logic) | Flag for retry   | `verify` + `evaluator-incomplete` |
-| **Stuck in `in_progress`** | Router (stuck bead recovery)               | Reset to open    | `open` + `auto-recovered`         |
+| **Stuck in `in_progress`** | Router (stuck pearl recovery)               | Reset to open    | `open` + `auto-recovered`         |
 | **Gatekeeper Rejection**   | EvaluatorAgent (`reject_work`)             | Reset to open    | `open` + `rejected`               |
 
 This robust state machine ensures that **no task is ever left behind** (Zombified), regardless of LLM stability or runtime errors.
@@ -178,24 +178,24 @@ Citadel uses labels as semantic modifiers to the 4 primary states. This creates 
 
 ### 2. Race Condition Mitigation
 The transition from `open` to `in_progress` is technically a race condition.
-- **The Gap**: The Router fetches a bead as `open` and enqueues it. Between enqueuing and the Worker Hook claiming the ticket, the bead status could change.
-- **The Fix**: The Conductor implements a **Double-Check** inside the Worker Hook. Before invoking the agent, it re-fetches the bead from the database. If the status is no longer `open`, the hook exits without processing.
+- **The Gap**: The Router fetches a pearl as `open` and enqueues it. Between enqueuing and the Worker Hook claiming the ticket, the pearl status could change.
+- **The Fix**: The Conductor implements a **Double-Check** inside the Worker Hook. Before invoking the agent, it re-fetches the pearl from the database. If the status is no longer `open`, the hook exits without processing.
 
 ### 3. Verification Retry Loops
-When a Gatekeeper fails (e.g., `evaluator-incomplete`), the bead remains in `verify`.
+When a Gatekeeper fails (e.g., `evaluator-incomplete`), the pearl remains in `verify`.
 - **The Behavior**: It becomes immediately eligible for re-routing.
 - **The Risk**: If the verification failure is systematic (e.g., environmental issues or bad test definitions), this can lead to a **tight retry loop** where evaluate agents are repeatedly invoked against the same failing task.
 - **Future Improvement**: Implementing an exponential backoff or max-retry counter for the `verify` state.
 
 ### 4. Molecule Atomicity
-Instantiating complex Molecules is non-atomic at the database level (beads are created before wiring is complete).
-- **The Solution**: The `WorkflowEngine` tags all member beads with `molecule:cooking`.
-- **The Enforcement**: The Router ignores any bead with the `cooking` label.
+Instantiating complex Molecules is non-atomic at the database level (pearls are created before wiring is complete).
+- **The Solution**: The `WorkflowEngine` tags all member pearls with `molecule:cooking`.
+- **The Enforcement**: The Router ignores any pearl with the `cooking` label.
 - **The Release**: Only after all wiring and piping is finalized does the engine remove the `cooking` label, making the entire molecule "visible" to the Conductor at once.
 
-### 5. Recovery Bead Shortcut
-Recovery beads follow a "Short-Circuit" path:
-- If `blocker.status === 'done'` and no `failed` label is present, the Router automatically transitions the recovery bead to `done` without ever enqueuing it.
+### 5. Recovery Pearl Shortcut
+Recovery pearls follow a "Short-Circuit" path:
+- If `blocker.status === 'done'` and no `failed` label is present, the Router automatically transitions the recovery pearl to `done` without ever enqueuing it.
 - **Data Integrity**: This transition requires the Router to provide a mock `acceptance_test` (e.g. "Skipped: Dependency Succeeded") to satisfy the FSM's `done` state requirements.
 - This effectively bypasses the sequence diagrams for common success paths.
 

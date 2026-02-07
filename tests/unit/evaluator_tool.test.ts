@@ -2,29 +2,29 @@
 import { describe, it, expect, mock, beforeEach, afterAll } from 'bun:test';
 import { EvaluatorAgent } from '../../src/agents/evaluator';
 import { loadConfig } from '../../src/config';
-import { setBeadsInstance, type BeadsClient } from '../../src/core/beads';
+import { setPearlsInstance, type PearlsClient } from '../../src/core/pearls';
 import { clearGlobalSingleton } from '../../src/core/registry';
 
-// Mock getBeads
+// Mock getPearls
 const mockUpdate = mock(async () => ({}));
-const mockBeads = {
+const mockPearls = {
     update: mockUpdate,
     get: mock(async () => ({ id: 'mock-id', title: 'mock', status: 'open', created_at: '', updated_at: '', priority: 2 })),
-    create: mock(async () => ({ id: 'new-bead' })),
+    create: mock(async () => ({ id: 'new-pearl' })),
     addDependency: mock(async () => ({})),
-} as unknown as BeadsClient;
+} as unknown as PearlsClient;
 
 describe('EvaluatorAgent Tool Schema', () => {
     let agent: EvaluatorAgent;
 
     afterAll(() => {
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         mock.restore();
     });
 
     beforeEach(async () => {
         await loadConfig();
-        setBeadsInstance(mockBeads);
+        setPearlsInstance(mockPearls);
         agent = new EvaluatorAgent();
         mockUpdate.mockClear();
     });
@@ -36,9 +36,9 @@ describe('EvaluatorAgent Tool Schema', () => {
 
         await approveWork!.execute({
             acceptance_test: 'Simple test criteria'
-        }, { toolCallId: 'call-1', messages: [], beadId: 'bead-1' } as any);
+        }, { toolCallId: 'call-1', messages: [], pearlId: 'pearl-1' } as any);
 
-        expect(mockUpdate).toHaveBeenCalledWith('bead-1', {
+        expect(mockUpdate).toHaveBeenCalledWith('pearl-1', {
             status: 'done',
             acceptance_test: 'Simple test criteria'
         });
@@ -51,9 +51,9 @@ describe('EvaluatorAgent Tool Schema', () => {
 
         await approveWork!.execute({
             acceptance_test: ['Criteria 1', 'Criteria 2']
-        }, { toolCallId: 'call-2', messages: [], beadId: 'bead-1' } as any);
+        }, { toolCallId: 'call-2', messages: [], pearlId: 'pearl-1' } as any);
 
-        expect(mockUpdate).toHaveBeenCalledWith('bead-1', {
+        expect(mockUpdate).toHaveBeenCalledWith('pearl-1', {
             status: 'done',
             acceptance_test: 'Criteria 1\nCriteria 2'
         });

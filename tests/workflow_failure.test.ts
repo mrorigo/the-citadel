@@ -5,7 +5,7 @@ import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { FormulaRegistry } from '../src/core/formula';
 import { WorkflowEngine } from '../src/services/workflow-engine';
 import { Conductor } from '../src/services/conductor';
-import { setBeadsInstance } from '../src/core/beads';
+import { setPearlsInstance } from '../src/core/pearls';
 import { setConfig, resetConfig } from '../src/config';
 import { EvaluatorAgent } from '../src/agents/evaluator';
 import { clearGlobalSingleton } from '../src/core/registry';
@@ -38,7 +38,7 @@ describe('Workflow Failure Handling', () => {
     let registry: FormulaRegistry;
     let engine: WorkflowEngine;
     // biome-ignore lint/suspicious/noExplicitAny: mock
-    let beadsMock: any;
+    let pearlsMock: any;
     // biome-ignore lint/suspicious/noExplicitAny: mock
     let store: Map<string, any>;
 
@@ -55,7 +55,7 @@ describe('Workflow Failure Handling', () => {
                 gatekeeper: { provider: 'ollama', model: 'llama3' }
             },
             worker: { timeout: 300, maxRetries: 3, costLimit: 1.0 },
-            beads: { path: '.beads', binary: 'bd' }
+            pearls: { path: '.pearls', binary: 'bd' }
         });
         await rm(testRoot, { recursive: true, force: true });
         await mkdir(formulasDir, { recursive: true });
@@ -83,19 +83,19 @@ description = "Cleaning up after main failure"
 
         // biome-ignore lint/suspicious/noExplicitAny: mock
         store = new Map<string, any>();
-        beadsMock = {
+        pearlsMock = {
             // biome-ignore lint/suspicious/noExplicitAny: mock
             create: mock(async (title: string, options: any) => {
                 const id = `bd-${Math.random().toString(36).substr(2, 5)}`;
-                const bead = { id, title, status: 'open', privacy: 'public', ...options };
-                store.set(id, bead);
-                return bead;
+                const pearl = { id, title, status: 'open', privacy: 'public', ...options };
+                store.set(id, pearl);
+                return pearl;
             }),
             get: mock(async (id: string) => store.get(id)),
             // biome-ignore lint/suspicious/noExplicitAny: mock
             update: mock(async (id: string, changes: any) => {
                 const current = store.get(id);
-                if (!current) throw new Error(`Bead not found: ${id}`);
+                if (!current) throw new Error(`Pearl not found: ${id}`);
                 const updated = { ...current, ...changes };
                 if (changes.labels && current.labels) {
                     updated.labels = [...new Set([...current.labels, ...changes.labels])];
@@ -115,7 +115,7 @@ description = "Cleaning up after main failure"
                 return Array.from(store.values()).filter(b => b.status === status);
             }),
             ready: mock(async () => {
-                // Return beads that are 'open' and have all blockers 'done'
+                // Return pearls that are 'open' and have all blockers 'done'
                 return Array.from(store.values()).filter(b => {
                     if (b.status !== 'open') return false;
                     if (!b.blockers || b.blockers.length === 0) return true;
@@ -126,7 +126,7 @@ description = "Cleaning up after main failure"
                 });
             })
         };
-        setBeadsInstance(beadsMock);
+        setPearlsInstance(pearlsMock);
     });
 
     afterEach(async () => {
@@ -134,71 +134,71 @@ description = "Cleaning up after main failure"
     });
 
     afterAll(async () => {
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
         resetConfig();
     });
 
-    it('should label recovery beads correctly during instantiation', async () => {
+    it('should label recovery pearls correctly during instantiation', async () => {
         await engine.instantiateFormula('recovery_flow', {});
 
-        // Find recovery bead in store
-        const recoveryBead = Array.from(store.values()).find(b => b.title === 'Recovery Task');
-        expect(recoveryBead).toBeDefined();
+        // Find recovery pearl in store
+        const recoveryPearl = Array.from(store.values()).find(b => b.title === 'Recovery Task');
+        expect(recoveryPearl).toBeDefined();
 
-        expect(recoveryBead.labels).toContain('recovery');
-        expect(recoveryBead.labels.some((l: string) => l.startsWith('recovers:bd-'))).toBe(true);
+        expect(recoveryPearl.labels).toContain('recovery');
+        expect(recoveryPearl.labels.some((l: string) => l.startsWith('recovers:bd-'))).toBe(true);
     });
 
-    it('should skip recovery bead if main task succeeds', async () => {
+    it('should skip recovery pearl if main task succeeds', async () => {
         await engine.instantiateFormula('recovery_flow', {});
 
-        const mainBead = Array.from(store.values()).find(b => b.title === 'Main Task');
-        const recoveryBead = Array.from(store.values()).find(b => b.title === 'Recovery Task');
+        const mainPearl = Array.from(store.values()).find(b => b.title === 'Main Task');
+        const recoveryPearl = Array.from(store.values()).find(b => b.title === 'Recovery Task');
 
         // Simulate success
-        await beadsMock.update(mainBead.id, { status: 'done' });
+        await pearlsMock.update(mainPearl.id, { status: 'done' });
 
         // Run Conductor cycle
-        const conductor = new Conductor(beadsMock);
+        const conductor = new Conductor(pearlsMock);
         // @ts-expect-error - access private for test
         await conductor.cycleRouter();
 
-        // Check if recovery bead is now done
-        const finalRecovery = store.get(recoveryBead.id);
+        // Check if recovery pearl is now done
+        const finalRecovery = store.get(recoveryPearl.id);
         expect(finalRecovery.status).toBe('done');
     });
 
-    it('should NOT skip recovery bead if main task fails', async () => {
+    it('should NOT skip recovery pearl if main task fails', async () => {
         await engine.instantiateFormula('recovery_flow', {});
 
-        const mainBead = Array.from(store.values()).find(b => b.title === 'Main Task');
-        const recoveryBead = Array.from(store.values()).find(b => b.title === 'Recovery Task');
+        const mainPearl = Array.from(store.values()).find(b => b.title === 'Main Task');
+        const recoveryPearl = Array.from(store.values()).find(b => b.title === 'Recovery Task');
 
         // Simulate failure (done + failed label)
-        await beadsMock.update(mainBead.id, { status: 'done', labels: ['failed'] });
+        await pearlsMock.update(mainPearl.id, { status: 'done', labels: ['failed'] });
 
         // Run Conductor cycle
-        const conductor = new Conductor(beadsMock);
+        const conductor = new Conductor(pearlsMock);
         // @ts-expect-error - access private for test
         await conductor.cycleRouter();
 
-        // Check if recovery bead is STILL open (ready for worker)
-        const finalRecovery = store.get(recoveryBead.id);
+        // Check if recovery pearl is STILL open (ready for worker)
+        const finalRecovery = store.get(recoveryPearl.id);
         expect(finalRecovery.status).toBe('open');
     });
 
     it('should correctly mark work as failed via EvaluatorAgent tool', async () => {
         const agent = new EvaluatorAgent();
-        const beadId = 'bd-test1';
-        store.set(beadId, { id: beadId, title: 'Test Task', status: 'verify', labels: [] });
+        const pearlId = 'bd-test1';
+        store.set(pearlId, { id: pearlId, title: 'Test Task', status: 'verify', labels: [] });
 
         // biome-ignore lint/suspicious/noExplicitAny: access private for test
         const failTool = (agent as any).tools.fail_work;
-        await failTool.execute({ reason: 'Test Reason' }, { toolCallId: 'call-fail', messages: [], beadId } as any);
+        await failTool.execute({ reason: 'Test Reason' }, { toolCallId: 'call-fail', messages: [], pearlId } as any);
 
-        const updated = store.get(beadId);
+        const updated = store.get(pearlId);
         expect(updated.status).toBe('done');
         expect(updated.labels).toContain('failed');
     });

@@ -10,7 +10,7 @@
 This document outlines the phased implementation plan for The Citadel, a deterministic agent orchestration system built on:
 - **TypeScript + Bun** runtime
 - **Vercel AI SDK** for LLM integration
-- **Beads** for Git-backed state management
+- **Pearls** for Git-backed state management
 
 ---
 
@@ -52,23 +52,23 @@ bun add -d typescript @types/bun @biomejs/biome
 
 ---
 
-## Phase 2: Beads Integration (Week 2-3)
+## Phase 2: Pearls Integration (Week 2-3)
 
-**Goal:** Full integration with Beads for state management.
+**Goal:** Full integration with Pearls for state management.
 
-### 2.1 Beads Client
+### 2.1 Pearls Client
 
-- [ ] Create `src/core/beads.ts` wrapper module
+- [ ] Create `src/core/pearls.ts` wrapper module
 - [ ] Implement CLI wrapper functions (`bd ready`, `bd show`, etc.)
 - [ ] Direct JSONL parsing as fallback
-- [ ] Define TypeScript interfaces for Bead schema
+- [ ] Define TypeScript interfaces for Pearl schema
 
 ```typescript
-interface BeadsClient {
-  ready(): Promise<Bead[]>;
-  show(id: string): Promise<Bead>;
-  create(title: string, options: CreateOptions): Promise<Bead>;
-  update(id: string, changes: Partial<Bead>): Promise<Bead>;
+interface PearlsClient {
+  ready(): Promise<Pearl[]>;
+  show(id: string): Promise<Pearl>;
+  create(title: string, options: CreateOptions): Promise<Pearl>;
+  update(id: string, changes: Partial<Pearl>): Promise<Pearl>;
   close(id: string): Promise<void>;
 }
 ```
@@ -76,11 +76,11 @@ interface BeadsClient {
 ### 2.2 State Machine Enforcement
 
 - [ ] Define valid status transitions (`open` → `in_progress` → `verify` → `done`)
-- [ ] Implement transition validation in Beads client
+- [ ] Implement transition validation in Pearls client
 - [ ] Add acceptance test field enforcement
-- [ ] Write integration tests against real `.beads/` directory
+- [ ] Write integration tests against real `.pearls/` directory
 
-**Deliverable:** Beads client that enforces Citadel's strict state machine rules.
+**Deliverable:** Pearls client that enforces Citadel's strict state machine rules.
 
 ---
 
@@ -128,21 +128,21 @@ abstract class BaseAgent {
 
 - [ ] Create `src/services/router.ts`
 - [ ] Implement intent → ticket decomposition
-- [ ] Add Beads creation for decomposed tasks
+- [ ] Add Pearls creation for decomposed tasks
 - [ ] Create system prompt in `src/agents/prompts/router.md`
 
 **Input:** High-level spec/requirement  
-**Output:** Tree of Beads with dependencies
+**Output:** Tree of Pearls with dependencies
 
 ### 4.3 The Worker
 
 - [ ] Create `src/services/worker.ts`
 - [ ] Implement ticket → code diff generation
 - [ ] Add sandbox execution environment
-- [ ] Stateless design (context from Bead only)
+- [ ] Stateless design (context from Pearl only)
 - [ ] Create system prompt in `src/agents/prompts/worker.md`
 
-**Input:** Single Bead (ticket)  
+**Input:** Single Pearl (ticket)  
 **Output:** Git diff/patch
 
 ### 4.4 The Supervisor
@@ -206,7 +206,7 @@ depends_on = ["implement"]
 - [ ] Create `src/core/executor.ts`
 - [ ] Implement DAG traversal with dependency resolution
 - [ ] Add pause/resume at any node
-- [ ] Persist execution state to Beads
+- [ ] Persist execution state to Pearls
 - [ ] Handle step failures (pause, not restart)
 
 **Deliverable:** Workflows execute step-by-step with durable state.
@@ -241,7 +241,7 @@ depends_on = ["implement"]
 ### 7.1 Unit Tests
 
 - [ ] Config loading
-- [ ] Beads client
+- [ ] Pearls client
 - [ ] Queue operations
 - [ ] DAG parsing
 - [ ] Agent base class
@@ -278,7 +278,7 @@ depends_on = ["implement"]
 | Phase | Milestone                    | Target  |
 | ----- | ---------------------------- | ------- |
 | 1     | Project builds, config loads | Week 2  |
-| 2     | Beads CRUD working           | Week 3  |
+| 2     | Pearls CRUD working           | Week 3  |
 | 3     | Queue + Hooks functional     | Week 4  |
 | 4     | All 4 agents operational     | Week 6  |
 | 5     | DAG execution working        | Week 7  |
@@ -292,7 +292,7 @@ depends_on = ["implement"]
 
 | Risk                     | Mitigation                                    |
 | ------------------------ | --------------------------------------------- |
-| Beads CLI changes        | Abstract behind interface, pin version        |
+| Pearls CLI changes        | Abstract behind interface, pin version        |
 | LLM rate limits          | Implement backoff, queue throttling           |
 | Merge conflicts at scale | Serial merge queue, atomic operations         |
 | Cost overruns            | Hard limits per ticket, Supervisor monitoring |

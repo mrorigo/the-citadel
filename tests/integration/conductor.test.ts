@@ -1,20 +1,20 @@
 import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from 'bun:test';
 import { Conductor } from '../../src/services/conductor';
-import type { Bead, BeadsClient } from '../../src/core/beads';
-import { setBeadsInstance } from '../../src/core/beads';
+import type { Pearl, PearlsClient } from '../../src/core/pearls';
+import { setPearlsInstance } from '../../src/core/pearls';
 import type { WorkQueue } from '../../src/core/queue';
 import { setQueueInstance } from '../../src/core/queue';
 import { clearGlobalSingleton } from '../../src/core/registry';
 import { setConfig, resetConfig } from '../../src/config';
 
 // Mock dependencies
-const mockBeads = {
-    list: mock(async (): Promise<Bead[]> => []),
-    get: mock(async () => ({ id: 'mock-id', title: 'mock', status: 'open', created_at: '', updated_at: '', priority: 2 } as Bead)),
-    ready: mock(async (): Promise<Bead[]> => []),
+const mockPearls = {
+    list: mock(async (): Promise<Pearl[]> => []),
+    get: mock(async () => ({ id: 'mock-id', title: 'mock', status: 'open', created_at: '', updated_at: '', priority: 2 } as Pearl)),
+    ready: mock(async (): Promise<Pearl[]> => []),
     doctor: mock(async () => true),
-    update: mock(async () => ({ id: 'mock-id', title: 'mock', status: 'open', created_at: '', updated_at: '', priority: 2 } as Bead)),
-    create: mock(async () => ({ id: 'new-bead' })),
+    update: mock(async () => ({ id: 'mock-id', title: 'mock', status: 'open', created_at: '', updated_at: '', priority: 2 } as Pearl)),
+    create: mock(async () => ({ id: 'new-pearl' })),
     addDependency: mock(async () => ({})),
 };
 
@@ -40,7 +40,7 @@ const mockWorkerAgent = {
 };
 
 // Mock modules
-// Removed beads/queue module mocks in favor of DI
+// Removed pearls/queue module mocks in favor of DI
 
 
 
@@ -73,7 +73,7 @@ describe('Conductor Service Integration', () => {
         setConfig({
             env: 'development',
             providers: { ollama: {} },
-            beads: { path: '.beads' },
+            pearls: { path: '.pearls' },
             worker: { min_workers: 0, max_workers: 1, load_factor: 1 },
             gatekeeper: { min_workers: 0, max_workers: 1, load_factor: 1 },
             agents: {
@@ -84,8 +84,8 @@ describe('Conductor Service Integration', () => {
             }
         });
 
-        conductor = new Conductor(mockBeads as unknown as BeadsClient, mockQueue as unknown as WorkQueue);
-        setBeadsInstance(mockBeads as unknown as BeadsClient);
+        conductor = new Conductor(mockPearls as unknown as PearlsClient, mockQueue as unknown as WorkQueue);
+        setPearlsInstance(mockPearls as unknown as PearlsClient);
         setQueueInstance(mockQueue as unknown as WorkQueue);
     });
 
@@ -95,18 +95,18 @@ describe('Conductor Service Integration', () => {
 
     afterAll(() => {
         if (conductor) conductor.stop();
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
         resetConfig();
         mock.restore();
     });
 
-    it('should route open beads to worker', async () => {
-        // Setup state: 1 open bead, no active tickets
-        mockBeads.list.mockResolvedValueOnce([{ id: 'bead-1', status: 'open', title: 'Task 1' } as Bead]);
+    it('should route open pearls to worker', async () => {
+        // Setup state: 1 open pearl, no active tickets
+        mockPearls.list.mockResolvedValueOnce([{ id: 'pearl-1', status: 'open', title: 'Task 1' } as Pearl]);
         // Double-check logic needs get() to return "open"
-        mockBeads.get.mockResolvedValueOnce({ id: 'bead-1', status: 'open', title: 'Task 1' } as Bead);
+        mockPearls.get.mockResolvedValueOnce({ id: 'pearl-1', status: 'open', title: 'Task 1' } as Pearl);
 
         mockQueue.getActiveTicket.mockReturnValue(null);
 
@@ -137,15 +137,15 @@ describe('Conductor Service Integration', () => {
         conductor.stop();
     });
 
-    it('should route verify beads to gatekeeper', async () => {
-        // Setup state: 1 verify bead
-        mockBeads.list.mockReset();
-        mockBeads.list
+    it('should route verify pearls to gatekeeper', async () => {
+        // Setup state: 1 verify pearl
+        mockPearls.list.mockReset();
+        mockPearls.list
             .mockResolvedValueOnce([]) // Open
-            .mockResolvedValueOnce([{ id: 'bead-2', status: 'verify', title: 'Verify 1' } as Bead]); // Verify
+            .mockResolvedValueOnce([{ id: 'pearl-2', status: 'verify', title: 'Verify 1' } as Pearl]); // Verify
 
         // Double-check logic needs get() to return "verify"
-        mockBeads.get.mockResolvedValueOnce({ id: 'bead-2', status: 'verify', title: 'Verify 1' } as Bead);
+        mockPearls.get.mockResolvedValueOnce({ id: 'pearl-2', status: 'verify', title: 'Verify 1' } as Pearl);
 
         conductor.start();
         await new Promise(r => setTimeout(r, 200));

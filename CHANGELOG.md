@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.5.0] - 2026-02-07
 
 ### Added
-- **Migration to Pearls**: Successfully migrated the iteration engine from `beads` (`bd`) to `pearls` (`prl`).
+- **Migration to Pearls**: Successfully migrated the iteration engine from `pearls` (`bd`) to `pearls` (`prl`).
   - Improved data stability with JSONL-only storage (`issues.jsonl`).
   - Simplified CLI interaction by removing daemon dependency and complex sync logic.
   - Adopted P0-P4 priority system and native Pearls status flow.
@@ -22,13 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Automatic MCP Resource Injection**:
   - Implemented `MCPResourceProvider` to automatically inject contextual data from MCP servers into agent prompts.
-  - Added support for resource declaration in `citadel.config.ts`, workflow formulas (.toml), and dynamic bead context.
+  - Added support for resource declaration in `citadel.config.ts`, workflow formulas (.toml), and dynamic pearl context.
   - Extended `MCPService` with full resource reading capabilities including binary content filtering.
   - Integrated resource injection into the `InstructionService` pipeline.
 
 ### Fixed
 - **Test Suite Stability**: Resolved test regressions and flakiness caused by global state leakage in `CoreAgent`.
-- **CoreAgent Refactor**: Implemented Dependency Injection for `BeadsClient` in `CoreAgent` to isolate tests from the global singleton.
+- **CoreAgent Refactor**: Implemented Dependency Injection for `PearlsClient` in `CoreAgent` to isolate tests from the global singleton.
 - **E2E Testing**: Fixed `bd doctor` mock in E2E tests to bypass git working tree checks.
 - **Conductor Tests**: Added missing mocks (`getLatestTicket`) to fix TypeErrors in Conductor integration tests.
 
@@ -43,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Token Usage Counting**:
   - `CoreAgent` now tracks input, output, and total tokens across all LLM steps in a task execution.
-  - Automatically posts a summary comment to the associated Bead via the `bd` CLI upon task completion.
+  - Automatically posts a summary comment to the associated Pearl via the `bd` CLI upon task completion.
 
 ## [0.4.1] - 2026-02-06
 
@@ -59,7 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Dynamic Tool Injection Architecture**: 
   - Refactored `CoreAgent` and role-specific agents to use factory-based tool creation with injected `AgentContext`.
-  - Tools now implicitly handle mandatory parameters like `beadId` and `parentBeadId`, significantly reducing LLM cognitive load and omission errors.
+  - Tools now implicitly handle mandatory parameters like `pearlId` and `parentPearlId`, significantly reducing LLM cognitive load and omission errors.
   - Implemented async dynamic tool loading to support formula-defined output schemas.
 - **Project Health Sweep**:
   - Achieved a perfectly clean Biome lint report across the entire codebase.
@@ -68,7 +68,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 - **AI SDK v6 Alignment**: Migrated all tool definitions and registration logic to the new `inputSchema` pattern required by AI SDK 6.0.
-- **Instruction Precision**: Audited and updated all system prompts and instruction templates to remove stale requirements for agents to provide `beadId` manually.
+- **Instruction Precision**: Audited and updated all system prompts and instruction templates to remove stale requirements for agents to provide `pearlId` manually.
 
 ## [0.3.2] - 2026-02-06
 
@@ -86,16 +86,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.35] - 2026-02-04
 
 ### Improved
-- **Beads and Git Integration**: 
-  - Implemented auto-synchronization for the Beads database to handle staleness after Git operations.
+- **Pearls and Git Integration**: 
+  - Implemented auto-synchronization for the Pearls database to handle staleness after Git operations.
   - Added proactive sync in `WorkerAgent` and `EvaluatorAgent` after `run_command` executes `git` commands.
-  - Added automated recovery in `BeadsClient` to catch staleness errors and performing auto-sync before retrying.
+  - Added automated recovery in `PearlsClient` to catch staleness errors and performing auto-sync before retrying.
 
 ## [0.1.21] - 2026-01-31
 
 ### Fixed
 - **Conductor Hook Dependency Injection (Critical)**: Fixed a bug where `WorkerPool` and `GatekeeperPool` hooks were falling back to the global singleton `WorkQueue` instead of using the isolated queue instance passed to `Conductor`. This caused test failures (`claim is not a function`) and prevented proper multi-queue isolation.
-- **Robust Error Handling**: Added null checks for `bead` access in `Conductor`'s error handling block to prevent secondary crashes during failure recovery.
+- **Robust Error Handling**: Added null checks for `pearl` access in `Conductor`'s error handling block to prevent secondary crashes during failure recovery.
 - **Output Capture**: Ensuring `Conductor` hooks return the agent's execution result so it gets persisted to the queue ticket output, fixing data flow to Gatekeepers.
 
 ## [0.1.22] - 2026-01-31
@@ -131,12 +131,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.17] - 2026-01-31
 
 ### Fixed
-- **Crash Loop Recovery**: Enhanced submission idempotency to handle "Partial Failure" states. If a workspace Ticket is marked completed but the Bead state update fails (leaving it `in_progress`), the Worker now automatically detects this inconsistency, forces the Bead transition to `verify`, and returns success instead of crashing with "No active ticket".
+- **Crash Loop Recovery**: Enhanced submission idempotency to handle "Partial Failure" states. If a workspace Ticket is marked completed but the Pearl state update fails (leaving it `in_progress`), the Worker now automatically detects this inconsistency, forces the Pearl transition to `verify`, and returns success instead of crashing with "No active ticket".
 
 ## [0.1.16] - 2026-01-31
 
 ### Fixed
-- **Submission Idempotency**: Fixed a regression in v0.1.15 where agents crashed with "No active ticket" when retrying `submit_work` after an auto-extracted submission. `submit_work` now idempotently returns success if the bead is already in `verify` or `done` states.
+- **Submission Idempotency**: Fixed a regression in v0.1.15 where agents crashed with "No active ticket" when retrying `submit_work` after an auto-extracted submission. `submit_work` now idempotently returns success if the pearl is already in `verify` or `done` states.
 
 ## [0.1.15] - 2026-01-31
 
@@ -186,12 +186,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **Critical Deadlock Fix**: Resolved a system deadlock caused by agent parameter omission and premature state transitions:
   - `handleSubmitWork` now validates ticket existence and saves output **before** transitioning to `verify` status
-  - `reject_work` now resets bead to `open` (with `rejected` label) instead of `in_progress`, preventing orphaned beads
-  - Added stuck bead recovery to Router: automatically resets `in_progress` beads with no active ticket
+  - `reject_work` now resets pearl to `open` (with `rejected` label) instead of `in_progress`, preventing orphaned pearls
+  - Added stuck pearl recovery to Router: automatically resets `in_progress` pearls with no active ticket
   - Added `REQUIRED` hints to mandatory tool parameters to reduce LLM omission
 
 ### Changed
-- Updated `docs/CITADEL-FSM.md` to reflect new rejection behavior, stuck bead recovery, and new labels
+- Updated `docs/CITADEL-FSM.md` to reflect new rejection behavior, stuck pearl recovery, and new labels
 
 ## [0.1.8] - 2026-01-29
 
@@ -206,12 +206,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.6] - 2026-01-29
 
 ### Fixed
-- **Docker Compatibility**: Added `--sandbox` flag to all beads commands to enable direct mode operation without daemon dependency. Fixes Unix socket permission errors in Docker containers that prevented Citadel from running.
+- **Docker Compatibility**: Added `--sandbox` flag to all pearls commands to enable direct mode operation without daemon dependency. Fixes Unix socket permission errors in Docker containers that prevented Citadel from running.
 
 ## [0.1.5] - 2026-01-29
 
 ### Fixed
-- **Router Queue Assignment**: Removed default value from `queue` parameter in `enqueue_task` to prevent infinite loops where verify beads were incorrectly routed to worker queue instead of gatekeeper queue.
+- **Router Queue Assignment**: Removed default value from `queue` parameter in `enqueue_task` to prevent infinite loops where verify pearls were incorrectly routed to worker queue instead of gatekeeper queue.
 
 ### Added
 - **Smart Tool Name Matching**: Agents can now call tools by suffix (e.g., `list_skills` instead of `mcp_list_skills`). Auto-resolves if exactly one match is found and name is >= 5 characters.
@@ -220,28 +220,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Conductor Resilience**: Implemented exponential backoff for the main router loop to prevent log flooding and CPU spikes during infrastructure outages (e.g., database synchronization errors).
-- **Environment Validation**: Added a startup check (`bd doctor`) to ensure the Conductor only starts when the `beads` database is in a healthy state.
+- **Environment Validation**: Added a startup check (`bd doctor`) to ensure the Conductor only starts when the `pearls` database is in a healthy state.
 
 ## [0.1.3] - 2026-01-29
 
 ### Fixed
-- **Zombie Task Prevention**: Added error handling and state recovery to worker and gatekeeper hooks. If an agent exits without calling a terminal tool (`submit_work`, `approve_work`, `reject_work`), the bead is automatically returned to an actionable state with appropriate labels (`agent-incomplete`, `agent-error`, `evaluator-incomplete`, `evaluator-error`) for retry. This prevents tasks from getting permanently stuck in `in_progress` or `verify` states.
+- **Zombie Task Prevention**: Added error handling and state recovery to worker and gatekeeper hooks. If an agent exits without calling a terminal tool (`submit_work`, `approve_work`, `reject_work`), the pearl is automatically returned to an actionable state with appropriate labels (`agent-incomplete`, `agent-error`, `evaluator-incomplete`, `evaluator-error`) for retry. This prevents tasks from getting permanently stuck in `in_progress` or `verify` states.
 
 ## [0.1.2] - 2026-01-29
 
 ### Fixed
-- **Dependency-Aware Task Routing**: The Conductor now uses `beadsClient.ready()` instead of `list('open')` to ensure only beads with satisfied dependencies (all blockers closed) are routed to workers. This prevents wasting resources on tasks that cannot proceed due to missing dependencies.
-- **Recovery Logic**: Re-added recovery bead handling to correctly skip recovery tasks when their dependencies succeed.
+- **Dependency-Aware Task Routing**: The Conductor now uses `pearlsClient.ready()` instead of `list('open')` to ensure only pearls with satisfied dependencies (all blockers closed) are routed to workers. This prevents wasting resources on tasks that cannot proceed due to missing dependencies.
+- **Recovery Logic**: Re-added recovery pearl handling to correctly skip recovery tasks when their dependencies succeed.
 
 ## [0.1.1] - 2026-01-29
 
 ### Added
-- **Parameter Auto-Injection**: Citadel now automatically injects mandatory parameters like `beadId` and `parentBeadId` from the agent's context into tool calls if they are missing. This significantly improves reliability for weaker local models (e.g., 20B class models) that sometimes fail to extract context into tool arguments.
+- **Parameter Auto-Injection**: Citadel now automatically injects mandatory parameters like `pearlId` and `parentPearlId` from the agent's context into tool calls if they are missing. This significantly improves reliability for weaker local models (e.g., 20B class models) that sometimes fail to extract context into tool arguments.
 
 ## [0.1.0] - 2026-01-28
 
 ### Fixed
-- **CRITICAL: Tool Execution Context Shadowing**: Fixed a major bug where `AgentContext` (including `beadId`) was being ignored during tool execution. This now correctly passes the agent's run-time context to all tools, enabling `enqueue_task`, `submit_work`, and `report_progress` to function correctly without explicit `beadId` parameters.
+- **CRITICAL: Tool Execution Context Shadowing**: Fixed a major bug where `AgentContext` (including `pearlId`) was being ignored during tool execution. This now correctly passes the agent's run-time context to all tools, enabling `enqueue_task`, `submit_work`, and `report_progress` to function correctly without explicit `pearlId` parameters.
 - **WorkerAgent Typo**: Fixed a minor syntax typo in the `run_command` handler.
 
 ## [0.0.9] - 2026-01-28
@@ -250,13 +250,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Tool Parameter Tolerance**: Made tools more forgiving of LLM variations:
   - `run_command` now accepts both `command` (string) and `cmd` (string or array), automatically converting arrays to space-separated strings
   - `run_command` uses `.passthrough()` to allow extra parameters like `timeout` that LLMs might add
-  - `enqueue_task` now makes `beadId` optional, falling back to context if not provided
+  - `enqueue_task` now makes `pearlId` optional, falling back to context if not provided
   - Reduces wasted API calls from agents learning tool schemas through trial and error
 
 ## [0.0.8] - 2026-01-28
 
 ### Fixed
-- **Bug #1 - Invalid State Transition**: Fixed the Conductor to properly move beads to `in_progress` status when workers **start** processing tasks, not when they finish. This prevents the invalid `open` → `verify` transition that was occurring in `submit_work`.
+- **Bug #1 - Invalid State Transition**: Fixed the Conductor to properly move pearls to `in_progress` status when workers **start** processing tasks, not when they finish. This prevents the invalid `open` → `verify` transition that was occurring in `submit_work`.
 - **Bug #2 - Output Schema Mismatch**: Updated `submit_work` to accept both string and object types for the `output` parameter, allowing agents to submit structured data naturally without manual stringification.
 - **Bug #3 - Tool Schema Ambiguity**: Improved `run_command` tool description to explicitly clarify that `command` must be a single string, not an array, reducing agent confusion and wasted API calls.
 
@@ -302,7 +302,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Dynamic Data Piping (DDP)**: Enabled structured data flow between workflow steps using `{{steps.ID.output.KEY}}` syntax.
 - **Dynamic Schema Enforcement**: Worker Agents now rigidly enforce Formula-defined `output_schema` using Zod validation.
-- **Context Preservation**: Beads now support a structured `context` property persisted in description frontmatter.
+- **Context Preservation**: Pearls now support a structured `context` property persisted in description frontmatter.
 - **Data Piper Service**: Just-in-time dependency resolution and context injection.
 
 ## [0.0.2] - 2026-01-27

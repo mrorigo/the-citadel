@@ -63,10 +63,10 @@ export default defineConfig({
         load_factor: 1.0,
     },
 
-    // Beads integration
-    beads: {
-        binary: '/opt/homebrew/bin/bd',
-        path: '.beads',
+    // Pearls integration
+    pearls: {
+        binary: 'prl',
+        path: '.pearls',
         autoSync: true,
     },
 

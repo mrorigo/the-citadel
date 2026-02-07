@@ -1,6 +1,6 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
-import { BeadsClient } from '../../src/core/beads';
+import { PearlsClient } from '../../src/core/pearls';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -19,7 +19,7 @@ describe('Pearls Sync', () => {
     });
 
     it('should call prl sync when sync() is called', async () => {
-        class MockPearlsClient extends BeadsClient {
+        class MockPearlsClient extends PearlsClient {
             public syncCalled = false;
 
             protected override async execute(command: string, _cwd: string): Promise<{ stdout: string; stderr: string }> {

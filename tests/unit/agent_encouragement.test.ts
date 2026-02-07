@@ -40,7 +40,7 @@ describe('Agent Encouragement Mechanism', () => {
     });
 
     afterAll(() => {
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
         resetConfig();

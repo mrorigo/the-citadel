@@ -1,28 +1,28 @@
 import { Box, Text } from "ink";
 import { useEffect, useState } from "react";
-import { type Bead, getBeads } from "../../core/beads";
+import { type Pearl, getPearls } from "../../core/pearls";
 
 interface TreeNode {
-	bead: Bead;
+	pearl: Pearl;
 	children: TreeNode[];
 }
 
-const buildTree = (beads: Bead[]): TreeNode[] => {
+const buildTree = (pearls: Pearl[]): TreeNode[] => {
 	const map = new Map<string, TreeNode>();
 	const roots: TreeNode[] = [];
 
 	// Initialize nodes
-	for (const bead of beads) {
-		map.set(bead.id, { bead, children: [] });
+	for (const pearl of pearls) {
+		map.set(pearl.id, { pearl, children: [] });
 	}
 
 	// Build hierarchy
-	for (const bead of beads) {
-		const node = map.get(bead.id);
+	for (const pearl of pearls) {
+		const node = map.get(pearl.id);
 		if (!node) continue;
 
-		if (bead.parent && map.has(bead.parent)) {
-			const parent = map.get(bead.parent);
+		if (pearl.parent && map.has(pearl.parent)) {
+			const parent = map.get(pearl.parent);
 			if (parent) {
 				parent.children.push(node);
 			}
@@ -35,23 +35,23 @@ const buildTree = (beads: Bead[]): TreeNode[] => {
 };
 
 // Recursive Node Component
-const BeadNode = ({ node, depth }: { node: TreeNode; depth: number }) => {
+const PearlNode = ({ node, depth }: { node: TreeNode; depth: number }) => {
 	const indent = "  ".repeat(depth);
 	const color =
-		node.bead.status === "done"
+		node.pearl.status === "done"
 			? "green"
-			: node.bead.status === "verify"
+			: node.pearl.status === "verify"
 				? "magenta"
-				: node.bead.status === "in_progress"
+				: node.pearl.status === "in_progress"
 					? "yellow"
 					: "white";
 
 	const icon =
-		node.bead.status === "done"
+		node.pearl.status === "done"
 			? "✓"
-			: node.bead.status === "verify"
+			: node.pearl.status === "verify"
 				? "?"
-				: node.bead.status === "in_progress"
+				: node.pearl.status === "in_progress"
 					? "▶"
 					: "○";
 
@@ -59,10 +59,10 @@ const BeadNode = ({ node, depth }: { node: TreeNode; depth: number }) => {
 		<Box flexDirection="column">
 			<Text color={color}>
 				{indent}
-				{icon} {node.bead.title} <Text color="gray">({node.bead.id})</Text>
+				{icon} {node.pearl.title} <Text color="gray">({node.pearl.id})</Text>
 			</Text>
 			{node.children.map((child) => (
-				<BeadNode key={child.bead.id} node={child} depth={depth + 1} />
+				<PearlNode key={child.pearl.id} node={child} depth={depth + 1} />
 			))}
 		</Box>
 	);
@@ -74,8 +74,8 @@ export const MoleculeTree = () => {
 	useEffect(() => {
 		const refresh = async () => {
 			try {
-				const beads = await getBeads().getAll();
-				setTree(buildTree(beads));
+				const pearls = await getPearls().getAll();
+				setTree(buildTree(pearls));
 			} catch (_e) {
 				// Ignore errors during refresh (might be due to concurrent writes)
 			}
@@ -98,7 +98,7 @@ export const MoleculeTree = () => {
 			<Text bold>Molecules</Text>
 			{tree.length === 0 ? <Text color="gray">No molecules found</Text> : null}
 			{tree.map((node) => (
-				<BeadNode key={node.bead.id} node={node} depth={0} />
+				<PearlNode key={node.pearl.id} node={node} depth={0} />
 			))}
 		</Box>
 	);

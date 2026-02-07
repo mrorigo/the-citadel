@@ -141,7 +141,7 @@ The system automatically manages the parent-child relationships based on the exe
 The Citadel provides a "Context-Aware" runtime for all agents.
 
 **Automatic Context Injection:**
-When an agent executes a tool (like `submit_work` or `report_progress`), the system automatically injects the current `beadId` and execution environment. Operations are always strictly scoped to the active Pearl, preventing cross-task interference.
+When an agent executes a tool (like `submit_work` or `report_progress`), the system automatically injects the current `pearlId` and execution environment. Operations are always strictly scoped to the active Pearl, preventing cross-task interference.
 
 ### 7. Project Awareness & Custom Instructions
 You can "teach" agents about your specific project by placing rules in your repository. The Citadel uses a tiered **Instruction Discovery Service** to build agent prompts dynamically.
@@ -161,7 +161,7 @@ The Citadel supports automatic injection of MCP resources into the agent context
 Resources are aggregated from three levels:
 1.  **Agent Level**: Configured in `citadel.config.ts`.
 2.  **Formula Level**: Declared in `.toml` formula files via `mcp_resources`.
-3.  **Bead Level**: Specified dynamically in the pearl's JSON context.
+3.  **Pearl Level**: Specified dynamically in the pearl's JSON context.
 
 **Example Formula Property:**
 ```toml

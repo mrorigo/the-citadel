@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { AgentRole } from "../config/schema";
 import { getProjectContext } from "../services/project-context";
-import { getBeads } from "./beads";
+import { getPearls } from "./pearls";
 import { getFormulaRegistry } from "./formula";
 import { logger } from "./logger";
 import { MCPResourceProvider } from "./mcp-resource-provider";
@@ -11,7 +11,7 @@ import { getGlobalSingleton } from "./registry";
 
 export interface InstructionContext {
 	role: AgentRole;
-	beadId?: string;
+	pearlId?: string;
 	labels?: string[];
 	context?: Record<string, unknown>;
 }
@@ -121,18 +121,18 @@ export class RoleProvider implements InstructionProvider {
 }
 
 /**
- * Loads instructions from Formula if the bead is part of a formula.
+ * Loads instructions from Formula if the pearl is part of a formula.
  */
 export class FormulaProvider implements InstructionProvider {
 	name = "formula";
 	priority = 30;
 
 	async getInstructions(ctx: InstructionContext): Promise<string | null> {
-		if (!ctx.beadId) return null;
+		if (!ctx.pearlId) return null;
 
 		try {
-			const bead = await getBeads().get(ctx.beadId);
-			const formulaLabel = bead.labels?.find((l) => l.startsWith("formula:"));
+			const pearl = await getPearls().get(ctx.pearlId);
+			const formulaLabel = pearl.labels?.find((l) => l.startsWith("formula:"));
 			if (!formulaLabel) return null;
 
 			const formulaName = formulaLabel.split(":")[1];
@@ -182,7 +182,7 @@ export class TagProvider implements InstructionProvider {
 }
 
 /**
- * Loads custom instructions from bead context.
+ * Loads custom instructions from pearl context.
  */
 export class ContextProvider implements InstructionProvider {
 	name = "context";

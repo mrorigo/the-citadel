@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { BeadsClient } from '../../src/core/beads';
+import { PearlsClient } from '../../src/core/pearls';
 import { WorkQueue } from '../../src/core/queue';
 import { WorkerAgent } from '../../src/agents/worker';
 import { z } from 'zod';
@@ -9,7 +9,7 @@ import { FormulaRegistry, setFormulaRegistry } from '../../src/core/formula';
 import { rmSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { setQueueInstance } from '../../src/core/queue';
-import { setBeadsInstance } from '../../src/core/beads';
+import { setPearlsInstance } from '../../src/core/pearls';
 import { setGlobalSingleton, clearGlobalSingleton } from '../../src/core/registry';
 import { CONFIG_KEY } from '../../src/config';
 import type { CitadelConfig } from '../../src/config/schema';
@@ -26,7 +26,7 @@ const MOCK_CONFIG: CitadelConfig = {
         router: { model: 'mock', provider: 'openai' },
         gatekeeper: { model: 'mock', provider: 'openai' }
     },
-    beads: { path: '.pearls', binary: 'prl', autoSync: false },
+    pearls: { path: '.pearls', binary: 'prl', autoSync: false },
     worker: { min_workers: 1, max_workers: 1, load_factor: 1, timeout: 300, maxRetries: 1, costLimit: 1 },
     gatekeeper: { min_workers: 1, max_workers: 1, load_factor: 1 },
     bridge: { maxLogs: 100 },
@@ -42,26 +42,26 @@ const TEST_DIR = resolve(process.cwd(), '.test_ddp');
 const DB_PATH = resolve(TEST_DIR, 'queue.sqlite');
 const FORMULAS_DIR = resolve(TEST_DIR, '.citadel/formulas');
 
-// Reuse MockBeadsClient logic (simplified inline for this file to avoid complex imports if not exported)
-class MockBeadsClient extends BeadsClient {
+// Reuse MockPearlsClient logic (simplified inline for this file to avoid complex imports if not exported)
+class MockPearlsClient extends PearlsClient {
     public store: Map<string, any> = new Map();
 
     protected override async runCommand(args: string): Promise<string> {
-        // console.log(`[MockBeadsClient] runCommand: ${args}`);
+        // console.log(`[MockPearlsClient] runCommand: ${args}`);
         // Create
         if (args.startsWith('create')) {
             const titleMatch = args.match(/create "([^"]+)"/);
             const title = titleMatch ? titleMatch[1] : 'Untitled';
 
-            const id = `bead-${Math.random().toString(36).substr(2, 9)}`;
+            const id = `pearl-${Math.random().toString(36).substr(2, 9)}`;
 
-            const bead: any = {
+            const pearl: any = {
                 id, title, status: 'open', priority: 2,
                 description: '', labels: [], metadata: {}, links: [],
                 created_at: new Date().toISOString(), updated_at: new Date().toISOString()
             };
-            this.store.set(id, bead);
-            return JSON.stringify(bead);
+            this.store.set(id, pearl);
+            return JSON.stringify(pearl);
         }
 
         // Meta Set
@@ -77,11 +77,11 @@ class MockBeadsClient extends BeadsClient {
                 valueStr = valueStr.substring(1, valueStr.length - 1);
             }
             const value = JSON.parse(valueStr.replace(/\\"/g, '"'));
-            const bead = this.store.get(id);
-            if (bead) {
-                if (!bead.metadata) bead.metadata = {};
-                bead.metadata[key] = value;
-                this.store.set(id, bead);
+            const pearl = this.store.get(id);
+            if (pearl) {
+                if (!pearl.metadata) pearl.metadata = {};
+                pearl.metadata[key] = value;
+                this.store.set(id, pearl);
             }
             return JSON.stringify({ status: 'ok' });
         }
@@ -90,11 +90,11 @@ class MockBeadsClient extends BeadsClient {
         if (args.startsWith('update')) {
             const idPart = args.split(' ')[1];
             if (!idPart) throw new Error('Missing ID');
-            let bead = this.store.get(idPart);
-            if (!bead) throw new Error('Not found');
+            let pearl = this.store.get(idPart);
+            if (!pearl) throw new Error('Not found');
 
-            bead = { ...bead };
-            if (!bead.labels) bead.labels = [];
+            pearl = { ...pearl };
+            if (!pearl.labels) pearl.labels = [];
 
             // Handle labels
             if (args.includes('--add-label')) {
@@ -104,8 +104,8 @@ class MockBeadsClient extends BeadsClient {
                         const rawLabel = parts[i + 1];
                         if (rawLabel) {
                             const label = rawLabel.replace(/^"|"$/g, '');
-                            if (!bead.labels.includes(label)) {
-                                bead.labels.push(label);
+                            if (!pearl.labels.includes(label)) {
+                                pearl.labels.push(label);
                             }
                         }
                     }
@@ -115,16 +115,16 @@ class MockBeadsClient extends BeadsClient {
             // Handle description update
             const descMatch = args.match(/--description "((?:[^"\\]|\\.)*)"/);
             if (descMatch && descMatch[1]) {
-                bead.description = descMatch[1].replace(/\\"/g, '"');
+                pearl.description = descMatch[1].replace(/\\"/g, '"');
             }
 
             // Handle status
-            if (args.includes('--status closed')) bead.status = 'closed';
-            else if (args.includes('--status in_progress')) bead.status = 'in_progress';
-            else if (args.includes('--status verify')) bead.status = 'verify'; // Simplified for mock
+            if (args.includes('--status closed')) pearl.status = 'closed';
+            else if (args.includes('--status in_progress')) pearl.status = 'in_progress';
+            else if (args.includes('--status verify')) pearl.status = 'verify'; // Simplified for mock
 
-            this.store.set(idPart, bead);
-            return JSON.stringify(bead);
+            this.store.set(idPart, pearl);
+            return JSON.stringify(pearl);
         }
 
         // Show/Get
@@ -163,7 +163,7 @@ class MockBeadsClient extends BeadsClient {
 }
 
 describe('Dynamic Data Piping', () => {
-    let beads: MockBeadsClient;
+    let pearls: MockPearlsClient;
     let queue: WorkQueue;
     let engine: WorkflowEngine;
     let piper: DataPiper;
@@ -177,9 +177,9 @@ describe('Dynamic Data Piping', () => {
 
         setGlobalSingleton(CONFIG_KEY, MOCK_CONFIG);
 
-        beads = new MockBeadsClient(TEST_DIR);
-        await beads.init();
-        setBeadsInstance(beads);
+        pearls = new MockPearlsClient(TEST_DIR);
+        await pearls.init();
+        setPearlsInstance(pearls);
 
         queue = new WorkQueue(DB_PATH);
         setQueueInstance(queue);
@@ -189,13 +189,13 @@ describe('Dynamic Data Piping', () => {
         setFormulaRegistry(registry);
 
         engine = new WorkflowEngine(registry);
-        piper = new DataPiper(); // Uses getBeads(), getQueue()
+        piper = new DataPiper(); // Uses getPearls(), getQueue()
     });
 
     afterEach(() => {
         if (queue) queue.close();
         if (existsSync(TEST_DIR)) rmSync(TEST_DIR, { recursive: true, force: true });
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
     });
@@ -234,21 +234,21 @@ context = { input_num = "{{steps.producer.output.magic_number}}" }
         // 2. Instantiate Molecule
         const rootId = await engine.instantiateFormula('ddp_test', {});
 
-        // Find Bead IDs
-        // Iterate store to find beads by title roughly
+        // Find Pearl IDs
+        // Iterate store to find pearls by title roughly
         let producerId = '';
         let consumerId = '';
 
-        for (const [id, bead] of beads.store.entries()) {
-            if (bead.title === 'Produce Data') producerId = id;
-            if (bead.title === 'Consume Data') consumerId = id;
+        for (const [id, pearl] of pearls.store.entries()) {
+            if (pearl.title === 'Produce Data') producerId = id;
+            if (pearl.title === 'Consume Data') consumerId = id;
         }
 
         expect(producerId).toBeTruthy();
         expect(consumerId).toBeTruthy();
 
         // 3. Verify Labels
-        const producer = await beads.get(producerId);
+        const producer = await pearls.get(producerId);
         expect(producer.labels).toContain('step:producer');
         expect(producer.labels).toContain('formula:ddp_test');
 
@@ -282,7 +282,7 @@ context = { input_num = "{{steps.producer.output.magic_number}}" }
         (worker as any).model = mockModel;
 
         // Trigger run (this ensures schema is loaded and tool is registered)
-        await worker.run('Work', { beadId: producerId });
+        await worker.run('Work', { pearlId: producerId });
 
         // Verify Schema manually
         const submitTool = (worker as any).dynamicTools['submit_work'] || (worker as any).tools['submit_work'];
@@ -292,14 +292,14 @@ context = { input_num = "{{steps.producer.output.magic_number}}" }
         // We can check strictness by seeing if it accepts valid data and rejects invalid.
 
         // 1. Valid Execution
-        // Manually move bead to in_progress so submit_work can move it to verify
-        await beads.update(producerId, { status: 'in_progress' });
+        // Manually move pearl to in_progress so submit_work can move it to verify
+        await pearls.update(producerId, { status: 'in_progress' });
 
         const validArgs = {
             summary: 'Done',
             output: { magic_number: 42 }
         };
-        await submitTool.execute(validArgs, { toolCallId: 'test', messages: [], beadId: producerId } as any);
+        await submitTool.execute(validArgs, { toolCallId: 'test', messages: [], pearlId: producerId } as any);
 
         let outputTicket = queue.getOutput(producerId);
         expect(outputTicket).toEqual({ magic_number: 42 });
@@ -330,14 +330,14 @@ context = { input_num = "{{steps.producer.output.magic_number}}" }
         const piped = await piper.pipeData(consumerId);
         expect(piped).toBe(true);
 
-        const consumer = await beads.get(consumerId);
+        const consumer = await pearls.get(consumerId);
         // "input_num": "{{steps.producer.output.magic_number}}" -> 42
         // Note: My Piper implementation returns explicit value from output. 
         // 42 is proper number if replacement logic handles specific typing or full replacement.
         // Current logic: `return await this.fetchValue(...)` in `resolveTemplate`.
         // `resolveObject` calls `resolveTemplate`.
         // If template matches full string, exact value is used.
-        const consumerRefreshed = await beads.get(consumerId);
+        const consumerRefreshed = await pearls.get(consumerId);
         expect(consumerRefreshed.context?.input_num).toBe(42);
     });
 });

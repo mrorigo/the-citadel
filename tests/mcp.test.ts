@@ -41,6 +41,9 @@ describe('MCP Tools Integration', () => {
 
     afterEach(() => {
         resetConfig();
+        // Force cleanup of singleton to prevent pollution
+        const { clearGlobalSingleton } = require('../src/core/registry');
+        clearGlobalSingleton('mcp_service');
     });
 
     it('should discover tools from configured servers', async () => {
@@ -53,7 +56,7 @@ describe('MCP Tools Integration', () => {
                 gatekeeper: { provider: 'ollama', model: 'llama3' }
             },
             worker: { timeout: 300, maxRetries: 3, costLimit: 1.0 },
-            beads: { path: '.beads', binary: 'bd' },
+            pearls: { path: '.pearls', binary: 'bd' },
             mcpServers: {
                 testServer: { command: 'node', args: ['server.js'] }
             }
@@ -78,7 +81,7 @@ describe('MCP Tools Integration', () => {
                 gatekeeper: { provider: 'ollama', model: 'llama3' }
             },
             worker: { timeout: 300, maxRetries: 3, costLimit: 1.0 },
-            beads: { path: '.beads', binary: 'bd' },
+            pearls: { path: '.pearls', binary: 'bd' },
             mcpServers: {
                 httpServer: { url: 'https://mcp.example.com/api' }
             }
@@ -103,7 +106,7 @@ describe('MCP Tools Integration', () => {
                 gatekeeper: { provider: 'ollama', model: 'llama3' }
             },
             worker: { timeout: 300, maxRetries: 3, costLimit: 1.0 },
-            beads: { path: '.beads', binary: 'bd' },
+            pearls: { path: '.pearls', binary: 'bd' },
             mcpServers: {
                 testServer: { command: 'node', args: ['server.js'] }
             }
@@ -137,7 +140,7 @@ describe('MCP Tools Integration', () => {
                 gatekeeper: { provider: 'ollama', model: 'llama3' }
             },
             worker: { timeout: 300, maxRetries: 3, costLimit: 1.0 },
-            beads: { path: '.beads', binary: 'bd' },
+            pearls: { path: '.pearls', binary: 'bd' },
             mcpServers: {
                 testServer: { command: 'node', args: ['server.js'] }
             }

@@ -1,9 +1,10 @@
-import { describe, it, expect, mock, beforeAll, afterAll } from 'bun:test';
+import { describe, it, expect, mock, beforeAll, afterAll, beforeEach, afterEach } from 'bun:test';
 import { getInstructionService } from '../../src/core/instruction';
 import { clearGlobalSingleton } from '../../src/core/registry';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
+import { setConfig, resetConfig } from '../../src/config';
 
 describe('InstructionService', () => {
     const testDir = join(process.cwd(), '.citadel/instructions');
@@ -14,6 +15,25 @@ describe('InstructionService', () => {
         }
     });
 
+    beforeEach(() => {
+        setConfig({
+            env: 'development',
+            providers: { ollama: {} },
+            agents: {
+                worker: { provider: 'ollama', model: 'llama3' },
+                router: { provider: 'ollama', model: 'llama3' },
+                gatekeeper: { provider: 'ollama', model: 'llama3' }
+            },
+            worker: { min_workers: 1, max_workers: 5, load_factor: 1.0 },
+            gatekeeper: { min_workers: 1, max_workers: 5, load_factor: 1.0 },
+            pearls: { path: '.pearls', binary: 'prl' }
+        } as any);
+    });
+
+    afterEach(() => {
+        resetConfig();
+    });
+
     afterAll(async () => {
         // Cleanup test instructions
         if (existsSync(testDir)) {
@@ -21,6 +41,7 @@ describe('InstructionService', () => {
             // await rm(testDir, { recursive: true });
         }
         clearGlobalSingleton('instruction_service');
+        clearGlobalSingleton('mcp_service');
     });
 
     it('should build a prompt with multiple providers', async () => {

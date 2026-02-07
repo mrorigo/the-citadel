@@ -11,7 +11,7 @@ mock.module('../../src/services/mcp', () => ({
 }));
 
 import { WorkerAgent } from '../../src/agents/worker';
-import { setBeadsInstance, type BeadsClient } from '../../src/core/beads';
+import { setPearlsInstance, type PearlsClient } from '../../src/core/pearls';
 import { setQueueInstance, type WorkQueue } from '../../src/core/queue';
 import { setFormulaRegistry, type FormulaRegistry } from '../../src/core/formula';
 import { clearGlobalSingleton } from '../../src/core/registry';
@@ -33,11 +33,11 @@ const mockModel = {
 
 describe('WorkerAgent Summary Conflation Fix', () => {
     let agent: WorkerAgent;
-    let mockBeads: Partial<BeadsClient>;
+    let mockPearls: Partial<PearlsClient>;
     let mockQueue: Partial<WorkQueue>;
 
     afterAll(() => {
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
         mock.restore();
@@ -45,23 +45,23 @@ describe('WorkerAgent Summary Conflation Fix', () => {
 
     beforeEach(async () => {
         await loadConfig();
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
 
-        mockBeads = {
+        mockPearls = {
             update: mock(async () => ({})),
-            get: mock(async () => ({ id: 'test-bead', status: 'open', title: 'test', created_at: '', updated_at: '' })),
+            get: mock(async () => ({ id: 'test-pearl', status: 'open', title: 'test', created_at: '', updated_at: '' })),
             ready: mock(async () => []),
             addComment: mock(async () => "comment-id")
-        } as unknown as Partial<BeadsClient>;
+        } as unknown as Partial<PearlsClient>;
 
         mockQueue = {
             getActiveTicket: mock(() => ({ id: 'ticket-1' })),
             complete: mock(() => ({}))
         } as unknown as Partial<WorkQueue>;
 
-        setBeadsInstance(mockBeads as BeadsClient);
+        setPearlsInstance(mockPearls as PearlsClient);
         setQueueInstance(mockQueue as WorkQueue);
         setFormulaRegistry({ get: () => null } as unknown as FormulaRegistry);
 
@@ -92,12 +92,12 @@ describe('WorkerAgent Summary Conflation Fix', () => {
                 summary: 'Extracted Summary',
                 data: 'test'
             }
-        }, { toolCallId: 'call-1', messages: [], beadId: 'b1' } as any);
+        }, { toolCallId: 'call-1', messages: [], pearlId: 'b1' } as any);
 
         expect(result.success).toBe(true);
         expect((result as Record<string, unknown>).summary).toBe('Extracted Summary');
         expect((result as Record<string, unknown>).message).toBe('Work submitted successfully.');
-        expect(mockBeads.update).toHaveBeenCalledWith('b1', { status: 'verify' });
+        expect(mockPearls.update).toHaveBeenCalledWith('b1', { status: 'verify' });
     });
 
     it('should extract summary from output.analysis', async () => {
@@ -108,7 +108,7 @@ describe('WorkerAgent Summary Conflation Fix', () => {
                 analysis: 'This is the analysis',
                 steps: []
             }
-        }, { toolCallId: 'call-2', messages: [], beadId: 'b2' } as any);
+        }, { toolCallId: 'call-2', messages: [], pearlId: 'b2' } as any);
 
         expect(result.success).toBe(true);
         expect((result as Record<string, unknown>).summary).toBe('This is the analysis');
@@ -122,7 +122,7 @@ describe('WorkerAgent Summary Conflation Fix', () => {
                 key1: 'val1',
                 key2: 'val2'
             }
-        }, { toolCallId: 'call-3', messages: [], beadId: 'b3' } as any);
+        }, { toolCallId: 'call-3', messages: [], pearlId: 'b3' } as any);
 
         expect(result.success).toBe(true);
         expect((result as Record<string, unknown>).summary).toContain('Completed work with structured output');
@@ -135,7 +135,7 @@ describe('WorkerAgent Summary Conflation Fix', () => {
             await submitWork.execute({
                 // Missing output entirely or empty object
                 output: {}
-            }, { toolCallId: 'call-4', messages: [], beadId: 'b4' } as any);
+            }, { toolCallId: 'call-4', messages: [], pearlId: 'b4' } as any);
             throw new Error('Should have failed');
         } catch (e: unknown) {
             expect((e as Error).message).toContain("Missing required field: 'summary'");

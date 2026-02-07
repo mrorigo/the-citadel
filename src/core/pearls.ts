@@ -11,15 +11,15 @@ const execAsync = promisify(exec);
 
 // --- Types ---
 
-export const BeadStatusSchema = z.enum([
+export const PearlStatusSchema = z.enum([
     "open",
     "in_progress",
     "verify",
     "done",
 ]);
-export type BeadStatus = z.infer<typeof BeadStatusSchema>;
+export type PearlStatus = z.infer<typeof PearlStatusSchema>;
 
-export const BeadPrioritySchema = z.any().transform((val) => {
+export const PearlPrioritySchema = z.any().transform((val) => {
     if (typeof val === "number") return val as 0 | 1 | 2 | 3 | 4;
     if (typeof val === "string") {
         const s = val.replace(/^P/, "");
@@ -29,14 +29,14 @@ export const BeadPrioritySchema = z.any().transform((val) => {
     return 2 as 0 | 1 | 2 | 3 | 4; // Default to P2
 });
 
-export type BeadPriority = z.infer<typeof BeadPrioritySchema>;
+export type PearlPriority = z.infer<typeof PearlPrioritySchema>;
 
 // Raw schema matching 'prl' CLI output
-const RawBeadSchema = z.object({
+const RawPearlSchema = z.object({
     id: z.string(),
     title: z.string(),
     status: z.string(), // Raw status from CLI, e.g., 'InProgress'
-    priority: BeadPrioritySchema,
+    priority: PearlPrioritySchema,
     author: z.string().optional(),
     labels: z.array(z.string()).optional(),
     links: z.array(z.object({
@@ -53,14 +53,14 @@ const RawBeadSchema = z.object({
     updated_at: z.any(),
 });
 
-type RawBead = z.infer<typeof RawBeadSchema>;
+type RawPearl = z.infer<typeof RawPearlSchema>;
 
 // Domain schema
-export const BeadSchema = z.object({
+export const PearlSchema = z.object({
     id: z.string(),
     title: z.string(),
-    status: BeadStatusSchema, // Mapped to our domain status
-    priority: BeadPrioritySchema,
+    status: PearlStatusSchema, // Mapped to our domain status
+    priority: PearlPrioritySchema,
     assignee: z.string().optional(),
     labels: z.array(z.string()).optional(),
     blockers: z.array(z.string()).optional(),
@@ -73,7 +73,7 @@ export const BeadSchema = z.object({
     updated_at: z.string(),
 });
 
-export type Bead = z.infer<typeof BeadSchema>;
+export type Pearl = z.infer<typeof PearlSchema>;
 
 export interface CreateOptions {
     priority?: 0 | 1 | 2 | 3 | 4;
@@ -82,14 +82,14 @@ export interface CreateOptions {
     acceptance_test?: string;
     description?: string;
     parent?: string; // Parent ID for molecules
-    type?: string; // bead type (epic, story, task, convoy, etc)
+    type?: string; // pearl type (epic, story, task, convoy, etc)
     context?: Record<string, unknown>;
     labels?: string[];
 }
 
 // --- Client ---
 
-export class BeadsClient {
+export class PearlsClient {
     private basePath: string;
     private binary: string;
 
@@ -100,8 +100,8 @@ export class BeadsClient {
         } catch {
             // Config might not be loaded during init
         }
-        this.basePath = basePath || config?.beads?.path || ".pearls";
-        this.binary = binary || config?.beads?.binary || "prl";
+        this.basePath = basePath || config?.pearls?.path || ".pearls";
+        this.binary = binary || config?.pearls?.binary || "prl";
     }
 
     protected async runCommand(args: string): Promise<string> {
@@ -149,7 +149,7 @@ export class BeadsClient {
         }
     }
 
-    private parseRaw(output: string): Bead {
+    private parseRaw(output: string): Pearl {
         if (!output) throw new Error("Empty output from prl");
         let json: any;
         try {
@@ -193,16 +193,16 @@ export class BeadsClient {
         if (!pearl || typeof pearl !== "object") {
             // Handle if it's nested in 'pearls' array
             if (json.pearls && Array.isArray(json.pearls) && json.pearls.length > 0) {
-                return this.mapToDomain(RawBeadSchema.parse(json.pearls[0]));
+                return this.mapToDomain(RawPearlSchema.parse(json.pearls[0]));
             }
             throw new Error(`Unexpected Pearls output format: ${output}`);
         }
 
-        const raw = RawBeadSchema.parse(pearl);
+        const raw = RawPearlSchema.parse(pearl);
         return this.mapToDomain(raw);
     }
 
-    private parseRawList(output: string): Bead[] {
+    private parseRawList(output: string): Pearl[] {
         if (!output) return [];
         let json: any;
         try {
@@ -248,19 +248,19 @@ export class BeadsClient {
             return list
                 .map((item) => {
                     try {
-                        return this.mapToDomain(RawBeadSchema.parse(item));
+                        return this.mapToDomain(RawPearlSchema.parse(item));
                     } catch (e) {
-                        console.warn(`[Pearls] Failed to parse bead item:`, e, item);
+                        console.warn(`[Pearls] Failed to parse pearl item:`, e, item);
                         return null;
                     }
                 })
-                .filter((b) => !!b) as Bead[];
+                .filter((b) => !!b) as Pearl[];
         }
         return [];
     }
 
-    private mapToDomain(raw: RawBead): Bead {
-        let status: BeadStatus = "open";
+    private mapToDomain(raw: RawPearl): Pearl {
+        let status: PearlStatus = "open";
 
         const rawStatus = raw.status.toLowerCase();
         if (rawStatus === "closed") {
@@ -343,7 +343,7 @@ export class BeadsClient {
         };
     }
 
-    async list(status?: BeadStatus): Promise<Bead[]> {
+    async list(status?: PearlStatus): Promise<Pearl[]> {
         let cliStatus = "";
         if (status === "done") cliStatus = "closed";
         else if (status === "verify") cliStatus = "in_progress";
@@ -352,30 +352,30 @@ export class BeadsClient {
 
         const flag = cliStatus ? `--status ${cliStatus}` : "";
         const output = await this.runCommand(`list ${flag} --format json`);
-        const beads = this.parseRawList(output);
+        const pearls = this.parseRawList(output);
 
         if (status) {
-            return beads.filter((b) => b.status === status);
+            return pearls.filter((b) => b.status === status);
         }
-        return beads;
+        return pearls;
     }
 
-    async ready(): Promise<Bead[]> {
+    async ready(): Promise<Pearl[]> {
         const output = await this.runCommand("ready --format json");
         return this.parseRawList(output);
     }
 
-    async getAll(): Promise<Bead[]> {
+    async getAll(): Promise<Pearl[]> {
         const output = await this.runCommand("list --format json");
         return this.parseRawList(output);
     }
 
-    async get(id: string): Promise<Bead> {
+    async get(id: string): Promise<Pearl> {
         const output = await this.runCommand(`show ${id} --format json`);
         return this.parseRaw(output);
     }
 
-    async create(title: string, options: CreateOptions = {}): Promise<Bead> {
+    async create(title: string, options: CreateOptions = {}): Promise<Pearl> {
         let args = `create "${title}"`;
         if (options.priority !== undefined) args += ` --priority ${options.priority}`;
         if (options.description) {
@@ -385,7 +385,7 @@ export class BeadsClient {
         args += " --format json";
 
         const output = await this.runCommand(args);
-        const bead = this.parseRaw(output);
+        const pearl = this.parseRaw(output);
 
         // Update metadata and links
         const updates: any = {};
@@ -395,30 +395,30 @@ export class BeadsClient {
 
         for (const [key, val] of Object.entries(updates)) {
             const escaped = JSON.stringify(val).replace(/"/g, '\\"');
-            await this.runCommand(`meta set ${bead.id} ${key} "${escaped}" --format json`);
+            await this.runCommand(`meta set ${pearl.id} ${key} "${escaped}" --format json`);
         }
 
         if (options.labels?.length) {
             for (const label of options.labels) {
-                await this.runCommand(`update ${bead.id} --add-label "${label}" --format json`);
+                await this.runCommand(`update ${pearl.id} --add-label "${label}" --format json`);
             }
         }
 
         if (options.blockers?.length) {
             for (const blockerId of options.blockers) {
-                await this.runCommand(`link ${bead.id} ${blockerId} blocks --format json`);
+                await this.runCommand(`link ${pearl.id} ${blockerId} blocks --format json`);
             }
         }
 
         if (options.parent) {
-            await this.runCommand(`link ${bead.id} ${options.parent} parent_child --format json`);
+            await this.runCommand(`link ${pearl.id} ${options.parent} parent_child --format json`);
         }
 
-        return this.get(bead.id);
+        return this.get(pearl.id);
     }
 
-    async update(id: string, changes: Partial<Bead>): Promise<Bead> {
-        let current: Bead | undefined;
+    async update(id: string, changes: Partial<Pearl>): Promise<Pearl> {
+        let current: Pearl | undefined;
 
         if (changes.status) {
             current = await this.get(id);
@@ -518,8 +518,8 @@ export class BeadsClient {
         return this.parseRaw(output);
     }
 
-    private validateTransition(current: Bead, next: BeadStatus) {
-        const validTransitions: Record<BeadStatus, BeadStatus[]> = {
+    private validateTransition(current: Pearl, next: PearlStatus) {
+        const validTransitions: Record<PearlStatus, PearlStatus[]> = {
             open: ["in_progress", "done"],
             in_progress: ["verify", "open"],
             verify: ["done", "in_progress", "open"],
@@ -547,22 +547,22 @@ export class BeadsClient {
 }
 
 // Singleton accessor
-const BEADS_KEY = "beads_client";
-export function getBeads(basePath?: string): BeadsClient {
-    return getGlobalSingleton(BEADS_KEY, () => {
+const PEARLS_KEY = "pearls_client";
+export function getPearls(basePath?: string): PearlsClient {
+    return getGlobalSingleton(PEARLS_KEY, () => {
         let path = basePath;
         if (!path) {
             try {
                 const config = getConfig();
-                path = config.beads.path;
+                path = config.pearls.path;
             } catch {
                 path = ".pearls";
             }
         }
-        return new BeadsClient(path);
+        return new PearlsClient(path);
     });
 }
 
-export function setBeadsInstance(beads: BeadsClient) {
-    setGlobalSingleton(BEADS_KEY, beads);
+export function setPearlsInstance(pearls: PearlsClient) {
+    setGlobalSingleton(PEARLS_KEY, pearls);
 }

@@ -1,7 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import type { AgentContext } from "../core/agent";
-import { getBeads } from "../core/beads";
+import { getPearls } from "../core/pearls";
 import { logger } from "../core/logger";
 import { getQueue } from "../core/queue";
 
@@ -30,8 +30,8 @@ export const createSubmitWorkTool = (
         execute: async (args: z.infer<typeof parameters>, toolContext: any) => {
             let { summary, output, acceptance_test_result: _acceptance_test_result } =
                 args;
-            const beadId = toolContext.beadId;
-            if (!beadId) throw new Error("No beadId found in context");
+            const pearlId = toolContext.pearlId;
+            if (!pearlId) throw new Error("No pearlId found in context");
 
             // Auto-Extraction: Recover summary if nested in output (common agent error)
             if (!summary && typeof output === "object" && output !== null) {
@@ -39,19 +39,19 @@ export const createSubmitWorkTool = (
                 if (typeof outObj.summary === "string") {
                     summary = outObj.summary;
                     logger.info(
-                        `[Worker] Auto-extracted summary from output.summary for ${beadId}`,
+                        `[Worker] Auto-extracted summary from output.summary for ${pearlId}`,
                     );
                 } else if (typeof outObj.analysis === "string") {
                     // Common pattern in planning steps
                     summary = outObj.analysis;
                     logger.info(
-                        `[Worker] Auto-extracted summary from output.analysis for ${beadId}`,
+                        `[Worker] Auto-extracted summary from output.analysis for ${pearlId}`,
                     );
                 } else if (Object.keys(outObj).length > 0) {
                     const keys = Object.keys(outObj).slice(0, 3).join(", ");
                     summary = `Completed work with structured output (keys: ${keys}...)`;
                     logger.warn(
-                        `[Worker] No summary found. Generated fallback summary for ${beadId}`,
+                        `[Worker] No summary found. Generated fallback summary for ${pearlId}`,
                     );
                 }
             }
@@ -68,27 +68,27 @@ export const createSubmitWorkTool = (
             }
 
             // Validate ticket exists FIRST (before any state changes)
-            const ticket = getQueue().getActiveTicket(beadId);
+            const ticket = getQueue().getActiveTicket(pearlId);
             if (!ticket) {
                 try {
-                    const bead = await getBeads().get(beadId);
-                    if (bead.status === "verify" || bead.status === "done") {
+                    const pearl = await getPearls().get(pearlId);
+                    if (pearl.status === "verify" || pearl.status === "done") {
                         logger.info(
-                            `[Worker] Idempotency: Work for ${beadId} already submitted. Returning success.`,
+                            `[Worker] Idempotency: Work for ${pearlId} already submitted. Returning success.`,
                         );
                         return {
                             success: true,
-                            status: bead.status,
+                            status: pearl.status,
                             message: "Work already submitted successfully.",
                             summary,
                         };
                     }
-                    const savedOutput = getQueue().getOutput(beadId);
+                    const savedOutput = getQueue().getOutput(pearlId);
                     if (savedOutput) {
                         logger.warn(
-                            `[Worker] Recovery: Bead ${beadId} stuck in '${bead.status}' despite completed ticket. Forcing transition to 'verify'.`,
+                            `[Worker] Recovery: Pearl ${pearlId} stuck in '${pearl.status}' despite completed ticket. Forcing transition to 'verify'.`,
                         );
-                        await getBeads().update(beadId, { status: "verify" });
+                        await getPearls().update(pearlId, { status: "verify" });
                         const recoveredSummary =
                             (savedOutput as Record<string, unknown>)?.summary ||
                             "Recovered summary";
@@ -103,17 +103,17 @@ export const createSubmitWorkTool = (
                     logger.debug(`[Worker] Idempotency check failed: ${err}`);
                 }
                 throw new Error(
-                    `No active ticket found for ${beadId}. Cannot submit work.`,
+                    `No active ticket found for ${pearlId}. Cannot submit work.`,
                 );
             }
 
             getQueue().complete(ticket.id, output || { summary });
-            logger.info(`[Worker] Submitted work for ${beadId}`, {
-                beadId,
+            logger.info(`[Worker] Submitted work for ${pearlId}`, {
+                pearlId,
                 hasOutput: !!output,
             });
 
-            await getBeads().update(beadId, {
+            await getPearls().update(pearlId, {
                 status: "verify",
             });
 
@@ -127,7 +127,7 @@ export const createSubmitWorkTool = (
     });
 };
 
-// NOTE: This tool should perhaps add history to the bead?
+// NOTE: This tool should perhaps add history to the pearl?
 export const createReportProgressTool = (_context: AgentContext) => {
     const parameters = z
         .object({
@@ -144,16 +144,16 @@ export const createReportProgressTool = (_context: AgentContext) => {
         inputSchema: parameters,
         // biome-ignore lint/suspicious/noExplicitAny: context provided by AI SDK
         execute: async (args: z.infer<typeof parameters>, toolContext: any) => {
-            const beadId = toolContext.beadId;
-            if (!beadId)
+            const pearlId = toolContext.pearlId;
+            if (!pearlId)
                 return {
                     success: false,
-                    message: "No beadId found in context",
+                    message: "No pearlId found in context",
                 };
 
             const msg = args.message || args.reasoning || "Working on it...";
-            logger.info(`[Worker] Progress on ${beadId}: ${msg}`);
-            await getBeads().update(beadId, { status: "in_progress" });
+            logger.info(`[Worker] Progress on ${pearlId}: ${msg}`);
+            await getPearls().update(pearlId, { status: "in_progress" });
             return { success: true, message: msg };
         },
     });
@@ -161,10 +161,10 @@ export const createReportProgressTool = (_context: AgentContext) => {
 
 export const createDelegateTaskTool = (_context: AgentContext) => {
     const parameters = z.object({
-        parentBeadId: z
+        parentPearlId: z
             .string()
             .optional()
-            .describe("The ID of the parent bead (optional if in context)"),
+            .describe("The ID of the parent pearl (optional if in context)"),
         title: z.string().describe("Title of the subtask"),
         priority: z.enum(["low", "normal", "high", "critical"]).default("normal"),
         tags: z.array(z.string()).optional(),
@@ -175,7 +175,7 @@ export const createDelegateTaskTool = (_context: AgentContext) => {
     });
 
     return tool({
-        description: "Delegate a subtask to another worker (creating a child bead)",
+        description: "Delegate a subtask to another worker (creating a child pearl)",
         inputSchema: parameters,
         // biome-ignore lint/suspicious/noExplicitAny: context provided by AI SDK
         execute: async (args: z.infer<typeof parameters>, toolContext: any) => {
@@ -184,21 +184,21 @@ export const createDelegateTaskTool = (_context: AgentContext) => {
                 priority,
                 tags,
                 description,
-                parentBeadId: argParentBeadId,
+                parentPearlId: argParentPearlId,
             } = args;
-            const parentBeadId = argParentBeadId || toolContext.beadId;
+            const parentPearlId = argParentPearlId || toolContext.pearlId;
 
-            if (!parentBeadId) {
+            if (!parentPearlId) {
                 return {
                     success: false,
                     error:
-                        "Cannot delegate: No active parent bead (missing context and argument)",
+                        "Cannot delegate: No active parent pearl (missing context and argument)",
                 };
             }
 
             try {
                 // Fix: Call create(title, options) correctly
-                const bead = await getBeads().create(title, {
+                const pearl = await getPearls().create(title, {
                     description: description,
                     labels: [...(tags || []), "delegated"],
                     priority:
@@ -209,23 +209,23 @@ export const createDelegateTaskTool = (_context: AgentContext) => {
                                 : priority === "normal"
                                     ? 2
                                     : 3,
-                    parent: parentBeadId, // Note: 'parent', not 'parent_id' based on options interface
+                    parent: parentPearlId, // Note: 'parent', not 'parent_id' based on options interface
                 });
 
                 // Establish parent-child dependency (parent depends on child)
-                await getBeads().addDependency(parentBeadId, bead.id);
+                await getPearls().addDependency(parentPearlId, pearl.id);
 
                 // Enqueue the child task
-                getQueue().enqueue(bead.id, 2, "worker");
+                getQueue().enqueue(pearl.id, 2, "worker");
 
                 logger.info(
-                    `[Worker] Delegated subtask ${bead.id} from ${parentBeadId}`,
+                    `[Worker] Delegated subtask ${pearl.id} from ${parentPearlId}`,
                 );
 
                 return {
                     success: true,
-                    beadId: bead.id,
-                    message: `Delegated subtask '${title}' (ID: ${bead.id})`,
+                    pearlId: pearl.id,
+                    message: `Delegated subtask '${title}' (ID: ${pearl.id})`,
                 };
             } catch (err: unknown) {
                 const error = err as Error;

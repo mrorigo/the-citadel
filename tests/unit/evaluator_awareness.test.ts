@@ -12,8 +12,8 @@ describe('Evaluator Agent Awareness', () => {
         const runSpy = mock(agent.run.bind(agent));
 
         const context = {
-            beadId: 'test-bead',
-            bead: { id: 'test-bead', title: 'Test Planning Task', labels: ['step:plan'] },
+            pearlId: 'test-pearl',
+            pearl: { id: 'test-pearl', title: 'Test Planning Task', labels: ['step:plan'] },
             submitted_work: { plan: 'Step 1: Save the world' }
         };
 

@@ -1,6 +1,6 @@
 Based on the constraints (no modification to the `bd` binary) and the goal (a generic, principled workflow engine), here is the **Engineering Change Request (ECR) v1.1** for The Citadel.
 
-This architecture strictly separates **The Citadel** (The Application Logic) from **Beads** (The Database). We implement the "MEOW Stack" concepts (Formulas, Molecules, Convoys) purely through orchestration logic and standard `bd` commands.
+This architecture strictly separates **The Citadel** (The Application Logic) from **Pearls** (The Database). We implement the "MEOW Stack" concepts (Formulas, Molecules, Convoys) purely through orchestration logic and standard `bd` commands.
 
 ***
 
@@ -8,10 +8,10 @@ This architecture strictly separates **The Citadel** (The Application Logic) fro
 
 **Status:** Draft
 **Component:** Citadel Router Service & Worker Runtime
-**Constraint:** Strict adherence to standard `steveyegge/beads` CLI.
+**Constraint:** Strict adherence to standard `steveyegge/pearls` CLI.
 
 ## 1. Executive Summary
-We are upgrading The Citadel from a "Task Factory" (single-bead creation) to a **Workflow Engine**. To achieve this without forking the underlying `beads` repository, we will implement the **MEOW Stack** (Molecular Expression of Work) purely in the **Router's application layer**.
+We are upgrading The Citadel from a "Task Factory" (single-pearl creation) to a **Workflow Engine**. To achieve this without forking the underlying `pearls` repository, we will implement the **MEOW Stack** (Molecular Expression of Work) purely in the **Router's application layer**.
 
 The Router will act as a "Compiler," translating static TOML templates (Formulas) into standard `bd create` and `bd dep add` commands. This allows us to support complex, generic workflows (Molecules) and high-level tracking (Convoys) using existing infrastructure.
 
@@ -75,22 +75,22 @@ When a user requests: `citadel run system_migration target_system=Auth`, the Rou
     *   For every step with a `needs` array:
     *   *Command:* `bd dep add {REAL_CHILD_ID} {REAL_PARENT_ID}`
 
-**Outcome:** We achieve a "Molecule" (a directed acyclic graph of beads) without the database knowing it is anything other than standard tasks.
+**Outcome:** We achieve a "Molecule" (a directed acyclic graph of pearls) without the database knowing it is anything other than standard tasks.
 
 ---
 
 ## 4. Feature: Convoys (Meta-Tracking)
-We cannot add `bd convoy create`. We will instead define a **Convoy** as a specific *Type* of Bead managed by conventions.
+We cannot add `bd convoy create`. We will instead define a **Convoy** as a specific *Type* of Pearl managed by conventions.
 
 **Definition:**
 A Convoy is a root-level Epic used strictly for grouping unrelated streams of work (e.g., "Q1 Objectives").
 
 **Implementation:**
-*   **Creation:** The Router creates Convoys using the generic `type` flag (supported by standard JSONL schema in Beads).
+*   **Creation:** The Router creates Convoys using the generic `type` flag (supported by standard JSONL schema in Pearls).
     *   *Command:* `bd create "Q1 Cleanup Convoy" --type convoy`
 *   **Tracking:** To view Convoys, we will not use a new command. We will filter standard output.
     *   *Command:* `bd show --type convoy` (or standard `grep` on the JSONL if `bd show` filters are limited).
-*   **Assignment:** When "slinging" a Molecule, the Router will parent the Molecule's root Epic to the Convoy Bead.
+*   **Assignment:** When "slinging" a Molecule, the Router will parent the Molecule's root Epic to the Convoy Pearl.
     *   *Result:* `Convoy (bd-1)` $\to$ `Molecule Epic (bd-2)` $\to$ `Task (bd-3)`.
 
 ---
@@ -118,9 +118,9 @@ We do not need new `bd` commands. We simply grant **Worker Agents** the permissi
 | :-------------------- | :----------------------- | :----------------------------------------------- |
 | **Workflow Schema**   | Custom TOML Parser       | Generic TOML read by Router Logic                |
 | **Instantiation**     | `bd cook` / `bd pour`    | Router loop executing `bd create` + `bd dep add` |
-| **Workflow Object**   | "Molecule" Object        | Standard **Epic** Bead (`type=epic`)             |
-| **Shipment Tracking** | `bd convoy create`       | Standard Bead with `type=convoy`                 |
+| **Workflow Object**   | "Molecule" Object        | Standard **Epic** Pearl (`type=epic`)             |
+| **Shipment Tracking** | `bd convoy create`       | Standard Pearl with `type=convoy`                 |
 | **Runtime Expansion** | "Protomolecule" Macros   | Worker recursively running `bd create`           |
 
 **Approval:**
-This request satisfies the requirement for a principled, generic workflow engine while maintaining 100% compatibility with the upstream `beads` binary.
+This request satisfies the requirement for a principled, generic workflow engine while maintaining 100% compatibility with the upstream `pearls` binary.

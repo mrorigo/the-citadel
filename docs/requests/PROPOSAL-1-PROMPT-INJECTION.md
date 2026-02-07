@@ -27,7 +27,7 @@ worker = """
 
 ### Implementation Logic
 1.  **Conductor/Router**: When instantiating a Formula into a Molecule, the `prompts` section should be stored in the root Epic or propagated as a label/context.
-2.  **CoreAgent**: In the `run()` loop, the agent should check if the current Bead belongs to a Molecule with custom prompts.
+2.  **CoreAgent**: In the `run()` loop, the agent should check if the current Pearl belongs to a Molecule with custom prompts.
 3.  **Prompt Merging**: These custom prompts should be appended to the `defaultPrompt` after the `AGENTS.md` rules but before the agent-specific guidelines.
 
 ## ✅ Benefits

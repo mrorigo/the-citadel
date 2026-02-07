@@ -19,10 +19,10 @@ import { getIgnoredPatterns } from "./gitignore";
 import { getInstructionService } from "./instruction";
 import { getAgentModel } from "./llm";
 import { logger } from "./logger";
-import { getBeads, type BeadsClient } from "./beads";
+import { getPearls, type PearlsClient } from "./pearls";
 
 export interface AgentContext {
-    beadId?: string;
+    pearlId?: string;
     [key: string]: unknown;
 }
 
@@ -38,12 +38,12 @@ export abstract class CoreAgent {
     protected dynamicTools: Record<string, Tool> = {};
     protected schemas: Record<string, z.ZodTypeAny> = {};
     protected requiresExplicitCompletion = false;
-    protected beadsClient?: BeadsClient;
+    protected pearlsClient?: PearlsClient;
 
-    constructor(role: AgentRole, model?: LanguageModel, beadsClient?: BeadsClient) {
+    constructor(role: AgentRole, model?: LanguageModel, pearlsClient?: PearlsClient) {
         this.role = role;
         this.model = model || getAgentModel(role);
-        this.beadsClient = beadsClient;
+        this.pearlsClient = pearlsClient;
     }
 
     /**
@@ -100,7 +100,7 @@ export abstract class CoreAgent {
                                 new Set([
                                     ...current,
                                     ...ignored,
-                                    ".beads",
+                                    ".pearls",
                                     ".citadel",
                                     ".codeflow",
                                 ]),
@@ -290,7 +290,7 @@ export abstract class CoreAgent {
         const baseSystem = await instructionService.buildPrompt(
             {
                 role: this.role,
-                beadId: context?.beadId,
+                pearlId: context?.pearlId,
                 labels: context?.labels as string[] | undefined,
                 context: context,
             },
@@ -671,14 +671,14 @@ If you are still working, continue with your next step.`,
 
 
 
-        // Report Token Usage if linked to a bead
-        if (context?.beadId) {
+        // Report Token Usage if linked to a pearl
+        if (context?.pearlId) {
             try {
                 const summary = `**Agent Execution Summary**\n- **Role**: ${this.role}\n- **Input Tokens**: ${totalUsage.inputTokens}\n- **Output Tokens**: ${totalUsage.outputTokens}\n- **Total Tokens**: ${totalUsage.totalTokens}`;
                 // Usage injected client or global singleton
-                const client = this.beadsClient || getBeads();
-                client.addComment(context.beadId, summary).catch(err => {
-                    logger.warn(`[${this.role}] Failed to report token usage to bead ${context.beadId}`, { error: err });
+                const client = this.pearlsClient || getPearls();
+                client.addComment(context.pearlId, summary).catch(err => {
+                    logger.warn(`[${this.role}] Failed to report token usage to pearl ${context.pearlId}`, { error: err });
                 });
             } catch (err) {
                 logger.warn(`[${this.role}] Error preparing token usage report`, { error: err });

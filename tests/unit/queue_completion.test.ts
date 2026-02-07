@@ -20,7 +20,7 @@ describe('WorkQueue Completion Persistence', () => {
 
     it('should preserve existing output if completed with undefined', () => {
         // 1. Create ticket
-        queue.enqueue('bead-1', 1, 'worker');
+        queue.enqueue('pearl-1', 1, 'worker');
         const ticket = queue.claim('agent-1', 'worker');
         expect(ticket).not.toBeNull();
 
@@ -31,7 +31,7 @@ describe('WorkQueue Completion Persistence', () => {
         queue.complete(ticket.id, initialPayload);
 
         // Verify initial state
-        let result = queue.getOutput('bead-1');
+        let result = queue.getOutput('pearl-1');
         expect(result).toEqual(initialPayload);
 
         // 3. Complete again with undefined (Simulating Hook cleanup)
@@ -39,13 +39,13 @@ describe('WorkQueue Completion Persistence', () => {
         queue.complete(ticket.id, undefined);
 
         // 4. Verify output is NOT overwritten with null
-        result = queue.getOutput('bead-1');
+        result = queue.getOutput('pearl-1');
         expect(result).toEqual(initialPayload);
     });
 
     it('should not overwrite output if already completed', () => {
         // 1. Create ticket
-        queue.enqueue('bead-2', 1, 'worker');
+        queue.enqueue('pearl-2', 1, 'worker');
         const ticket = queue.claim('agent-2', 'worker');
         if (!ticket) return;
 
@@ -58,7 +58,7 @@ describe('WorkQueue Completion Persistence', () => {
         queue.complete(ticket.id, newPayload);
 
         // 4. Verify update - SHOULD remain 'A' (idempotent)
-        const result = queue.getOutput('bead-2');
+        const result = queue.getOutput('pearl-2');
         expect(result).toEqual(initialPayload);
     });
 });

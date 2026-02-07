@@ -83,7 +83,7 @@ export const ConfigSchema = z.object({
 			load_factor: 1.0,
 		}),
 
-	beads: z.object({
+	pearls: z.object({
 		path: z.string().default(".pearls"),
 		binary: z.string().default("prl"),
 		autoSync: z.boolean().default(true),

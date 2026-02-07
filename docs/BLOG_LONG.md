@@ -34,19 +34,19 @@ The fundamental problem with most agent orchestrators is that they treat the **A
 
 In The Citadel, the primary entity is **The Work**. The agent is just a temporary compute resource instantiated to advance the state of the work.
 
-We enforce this with **Beads**, a local-first, git-backed issue tracker.
+We enforce this with **Pearls**, a local-first, git-backed issue tracker.
 
-### The Ledger (Beads)
+### The Ledger (Pearls)
 
-Every atomic unit of work in The Citadel is a "Bead". It's not just a JSON object; it's a node in a dependency graph.
+Every atomic unit of work in The Citadel is a "Pearl". It's not just a JSON object; it's a node in a dependency graph.
 
-**Structure of a Bead:**
+**Structure of a Pearl:**
 ```typescript
-interface Bead {
+interface Pearl {
   id: string;          // "bd-a7f92"
-  status: BeadStatus;  // open | in_progress | verify | done
+  status: PearlStatus;  // open | in_progress | verify | done
   priority: number;
-  blockers: string[];  // IDs of other beads that must be done first
+  blockers: string[];  // IDs of other pearls that must be done first
   acceptance_test?: string; // The criteria for 'verify' -> 'done'
 }
 ```
@@ -77,12 +77,12 @@ needs = ["impl"]  # <--- Dependency Injection
 ```
 
 ### The Molecule (Compiled Binary)
-When the Router Agent "cooks" this formula, it doesn't just copy it. It resolves variables and builds a Directed Acyclic Graph (DAG) in the Beads database.
+When the Router Agent "cooks" this formula, it doesn't just copy it. It resolves variables and builds a Directed Acyclic Graph (DAG) in the Pearls database.
 
 Logic carried out by the **WorkflowEngine**:
 1.  **Parse TOML**: Validate structure.
 2.  **Hydrate Variables**: `{{name}}` -> "Dark Mode".
-3.  **Wire Dependencies**: The `impl` bead is created. The `test` bead is created with `blockers: [impl.id]`.
+3.  **Wire Dependencies**: The `impl` pearl is created. The `test` pearl is created with `blockers: [impl.id]`.
 4.  **Persist**: The entire graph represents the "Molecule".
 
 This means **Resilience** is built-in. If the server crashes, the molecule exists in Git. When the system restarts, the state is preserved. "Test" is still blocked by "Impl".
@@ -96,24 +96,24 @@ This is the "killer feature" that emerged on Day 2. We realized that static plan
 We call this **Dynamic Bonding**.
 
 ### The Pattern
-A Worker Agent picks up a bead: *"Analyze Competitors"*.
+A Worker Agent picks up a pearl: *"Analyze Competitors"*.
 It realizes this is too big. Instead of doing a bad job, it:
 1.  **Reads** the `AGENTS.md` context.
 2.  **Identifies** 5 sub-tasks (one for each competitor).
-3.  **Spawns** 5 new beads as children of the current bead.
+3.  **Spawns** 5 new pearls as children of the current pearl.
 4.  **Suspends** itself.
 
 **Code Logic (Simplified):**
 ```typescript
 // Worker Loop
-async function processBead(bead: Bead) {
-  const plan = await llm.generatePlan(bead.description);
+async function processPearl(pearl: Pearl) {
+  const plan = await llm.generatePlan(pearl.description);
 
   if (plan.needsSubdivision) {
-    const children = plan.subtasks.map(t => beads.create(t));
-    await beads.addDependency(bead.id, children.ids);
-    log(`[Bonding] Decomposed ${bead.id} into ${children.length} atoms.`);
-    return; // Agent releases the bead back to the pool
+    const children = plan.subtasks.map(t => pearls.create(t));
+    await pearls.addDependency(pearl.id, children.ids);
+    log(`[Bonding] Decomposed ${pearl.id} into ${children.length} atoms.`);
+    return; // Agent releases the pearl back to the pool
   }
 
   // ... execute task
@@ -134,7 +134,7 @@ class CoreAgent {
   async loop() {
     while (running) {
       // 1. Sense
-      const context = await this.readContext(); // Beads, Files, Git
+      const context = await this.readContext(); // Pearls, Files, Git
 
       // 2. Decide
       const action = await this.model.decide(context);
@@ -170,7 +170,7 @@ title = "Fix Data"
 # This step only runs if 'analyze' fails
 ```
 
-If the `analyze` step fails, the graph engine automatically triggers the `recover_analysis` bead. The system self-corrects by running a specific remediation path. No human intervention required.
+If the `analyze` step fails, the graph engine automatically triggers the `recover_analysis` pearl. The system self-corrects by running a specific remediation path. No human intervention required.
 
 ---
 

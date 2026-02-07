@@ -1,20 +1,20 @@
 
 import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
 import { Conductor } from '../../src/services/conductor';
-import { BeadsClient } from '../../src/core/beads';
+import { PearlsClient } from '../../src/core/pearls';
 import { WorkQueue } from '../../src/core/queue';
-import { setBeadsInstance } from '../../src/core/beads';
+import { setPearlsInstance } from '../../src/core/pearls';
 import { setQueueInstance } from '../../src/core/queue';
 import { clearGlobalSingleton } from '../../src/core/registry';
 import { setConfig, resetConfig } from '../../src/config';
 
 describe('Router Staleness Detection', () => {
     let conductor: Conductor;
-    let mockBeads: any;
+    let mockPearls: any;
     let mockQueue: any;
 
     beforeEach(() => {
-        mockBeads = {
+        mockPearls = {
             ready: mock(async () => []),
             list: mock(async (status) => []),
             get: mock(async (id) => ({ id, status: 'open' })),
@@ -31,7 +31,7 @@ describe('Router Staleness Detection', () => {
         setConfig({
             env: 'development',
             providers: { ollama: {} },
-            beads: { path: '.beads' },
+            pearls: { path: '.pearls' },
             worker: { min_workers: 0, max_workers: 1, load_factor: 1 },
             gatekeeper: { min_workers: 0, max_workers: 1, load_factor: 1 },
             agents: {
@@ -42,23 +42,23 @@ describe('Router Staleness Detection', () => {
             }
         });
 
-        conductor = new Conductor(mockBeads, mockQueue);
-        setBeadsInstance(mockBeads);
+        conductor = new Conductor(mockPearls, mockQueue);
+        setPearlsInstance(mockPearls);
         setQueueInstance(mockQueue);
     });
 
     afterEach(() => {
         conductor.stop();
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
         resetConfig();
     });
 
-    it('should NOT reset bead if ticket was recently completed (Grace Period)', async () => {
-        const beadId = 'test-bead';
+    it('should NOT reset pearl if ticket was recently completed (Grace Period)', async () => {
+        const pearlId = 'test-pearl';
 
-        mockBeads.list.mockImplementation(async (status: string) => {
-            if (status === 'in_progress') return [{ id: beadId, status: 'in_progress' }];
+        mockPearls.list.mockImplementation(async (status: string) => {
+            if (status === 'in_progress') return [{ id: pearlId, status: 'in_progress' }];
             return [];
         });
 
@@ -74,16 +74,16 @@ describe('Router Staleness Detection', () => {
         // @ts-ignore
         await conductor.cycleRouter();
 
-        const calls = mockBeads.update.mock.calls;
-        const resetCall = calls.find((c: any) => c[0] === beadId && c[1].status === 'open');
+        const calls = mockPearls.update.mock.calls;
+        const resetCall = calls.find((c: any) => c[0] === pearlId && c[1].status === 'open');
         expect(resetCall).toBeUndefined();
     });
 
-    it('should reset bead if grace period has expired', async () => {
-        const beadId = 'stale-bead';
+    it('should reset pearl if grace period has expired', async () => {
+        const pearlId = 'stale-pearl';
 
-        mockBeads.list.mockImplementation(async (status: string) => {
-            if (status === 'in_progress') return [{ id: beadId, status: 'in_progress' }];
+        mockPearls.list.mockImplementation(async (status: string) => {
+            if (status === 'in_progress') return [{ id: pearlId, status: 'in_progress' }];
             return [];
         });
 
@@ -99,8 +99,8 @@ describe('Router Staleness Detection', () => {
         // @ts-ignore
         await conductor.cycleRouter();
 
-        const calls = mockBeads.update.mock.calls;
-        const resetCall = calls.find((c: any) => c[0] === beadId && c[1].status === 'open');
+        const calls = mockPearls.update.mock.calls;
+        const resetCall = calls.find((c: any) => c[0] === pearlId && c[1].status === 'open');
         expect(resetCall).toBeDefined();
     });
 });

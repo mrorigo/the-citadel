@@ -1,9 +1,9 @@
 
 import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from 'bun:test';
 import { Conductor } from '../../src/services/conductor';
-import { BeadsClient } from '../../src/core/beads';
+import { PearlsClient } from '../../src/core/pearls';
 import { WorkQueue } from '../../src/core/queue';
-import { setBeadsInstance } from '../../src/core/beads';
+import { setPearlsInstance } from '../../src/core/pearls';
 import { setQueueInstance } from '../../src/core/queue';
 import { clearGlobalSingleton } from '../../src/core/registry';
 import { setConfig, resetConfig } from '../../src/config';
@@ -12,18 +12,18 @@ import { setConfig, resetConfig } from '../../src/config';
 import { RouterAgent } from '../../src/agents/router';
 import { WorkerAgent } from '../../src/agents/worker';
 
-const mockBeads = {
+const mockPearls = {
     ready: mock(async () => []),
     get: mock(async (id: string) => ({ id, status: 'open', blockers: [] })),
     list: mock(async () => []),
     update: mock(async () => ({})),
-    create: mock(async () => ({ id: 'new-bead' })),
+    create: mock(async () => ({ id: 'new-pearl' })),
     addDependency: mock(async () => ({})),
 };
 
 const mockQueue = {
     getActiveTicket: mock(() => null),
-    claim: mock(() => ({ id: 'ticket-1', bead_id: 'bead-C' })),
+    claim: mock(() => ({ id: 'ticket-1', pearl_id: 'pearl-C' })),
     list_active: mock(() => []),
     reschedule: mock(() => { }),
     getLatestTicket: mock(() => null),
@@ -51,7 +51,7 @@ describe('Conductor Race Condition', () => {
         setConfig({
             env: 'development',
             providers: { ollama: {} },
-            beads: { path: '.beads' },
+            pearls: { path: '.pearls' },
             worker: { min_workers: 0, max_workers: 1, load_factor: 1 },
             gatekeeper: { min_workers: 0, max_workers: 1, load_factor: 1 },
             agents: {
@@ -74,26 +74,26 @@ describe('Conductor Race Condition', () => {
         // If we refrain from mocking Piper, test might crash?
         // Let's try mocking module but ensuring clear restore.
 
-        // Mock Beads & Queue behavior
-        mockBeads.ready.mockImplementation(async () => {
-            console.log('[TEST] mockBeads.ready called');
+        // Mock Pearls & Queue behavior
+        mockPearls.ready.mockImplementation(async () => {
+            console.log('[TEST] mockPearls.ready called');
             return [];
         });
 
         mockQueue.claim.mockImplementation((id: string) => {
             console.log(`[TEST] mockQueue.claim called for ${id}`);
-            return { id: 'ticket-1', bead_id: id };
+            return { id: 'ticket-1', pearl_id: id };
         });
 
         // We can pass mocks to Conductor constructor
-        conductor = new Conductor(mockBeads as unknown as BeadsClient, mockQueue as unknown as WorkQueue);
-        setBeadsInstance(mockBeads as unknown as BeadsClient);
+        conductor = new Conductor(mockPearls as unknown as PearlsClient, mockQueue as unknown as WorkQueue);
+        setPearlsInstance(mockPearls as unknown as PearlsClient);
         setQueueInstance(mockQueue as unknown as WorkQueue);
     }
 
     function teardownMocks() {
         if (conductor) conductor.stop();
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
         resetConfig();
@@ -109,7 +109,7 @@ describe('Conductor Race Condition', () => {
         teardownMocks();
     });
 
-    it('should NOT route a bead if its blockers are not done (Double Check)', async () => {
+    it('should NOT route a pearl if its blockers are not done (Double Check)', async () => {
         // Mock Piper? 
         // If we don't mock piper, `getPiper().pipeData` will run.
         // If it runs safely (returns undefined/null), we are good.
@@ -124,16 +124,16 @@ describe('Conductor Race Condition', () => {
 
         // Let's start WITHOUT mocking Piper and see?
 
-        mockBeads.ready.mockResolvedValueOnce([{ id: 'bead-C', status: 'open' }]);
+        mockPearls.ready.mockResolvedValueOnce([{ id: 'pearl-C', status: 'open' }]);
 
-        mockBeads.get.mockImplementation(async (id: string) => {
-            if (id === 'bead-C') return {
-                id: 'bead-C',
+        mockPearls.get.mockImplementation(async (id: string) => {
+            if (id === 'pearl-C') return {
+                id: 'pearl-C',
                 status: 'open',
-                blockers: ['bead-B']
+                blockers: ['pearl-B']
             };
-            if (id === 'bead-B') return {
-                id: 'bead-B',
+            if (id === 'pearl-B') return {
+                id: 'pearl-B',
                 status: 'in_progress'
             };
             return { id };
@@ -156,8 +156,8 @@ describe('Conductor Race Condition', () => {
 
         // Assertions
         const calls = mockRouterRun.mock.calls;
-        const beadCCall = calls.find(call => (call[1] as any)?.beadId === 'bead-C');
+        const pearlCCall = calls.find(call => (call[1] as any)?.pearlId === 'pearl-C');
 
-        expect(beadCCall).toBeUndefined();
+        expect(pearlCCall).toBeUndefined();
     });
 });

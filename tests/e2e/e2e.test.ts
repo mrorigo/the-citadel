@@ -20,8 +20,8 @@ mock.module('../../src/agents/router', () => ({
         static testQueue: any = null;
         // biome-ignore lint/suspicious/noExplicitAny: Mocking context
         async run(_prompt: string, context: any) {
-            const { beadId, status } = context || {};
-            console.log(`[MockRouter] Analyze ${beadId} (${status})`);
+            const { pearlId, status } = context || {};
+            console.log(`[MockRouter] Analyze ${pearlId} (${status})`);
 
             // Use injected test queue (with fallback if needed, but we expect injection)
             // @ts-ignore
@@ -30,12 +30,12 @@ mock.module('../../src/agents/router', () => ({
             const q = globalThis.__TEST_QUEUE__ || MockRouter.testQueue || getQueue();
 
             if (status === 'open') {
-                console.log(`[MockRouter] Enqueuing ${beadId} for worker`);
-                q.enqueue(beadId, 0, 'worker');
+                console.log(`[MockRouter] Enqueuing ${pearlId} for worker`);
+                q.enqueue(pearlId, 0, 'worker');
                 return "Routed to worker";
             } else if (status === 'verify') {
-                console.log(`[MockRouter] Enqueuing ${beadId} for gatekeeper`);
-                q.enqueue(beadId, 0, 'gatekeeper');
+                console.log(`[MockRouter] Enqueuing ${pearlId} for gatekeeper`);
+                q.enqueue(pearlId, 0, 'gatekeeper');
                 return "Routed to gatekeeper";
             }
             return "No action";
@@ -45,16 +45,16 @@ mock.module('../../src/agents/router', () => ({
 
 mock.module('../../src/agents/worker', () => ({
     WorkerAgent: class MockWorker {
-        static beadsClient: any = null;
+        static pearlsClient: any = null;
         // biome-ignore lint/suspicious/noExplicitAny: Mocking context
         async run(_prompt: string, context: any) {
-            const client = MockWorker.beadsClient;
-            if (!client) throw new Error("MockWorker: beadsClient not injected");
+            const client = MockWorker.pearlsClient;
+            if (!client) throw new Error("MockWorker: pearlsClient not injected");
 
-            console.log(`[Worker] Moving ${context.beadId} to in_progress...`);
-            await client.update(context.beadId, { status: 'in_progress' });
-            console.log(`[Worker] Moving ${context.beadId} to verify...`);
-            await client.update(context.beadId, { status: 'verify' });
+            console.log(`[Worker] Moving ${context.pearlId} to in_progress...`);
+            await client.update(context.pearlId, { status: 'in_progress' });
+            console.log(`[Worker] Moving ${context.pearlId} to verify...`);
+            await client.update(context.pearlId, { status: 'verify' });
             return "Work done";
         }
     }
@@ -62,14 +62,14 @@ mock.module('../../src/agents/worker', () => ({
 
 mock.module('../../src/agents/evaluator', () => ({
     EvaluatorAgent: class MockEvaluator {
-        static beadsClient: any = null;
+        static pearlsClient: any = null;
         // biome-ignore lint/suspicious/noExplicitAny: Mocking context
         async run(_prompt: string, context: any) {
-            const client = MockEvaluator.beadsClient;
-            if (!client) throw new Error("MockEvaluator: beadsClient not injected");
+            const client = MockEvaluator.pearlsClient;
+            if (!client) throw new Error("MockEvaluator: pearlsClient not injected");
 
-            console.log(`[Gatekeeper] Approving ${context.beadId}...`);
-            await client.update(context.beadId, { status: 'done' });
+            console.log(`[Gatekeeper] Approving ${context.pearlId}...`);
+            await client.update(context.pearlId, { status: 'done' });
             return "Approved";
         }
     }
@@ -80,12 +80,12 @@ mock.module('../../src/agents/evaluator', () => ({
 // We use top-level await to load them AFTER the mocks are registered.
 const { Conductor } = await import('../../src/services/conductor');
 const { WorkQueue, setQueueInstance } = await import('../../src/core/queue');
-const { BeadsClient, setBeadsInstance } = await import('../../src/core/beads');
+const { PearlsClient, setPearlsInstance } = await import('../../src/core/pearls');
 
 
 describe('E2E Lifecycle', () => {
     let conductor: InstanceType<typeof Conductor>;
-    let beadsClient: InstanceType<typeof BeadsClient>;
+    let pearlsClient: InstanceType<typeof PearlsClient>;
     let queueInstance: InstanceType<typeof WorkQueue>;
 
     beforeEach(async () => {
@@ -107,20 +107,20 @@ describe('E2E Lifecycle', () => {
         // @ts-ignore
         globalThis.__TEST_QUEUE__ = queueInstance;
 
-        beadsClient = new BeadsClient(TEST_PEARLS_PATH);
+        pearlsClient = new PearlsClient(TEST_PEARLS_PATH);
         // FORCE doctor to pass in E2E tests (ignores git dirty state)
-        beadsClient.doctor = async () => true;
-        setBeadsInstance(beadsClient);
-        await beadsClient.init();
+        pearlsClient.doctor = async () => true;
+        setPearlsInstance(pearlsClient);
+        await pearlsClient.init();
 
         // Inject into MockWorker/Evaluator
         const { WorkerAgent } = await import('../../src/agents/worker');
         // @ts-ignore
-        WorkerAgent.beadsClient = beadsClient;
+        WorkerAgent.pearlsClient = pearlsClient;
 
         const { EvaluatorAgent } = await import('../../src/agents/evaluator');
         // @ts-ignore
-        EvaluatorAgent.beadsClient = beadsClient;
+        EvaluatorAgent.pearlsClient = pearlsClient;
 
         // 0. Test Worker Pool (Guaranteed Real Implementation)
         // We define this inline to avoid any mock leakage from src/core/pool
@@ -178,7 +178,7 @@ describe('E2E Lifecycle', () => {
             },
             worker: { timeout: 300, maxRetries: 3, costLimit: 1, min_workers: 1, max_workers: 2, load_factor: 1 },
             gatekeeper: { min_workers: 1, max_workers: 1, load_factor: 1 },
-            beads: { path: TEST_PEARLS_PATH, binary: 'prl', autoSync: true },
+            pearls: { path: TEST_PEARLS_PATH, binary: 'prl', autoSync: true },
             bridge: { maxLogs: 1000 },
             context: {
                 maxHistoryMessages: 20,
@@ -192,7 +192,7 @@ describe('E2E Lifecycle', () => {
 
         // Inject Config AND Pool Class
         // @ts-ignore
-        conductor = new Conductor(beadsClient, queueInstance, testConfig, TestWorkerPool);
+        conductor = new Conductor(pearlsClient, queueInstance, testConfig, TestWorkerPool);
     });
 
     afterEach(async () => {
@@ -205,7 +205,7 @@ describe('E2E Lifecycle', () => {
     });
 
     afterAll(async () => {
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
         mock.restore();
@@ -214,11 +214,11 @@ describe('E2E Lifecycle', () => {
 
     it('should drive a task from creation to completion', async () => {
         // 1. Create a Task (Open)
-        const bead = await beadsClient.create('E2E Task', { priority: 0, acceptance_test: 'Verify it works' });
-        expect(bead.status).toBe('open');
+        const pearl = await pearlsClient.create('E2E Task', { priority: 0, acceptance_test: 'Verify it works' });
+        expect(pearl.status).toBe('open');
 
         // Debug: Check list visibility
-        const list = await beadsClient.list('open');
+        const list = await pearlsClient.list('open');
         console.log(`[Test] Pre-start list: found ${list.length} items`);
         if (list.length > 0) {
             console.log(`[Test] Item 0: ${JSON.stringify(list[0])}`);
@@ -232,7 +232,7 @@ describe('E2E Lifecycle', () => {
         let verified = false;
         // Increased timeout for full suite runs
         while (Date.now() - start < 30000) {
-            const b = await beadsClient.get(bead.id);
+            const b = await pearlsClient.get(pearl.id);
             if (b.status === 'verify') {
                 verified = true;
                 break;
@@ -244,7 +244,7 @@ describe('E2E Lifecycle', () => {
         // 4. Wait for Router -> Gatekeeper -> Done
         let done = false;
         while (Date.now() - start < 60000) {
-            const b = await beadsClient.get(bead.id);
+            const b = await pearlsClient.get(pearl.id);
             if (b.status === 'done') {
                 done = true;
                 break;

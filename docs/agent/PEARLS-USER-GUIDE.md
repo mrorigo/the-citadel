@@ -154,7 +154,7 @@ prl create "Improve ready queue" --priority 0 --label graph,perf
 With description:
 
 ```bash
-prl create "Add import support" --description "Supports Beads JSONL import."
+prl create "Add import support" --description "Supports Pearls JSONL import."
 ```
 
 From file or stdin:
@@ -380,10 +380,10 @@ Environment overrides:
 
 ## Import and Migration
 
-Import Pearls from a Beads JSONL file:
+Import Pearls from a Pearls JSONL file:
 
 ```bash
-prl import path/to/beads.jsonl
+prl import path/to/pearls.jsonl
 ```
 
 Invalid lines are skipped with a warning.

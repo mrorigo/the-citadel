@@ -17,7 +17,7 @@ export type TicketStatus = z.infer<typeof TicketStatusSchema>;
 
 export const TicketSchema = z.object({
 	id: z.string(),
-	bead_id: z.string(),
+	pearl_id: z.string(),
 	status: TicketStatusSchema,
 	priority: z.number().min(0).max(3),
 	target_role: z.enum(["router", "worker", "gatekeeper"]),
@@ -53,7 +53,7 @@ export class WorkQueue {
 		this.db.run(`
       CREATE TABLE IF NOT EXISTS tickets (
         id TEXT PRIMARY KEY,
-        bead_id TEXT NOT NULL,
+        pearl_id TEXT NOT NULL,
         status TEXT NOT NULL,
         priority INTEGER NOT NULL,
         target_role TEXT NOT NULL,
@@ -71,7 +71,7 @@ export class WorkQueue {
 		this.db.run(
 			`CREATE INDEX IF NOT EXISTS idx_status_priority ON tickets(status, priority ASC, created_at ASC)`,
 		);
-		this.db.run(`CREATE INDEX IF NOT EXISTS idx_bead_id ON tickets(bead_id)`);
+		this.db.run(`CREATE INDEX IF NOT EXISTS idx_pearl_id ON tickets(pearl_id)`);
 
 		// Migration: Add output column if not exists
 		try {
@@ -87,7 +87,7 @@ export class WorkQueue {
 		}
 	}
 
-	enqueue(beadId: string, priority?: number, targetRole?: string): void {
+	enqueue(pearlId: string, priority?: number, targetRole?: string): void {
 		const id = crypto.randomUUID();
 		const now = Date.now();
 
@@ -97,10 +97,10 @@ export class WorkQueue {
 
 		this.db.run(
 			`
-      INSERT INTO tickets (id, bead_id, status, priority, target_role, created_at, retry_count)
+      INSERT INTO tickets (id, pearl_id, status, priority, target_role, created_at, retry_count)
       VALUES (?, ?, 'queued', ?, ?, ?, 0)
     `,
-			[id, beadId, finalPriority, finalRole, now],
+			[id, pearlId, finalPriority, finalRole, now],
 		);
 	}
 
@@ -206,17 +206,17 @@ export class WorkQueue {
 	}
 
 	/**
-	 * Get output of a completed ticket by Bead ID
+	 * Get output of a completed ticket by Pearl ID
 	 */
-	getOutput(beadId: string): unknown {
+	getOutput(pearlId: string): unknown {
 		const result = this.db
 			.query(`
             SELECT output FROM tickets 
-            WHERE bead_id = ? AND status = 'completed'
+            WHERE pearl_id = ? AND status = 'completed'
             ORDER BY completed_at DESC
             LIMIT 1
         `)
-			.get(beadId) as { output: string | null } | null;
+			.get(pearlId) as { output: string | null } | null;
 
 		if (result?.output) {
 			return JSON.parse(result.output);
@@ -318,36 +318,36 @@ export class WorkQueue {
 	}
 
 	/**
-	 * Check if a bead has an active ticket (queued or processing)
+	 * Check if a pearl has an active ticket (queued or processing)
 	 */
-	getActiveTicket(beadId: string): Ticket | null {
+	getActiveTicket(pearlId: string): Ticket | null {
 		return this.db
 			.query(`
             SELECT * FROM tickets 
-            WHERE bead_id = ? AND status IN ('queued', 'processing')
+            WHERE pearl_id = ? AND status IN ('queued', 'processing')
         `)
-			.get(beadId) as Ticket | null;
+			.get(pearlId) as Ticket | null;
 	}
 
 	/**
-	 * Get the latest ticket for a bead (regardless of status)
+	 * Get the latest ticket for a pearl (regardless of status)
 	 */
-	getLatestTicket(beadId: string): Ticket | null {
+	getLatestTicket(pearlId: string): Ticket | null {
 		return this.db
 			.query(`
             SELECT * FROM tickets 
-            WHERE bead_id = ?
+            WHERE pearl_id = ?
             ORDER BY created_at DESC
             LIMIT 1
         `)
-			.get(beadId) as Ticket | null;
+			.get(pearlId) as Ticket | null;
 	}
 
 	/**
-	 * Reset tickets for a specific bead
+	 * Reset tickets for a specific pearl
 	 */
-	resetBead(beadId: string): void {
-		this.db.run("DELETE FROM tickets WHERE bead_id = ?", [beadId]);
+	resetPearl(pearlId: string): void {
+		this.db.run("DELETE FROM tickets WHERE pearl_id = ?", [pearlId]);
 	}
 
 	/**

@@ -20,24 +20,24 @@ describe('WorkQueue Integration', () => {
 
     it('should enqueue and claim tickets in priority order', () => {
         // Enqueue P1 then P0
-        queue.enqueue('bead-1', 1, 'worker');
-        queue.enqueue('bead-0', 0, 'worker');
-        queue.enqueue('bead-2', 2, 'worker');
+        queue.enqueue('pearl-1', 1, 'worker');
+        queue.enqueue('pearl-0', 0, 'worker');
+        queue.enqueue('pearl-2', 2, 'worker');
 
         // Should claim P0 first
         const t0 = queue.claim('worker-1', 'worker');
         expect(t0).not.toBeNull();
-        expect(t0?.bead_id).toBe('bead-0');
+        expect(t0?.pearl_id).toBe('pearl-0');
         expect(t0?.status).toBe('processing');
         expect(t0?.assignee_id).toBe('worker-1');
 
         // Then P1
         const t1 = queue.claim('worker-2', 'worker');
-        expect(t1?.bead_id).toBe('bead-1');
+        expect(t1?.pearl_id).toBe('pearl-1');
 
         // Then P2
         const t2 = queue.claim('worker-3', 'worker');
-        expect(t2?.bead_id).toBe('bead-2');
+        expect(t2?.pearl_id).toBe('pearl-2');
 
         // Then null
         const tNull = queue.claim('worker-4', 'worker');
@@ -45,12 +45,12 @@ describe('WorkQueue Integration', () => {
     });
 
     it('should filter by role', () => {
-        queue.enqueue('bead-worker', 0, 'worker');
-        queue.enqueue('bead-gatekeeper', 0, 'gatekeeper');
+        queue.enqueue('pearl-worker', 0, 'worker');
+        queue.enqueue('pearl-gatekeeper', 0, 'gatekeeper');
 
         // Worker trying to claim worker task -> Success
         const tWorker = queue.claim('worker-1', 'worker');
-        expect(tWorker?.bead_id).toBe('bead-worker');
+        expect(tWorker?.pearl_id).toBe('pearl-worker');
 
         // Worker trying to claim gatekeeper task -> Fail
         const tFail = queue.claim('worker-2', 'worker');
@@ -58,11 +58,11 @@ describe('WorkQueue Integration', () => {
 
         // Gatekeeper claiming gatekeeper task -> Success
         const tGatekeeper = queue.claim('gatekeeper-1', 'gatekeeper');
-        expect(tGatekeeper?.bead_id).toBe('bead-gatekeeper');
+        expect(tGatekeeper?.pearl_id).toBe('pearl-gatekeeper');
     });
 
     it('should update heartbeat', () => {
-        queue.enqueue('bead-hb', 0, 'worker');
+        queue.enqueue('pearl-hb', 0, 'worker');
         // biome-ignore lint/style/noNonNullAssertion: Test assertion
         const ticket = queue.claim('worker-1', 'worker')!;
 
@@ -91,7 +91,7 @@ describe('WorkQueue Integration', () => {
     });
 
     it('should release stalled tickets', () => {
-        queue.enqueue('bead-stalled', 0, 'worker');
+        queue.enqueue('pearl-stalled', 0, 'worker');
         // biome-ignore lint/style/noNonNullAssertion: Test assertion
         const ticket = queue.claim('worker-1', 'worker')!;
 
@@ -119,7 +119,7 @@ describe('WorkQueue Integration', () => {
     });
 
     it('should retry failed tickets', () => {
-        queue.enqueue('bead-fail', 0, 'worker');
+        queue.enqueue('pearl-fail', 0, 'worker');
         // biome-ignore lint/style/noNonNullAssertion: Test assertion
         const ticket = queue.claim('worker-1', 'worker')!;
 
@@ -138,7 +138,7 @@ describe('WorkQueue Integration', () => {
     });
 
     it('should not retry permanent failures', () => {
-        queue.enqueue('bead-perm-fail', 0, 'worker');
+        queue.enqueue('pearl-perm-fail', 0, 'worker');
         // biome-ignore lint/style/noNonNullAssertion: Test assertion
         const ticket = queue.claim('worker-1', 'worker')!;
 
@@ -149,19 +149,19 @@ describe('WorkQueue Integration', () => {
     });
 
     it('should identify active tickets', () => {
-        queue.enqueue('bead-active', 0, 'worker');
+        queue.enqueue('pearl-active', 0, 'worker');
 
-        const active = queue.getActiveTicket('bead-active');
+        const active = queue.getActiveTicket('pearl-active');
         expect(active).not.toBeNull();
         expect(active?.status).toBe('queued');
 
         queue.claim('worker-1', 'worker');
-        const processing = queue.getActiveTicket('bead-active');
+        const processing = queue.getActiveTicket('pearl-active');
         expect(processing?.status).toBe('processing');
 
         // biome-ignore lint/suspicious/noExplicitAny: Access private db
-        (queue as any).db.run("UPDATE tickets SET status = 'completed' WHERE bead_id = 'bead-active'");
-        const completed = queue.getActiveTicket('bead-active');
+        (queue as any).db.run("UPDATE tickets SET status = 'completed' WHERE pearl_id = 'pearl-active'");
+        const completed = queue.getActiveTicket('pearl-active');
         expect(completed).toBeNull();
     });
 });

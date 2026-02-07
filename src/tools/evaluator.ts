@@ -1,7 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import type { AgentContext } from "../core/agent";
-import { getBeads } from "../core/beads";
+import { getPearls } from "../core/pearls";
 
 export const createApproveWorkTool = (_context: AgentContext) => {
     const parameters = z.object({
@@ -17,9 +17,9 @@ export const createApproveWorkTool = (_context: AgentContext) => {
         // biome-ignore lint/suspicious/noExplicitAny: context provided by AI SDK
         execute: async (args: z.infer<typeof parameters>, toolContext: any) => {
             const { acceptance_test, feedback } = args;
-            const beadId = toolContext.beadId;
-            if (!beadId)
-                throw new Error("No beadId found in context");
+            const pearlId = toolContext.pearlId;
+            if (!pearlId)
+                throw new Error("No pearlId found in context");
 
             const testStr = Array.isArray(acceptance_test)
                 ? acceptance_test.join("\n")
@@ -27,11 +27,11 @@ export const createApproveWorkTool = (_context: AgentContext) => {
             const finalTest = feedback
                 ? `${testStr}\nFeedback: ${feedback}`
                 : testStr;
-            await getBeads().update(beadId, {
+            await getPearls().update(pearlId, {
                 status: "done",
                 acceptance_test: finalTest,
             });
-            return { success: true, message: `Approved work for ${beadId}` };
+            return { success: true, message: `Approved work for ${pearlId}` };
         },
     });
 };
@@ -50,22 +50,22 @@ export const createRejectWorkTool = (_context: AgentContext) => {
         // biome-ignore lint/suspicious/noExplicitAny: context provided by AI SDK
         execute: async (args: z.infer<typeof parameters>, toolContext: any) => {
             const { reason: _reason, feedback: _feedback } = args;
-            const beadId = toolContext.beadId;
-            if (!beadId)
-                throw new Error("No beadId found in context");
+            const pearlId = toolContext.pearlId;
+            if (!pearlId)
+                throw new Error("No pearlId found in context");
 
-            const bead = await getBeads().get(beadId);
-            const labels = new Set(bead.labels || []);
+            const pearl = await getPearls().get(pearlId);
+            const labels = new Set(pearl.labels || []);
             labels.add("rejected");
 
-            await getBeads().update(beadId, {
+            await getPearls().update(pearlId, {
                 status: "open",
                 labels: Array.from(labels),
             });
 
             return {
                 success: true,
-                message: `Rejected work for ${beadId}. Sent back to worker.`,
+                message: `Rejected work for ${pearlId}. Sent back to worker.`,
             };
         },
     });
@@ -82,20 +82,20 @@ export const createFailWorkTool = (_context: AgentContext) => {
         // biome-ignore lint/suspicious/noExplicitAny: context provided by AI SDK
         execute: async (args: z.infer<typeof parameters>, toolContext: any) => {
             const { reason: _reason } = args;
-            const beadId = toolContext.beadId;
-            if (!beadId)
-                throw new Error("No beadId found in context");
+            const pearlId = toolContext.pearlId;
+            if (!pearlId)
+                throw new Error("No pearlId found in context");
 
-            const bead = await getBeads().get(beadId);
-            const labels = new Set(bead.labels || []);
+            const pearl = await getPearls().get(pearlId);
+            const labels = new Set(pearl.labels || []);
             labels.add("failed");
 
-            await getBeads().update(beadId, {
+            await getPearls().update(pearlId, {
                 status: "done",
                 labels: Array.from(labels),
             });
 
-            return { success: true, message: `Marked ${beadId} as failed` };
+            return { success: true, message: `Marked ${pearlId} as failed` };
         },
     });
 };

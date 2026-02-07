@@ -29,7 +29,7 @@ describe('Filesystem Tool Filtering', () => {
     beforeEach(() => {
         // Seed config manually to avoid loadConfig issues in test env
         setGlobalSingleton(CONFIG_KEY, {
-            beads: { autoSync: false },
+            pearls: { autoSync: false },
             agents: {
                 worker: {
                     provider: 'openai',

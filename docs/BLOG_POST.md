@@ -12,7 +12,7 @@ This is the story of how **The Citadel** evolved from a rough concept into a det
 
 ### Morning: Order from Chaos
 The first commit landed on January 24th. The mission was clear: replace "vibes" with invariants. We started by rejecting the idea of chat-based agents. We needed a ledger.
-We integrated **Beads** immediately. Instead of ephemeral context windows, every task became a persistent, git-backed artifact. We built the core state machine: `Open -> In Progress -> Verify -> Done`. No hallucinations, just state transitions.
+We integrated **Pearls** immediately. Instead of ephemeral context windows, every task became a persistent, git-backed artifact. We built the core state machine: `Open -> In Progress -> Verify -> Done`. No hallucinations, just state transitions.
 
 ### Afternoon: The Foundry Arrives
 By midday, simple task checklists weren't enough. We recognized that real work follows patterns—Standard Operating Procedures (SOPs). We implemented **The Foundry**, a workflow engine that compiles static TOML `Formulas` into dynamic execution graphs (`Molecules`). This was the turning point: we stopped prompting agents and started *programming* them.

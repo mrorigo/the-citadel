@@ -22,8 +22,8 @@ describe('Worker Hook Integration (Zombie Verification)', () => {
 
     it('should handle double completion (Worker + Hook) gracefully', async () => {
         // 1. Setup Ticket
-        const beadId = 'bead-1';
-        queue.enqueue(beadId, 1, 'worker');
+        const pearlId = 'pearl-1';
+        queue.enqueue(pearlId, 1, 'worker');
         const ticket = queue.claim('agent-1', 'worker');
         expect(ticket).not.toBeNull();
         if (!ticket) return;
@@ -33,7 +33,7 @@ describe('Worker Hook Integration (Zombie Verification)', () => {
         queue.complete(ticket.id, { result: 'worker-output' });
 
         // Verify state: Completed
-        let check = queue.getActiveTicket(beadId);
+        let check = queue.getActiveTicket(pearlId);
         expect(check).toBeNull(); // Should be null because it's completed
 
         // 3. Simulate Hook Logic (Implicit Complete after run)
@@ -44,20 +44,20 @@ describe('Worker Hook Integration (Zombie Verification)', () => {
         queue.complete(ticket.id, hookOutput);
 
         // Verify state: Still Completed (not processing)
-        check = queue.getActiveTicket(beadId);
+        check = queue.getActiveTicket(pearlId);
         expect(check).toBeNull();
 
         // Verify output is what we expect (Worker output shouldn't be overwritten if logic prevents it?)
         // Actual logic: 'UPDATE ... AND status = processing'
         // So second complete should be IGNORED.
-        const output = queue.getOutput(beadId);
+        const output = queue.getOutput(pearlId);
         expect(output).toEqual({ result: 'worker-output' });
     });
 
     it('should NOT create zombie if Hook fails', async () => {
         // 1. Setup Ticket
-        const beadId = 'bead-fail';
-        queue.enqueue(beadId, 1, 'worker');
+        const pearlId = 'pearl-fail';
+        queue.enqueue(pearlId, 1, 'worker');
 
         // 2. Hook logic
         const hook = new Hook('agent-fail', 'worker', async (t) => {
@@ -77,17 +77,17 @@ describe('Worker Hook Integration (Zombie Verification)', () => {
         // fail -> UPDATE ... WHERE status = 'processing'
         // Since status is 'completed', fail should DO NOTHING.
 
-        const active = queue.getActiveTicket(beadId);
+        const active = queue.getActiveTicket(pearlId);
         expect(active).toBeNull(); // Should be null (Completed)
 
-        const output = queue.getOutput(beadId);
+        const output = queue.getOutput(pearlId);
         expect(output).toEqual({ res: 'done' });
     });
 
     it('should THROW error if status is not processing during complete (preventing zombie)', async () => {
         // 1. Setup Ticket
-        const beadId = 'bead-zombie';
-        queue.enqueue(beadId, 1, 'worker');
+        const pearlId = 'pearl-zombie';
+        queue.enqueue(pearlId, 1, 'worker');
         const ticket = queue.claim('agent-z', 'worker');
         expect(ticket).not.toBeNull();
         if (!ticket) return;
@@ -103,11 +103,11 @@ describe('Worker Hook Integration (Zombie Verification)', () => {
 
         // 4. Verify state
         // Ticket is still 'queued' (as expected)
-        const active = queue.getActiveTicket(beadId);
+        const active = queue.getActiveTicket(pearlId);
         expect(active).not.toBeNull();
         expect(active?.status).toBe('queued');
 
         // Note: The zombie existence is still "true" here in this unit test because we haven't run the Router logic.
-        // But the key is that the Agent code would have crashed/stopped instead of continuing to update beads.
+        // But the key is that the Agent code would have crashed/stopped instead of continuing to update pearls.
     });
 });

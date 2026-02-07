@@ -1,7 +1,7 @@
 import type { LanguageModel } from "ai";
 import type { z } from "zod";
 import { type AgentContext, CoreAgent } from "../core/agent";
-import { getBeads } from "../core/beads";
+import { getPearls } from "../core/pearls";
 import { getFormulaRegistry } from "../core/formula";
 import { logger } from "../core/logger";
 import { jsonSchemaToZod } from "../core/schema-utils";
@@ -37,13 +37,13 @@ export class WorkerAgent extends CoreAgent {
         const ctx = context || {};
         let outputSchema: z.ZodTypeAny | undefined;
 
-        if (ctx.beadId) {
+        if (ctx.pearlId) {
             try {
-                const bead = await getBeads().get(ctx.beadId);
-                const stepIdx = bead.labels
+                const pearl = await getPearls().get(ctx.pearlId);
+                const stepIdx = pearl.labels
                     ?.find((l) => l.startsWith("step:"))
                     ?.split(":")[1];
-                const formulaName = bead.labels
+                const formulaName = pearl.labels
                     ?.find((l) => l.startsWith("formula:"))
                     ?.split(":")[1];
 
@@ -53,13 +53,13 @@ export class WorkerAgent extends CoreAgent {
                     if (step?.output_schema) {
                         outputSchema = jsonSchemaToZod(step.output_schema);
                         logger.debug(
-                            `[Worker] Loaded output schema for ${ctx.beadId} from ${formulaName}:${stepIdx}`,
+                            `[Worker] Loaded output schema for ${ctx.pearlId} from ${formulaName}:${stepIdx}`,
                         );
                     }
                 }
             } catch (err) {
                 logger.warn(
-                    `[Worker] Failed to resolve schema for ${ctx.beadId}: ${err}`,
+                    `[Worker] Failed to resolve schema for ${ctx.pearlId}: ${err}`,
                 );
             }
         }

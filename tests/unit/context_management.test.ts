@@ -119,7 +119,7 @@ describe('Context Management', () => {
         setConfig({
             env: 'development',
             providers: {},
-            beads: { path: '.beads', binary: 'bd', autoSync: true },
+            pearls: { path: '.pearls', binary: 'bd', autoSync: true },
             worker: {
                 timeout: 300,
                 maxRetries: 3,

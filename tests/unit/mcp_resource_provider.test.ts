@@ -18,10 +18,10 @@ const mockGetConfig = mock(() => ({
     },
     worker: { min_workers: 1, max_workers: 5, load_factor: 1.0 },
     gatekeeper: { min_workers: 1, max_workers: 5, load_factor: 1.0 },
-    beads: { path: '.beads', binary: 'prl' }
+    pearls: { path: '.pearls', binary: 'prl' }
 }));
 
-const getMockBead = () => ({
+const getMockPearl = () => ({
     labels: ['formula:test'],
     context: {
         mcp_resources: {
@@ -30,11 +30,11 @@ const getMockBead = () => ({
     }
 });
 
-const mockGetBeads = mock(() => {
-    const bead = getMockBead();
+const mockGetPearls = mock(() => {
+    const pearl = getMockPearl();
     return {
-        get: mock(async () => bead),
-        update: mock(async () => bead),
+        get: mock(async () => pearl),
+        update: mock(async () => pearl),
         mapToDomain: (raw: any) => raw,
     };
 });
@@ -59,25 +59,26 @@ const mockGetMCPService = mock(() => ({
 
 // 2. Now import the code
 import { MCPResourceProvider } from '../../src/core/mcp-resource-provider';
-import { setBeadsInstance } from '../../src/core/beads';
+import { setPearlsInstance } from '../../src/core/pearls';
 import { setFormulaRegistry } from '../../src/core/formula';
 import { setConfig, resetConfig } from '../../src/config';
 import { setGlobalSingleton } from '../../src/core/registry';
 
 describe('MCPResourceProvider', () => {
     beforeEach(() => {
+        resetConfig();
         mockReadResource.mockClear();
         mockGetConfig.mockClear();
-        setBeadsInstance(mockGetBeads() as any);
+        setPearlsInstance(mockGetPearls() as any);
         setFormulaRegistry(mockGetFormulaRegistry() as any);
         setConfig(mockGetConfig() as any);
-        setGlobalSingleton('mcp_service', mockGetMCPService());
+        // setGlobalSingleton('mcp_service', mockGetMCPService()); // Removed in favor of DI
         // Ensure instruction service is fresh
         clearGlobalSingleton('instruction_service');
     });
 
     afterEach(() => {
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('formula_registry');
         clearGlobalSingleton('mcp_service');
         clearGlobalSingleton('instruction_service');
@@ -85,10 +86,10 @@ describe('MCPResourceProvider', () => {
     });
 
     it('should aggregate resources from all sources and fetch content', async () => {
-        const provider = new MCPResourceProvider();
+        const provider = new MCPResourceProvider(mockGetMCPService());
         const instructions = await provider.getInstructions({
             role: 'worker',
-            beadId: 'bead-1'
+            pearlId: 'pearl-1'
         });
 
         expect(instructions).toContain('# CONTEXT RESOURCES');
@@ -117,24 +118,24 @@ describe('MCPResourceProvider', () => {
             },
             worker: { min_workers: 1, max_workers: 5, load_factor: 1.0 },
             gatekeeper: { min_workers: 1, max_workers: 5, load_factor: 1.0 },
-            beads: { path: '.beads', binary: 'prl' }
+            pearls: { path: '.pearls', binary: 'prl' }
         };
         mockGetConfig.mockReturnValue(emptyConfig as any);
         setConfig(emptyConfig as any);
 
-        const bead = getMockBead();
-        bead.labels = [];
-        (bead as any).context = {};
-        setBeadsInstance({
-            get: mock(async () => bead),
-            update: mock(async () => bead),
+        const pearl = getMockPearl();
+        pearl.labels = [];
+        (pearl as any).context = {};
+        setPearlsInstance({
+            get: mock(async () => pearl),
+            update: mock(async () => pearl),
             mapToDomain: (raw: any) => raw,
         } as any);
 
-        const provider = new MCPResourceProvider();
+        const provider = new MCPResourceProvider(mockGetMCPService());
         const instructions = await provider.getInstructions({
             role: 'worker',
-            beadId: 'bead-1'
+            pearlId: 'pearl-1'
         });
 
         expect(instructions).toBeNull();

@@ -39,7 +39,7 @@ export class RouterAgent extends CoreAgent {
 
         # Instructions
         - Analyze the Request and Context.
-        - Decide which queue to route to based on the bead status.
+        - Decide which queue to route to based on the pearl status.
         - Decide the priority (0=Critical, 1=High, 2=Normal, 3=Low).
         - Call 'enqueue_task' with the correct queue parameter.
         - Use 'instantiate_formula' if the request matches a known formula.

@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { BeadsClient, type Bead, type BeadStatus } from '../../src/core/beads';
+import { PearlsClient, type Pearl, type PearlStatus } from '../../src/core/pearls';
 import { WorkQueue } from '../../src/core/queue';
 import { setFormulaRegistry } from '../../src/core/formula';
 import { clearGlobalSingleton } from '../../src/core/registry';
 import { rmSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { setQueueInstance } from '../../src/core/queue';
-import { setBeadsInstance } from '../../src/core/beads';
+import { setPearlsInstance } from '../../src/core/pearls';
 import { setGlobalSingleton } from '../../src/core/registry';
 import { CONFIG_KEY } from '../../src/config';
 import type { CitadelConfig } from '../../src/config/schema';
@@ -24,7 +24,7 @@ const MOCK_CONFIG: CitadelConfig = {
         router: { model: 'mock-model', provider: 'openai' },
         gatekeeper: { model: 'mock-model', provider: 'openai' }
     },
-    beads: {
+    pearls: {
         path: '.pearls',
         binary: 'prl',
         autoSync: false
@@ -48,9 +48,9 @@ const MOCK_CONFIG: CitadelConfig = {
 const TEST_DIR = resolve(process.cwd(), '.test_data_flow');
 const DB_PATH = resolve(TEST_DIR, 'queue.sqlite');
 
-// Mock BeadsClient to simulate CLI behavior without 'bd' binary
-class MockBeadsClient extends BeadsClient {
-    private beads: Map<string, any> = new Map();
+// Mock PearlsClient to simulate CLI behavior without 'bd' binary
+class MockPearlsClient extends PearlsClient {
+    private pearls: Map<string, any> = new Map();
 
     protected override async runCommand(args: string): Promise<string> {
         console.log(`[Mock] runCommand: ${args}`);
@@ -64,8 +64,8 @@ class MockBeadsClient extends BeadsClient {
                 description = descMatch[1].replace(/\\"/g, '"');
             }
 
-            const id = `bead-${Math.random().toString(36).substr(2, 9)}`;
-            const bead: any = {
+            const id = `pearl-${Math.random().toString(36).substr(2, 9)}`;
+            const pearl: any = {
                 id,
                 title,
                 status: 'open',
@@ -76,17 +76,17 @@ class MockBeadsClient extends BeadsClient {
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };
-            this.beads.set(id, bead);
-            console.log(`[Mock] Created bead ${id}`);
-            return JSON.stringify(bead);
+            this.pearls.set(id, pearl);
+            console.log(`[Mock] Created pearl ${id}`);
+            return JSON.stringify(pearl);
         }
 
         if (args.startsWith('show')) {
             const id = args.split(' ')[1];
             if (!id) throw new Error('Missing ID');
-            const bead = this.beads.get(id);
-            if (!bead) throw new Error('Not found');
-            return JSON.stringify(bead);
+            const pearl = this.pearls.get(id);
+            if (!pearl) throw new Error('Not found');
+            return JSON.stringify(pearl);
         }
 
         if (args.startsWith('meta set')) {
@@ -106,12 +106,12 @@ class MockBeadsClient extends BeadsClient {
                 const value = JSON.parse(valueStr.replace(/\\"/g, '"'));
                 console.log(`[Mock] Parsed meta value:`, value);
 
-                const bead = this.beads.get(id);
-                if (bead) {
-                    if (!bead.metadata) bead.metadata = {};
-                    bead.metadata[key] = value;
-                    this.beads.set(id, bead);
-                    console.log(`[Mock] Updated bead ${id} metadata`);
+                const pearl = this.pearls.get(id);
+                if (pearl) {
+                    if (!pearl.metadata) pearl.metadata = {};
+                    pearl.metadata[key] = value;
+                    this.pearls.set(id, pearl);
+                    console.log(`[Mock] Updated pearl ${id} metadata`);
                 }
             } catch (e) {
                 console.error(`[Mock] Failed to parse meta value: ${valueStr}`, e);
@@ -122,40 +122,40 @@ class MockBeadsClient extends BeadsClient {
         if (args.startsWith('update')) {
             const id = args.split(' ')[1];
             if (!id) throw new Error('Missing ID');
-            console.log(`[Mock] Updating bead ${id} with args: ${args}`);
-            let bead: any = this.beads.get(id);
-            if (!bead) throw new Error('Not found ' + id);
+            console.log(`[Mock] Updating pearl ${id} with args: ${args}`);
+            let pearl: any = this.pearls.get(id);
+            if (!pearl) throw new Error('Not found ' + id);
 
-            bead = { ...bead };
-            if (!bead.labels) bead.labels = [];
+            pearl = { ...pearl };
+            if (!pearl.labels) pearl.labels = [];
 
             if (args.includes('--status closed')) {
-                bead.status = 'closed';
+                pearl.status = 'closed';
             }
             else if (args.includes('--add-label verify')) {
-                bead.status = 'in_progress';
-                if (!bead.labels.includes('verify')) bead.labels.push('verify');
+                pearl.status = 'in_progress';
+                if (!pearl.labels.includes('verify')) pearl.labels.push('verify');
                 console.log(`[Mock] Status set to in_progress + verify label`);
             }
             else if (args.includes('--remove-label verify')) {
-                if (args.includes('--status in_progress')) bead.status = 'in_progress';
-                if (args.includes('--status open')) bead.status = 'open';
-                bead.labels = bead.labels.filter((l: string) => l !== 'verify');
-                console.log(`[Mock] Status set to ${bead.status} (verify removed)`);
+                if (args.includes('--status in_progress')) pearl.status = 'in_progress';
+                if (args.includes('--status open')) pearl.status = 'open';
+                pearl.labels = pearl.labels.filter((l: string) => l !== 'verify');
+                console.log(`[Mock] Status set to ${pearl.status} (verify removed)`);
             }
             else if (args.includes('--status in_progress')) {
-                bead.status = 'in_progress';
+                pearl.status = 'in_progress';
             }
 
             if (args.includes('--description')) {
                 const descMatch = args.match(/--description "((?:[^"\\]|\\.)*)"/);
                 if (descMatch && descMatch[1]) {
-                    bead.description = descMatch[1].replace(/\\"/g, '"');
+                    pearl.description = descMatch[1].replace(/\\"/g, '"');
                 }
             }
 
-            this.beads.set(id, bead);
-            return JSON.stringify(bead);
+            this.pearls.set(id, pearl);
+            return JSON.stringify(pearl);
         }
 
         return '';
@@ -165,7 +165,7 @@ class MockBeadsClient extends BeadsClient {
 }
 
 describe('Data Flow Integration', () => {
-    let beads: BeadsClient;
+    let pearls: PearlsClient;
     let queue: WorkQueue;
 
     beforeEach(async () => {
@@ -176,9 +176,9 @@ describe('Data Flow Integration', () => {
         // Inject Mock Config
         setGlobalSingleton(CONFIG_KEY, MOCK_CONFIG);
 
-        beads = new MockBeadsClient(TEST_DIR);
-        await beads.init();
-        setBeadsInstance(beads);
+        pearls = new MockPearlsClient(TEST_DIR);
+        await pearls.init();
+        setPearlsInstance(pearls);
 
         queue = new WorkQueue(DB_PATH);
         setQueueInstance(queue);
@@ -189,45 +189,45 @@ describe('Data Flow Integration', () => {
         if (existsSync(TEST_DIR)) {
             rmSync(TEST_DIR, { recursive: true, force: true });
         }
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
     });
 
-    it('should persist context in bead description and parse it back', async () => {
+    it('should persist context in pearl description and parse it back', async () => {
         const context = {
             query: 'test query',
             depth: 2,
             tags: ['ai', 'agent']
         };
 
-        const bead = await beads.create('Context Test Bead', {
-            description: 'This is a test bead',
+        const pearl = await pearls.create('Context Test Pearl', {
+            description: 'This is a test pearl',
             context
         });
 
         // 1. Verify description format
-        expect(bead.description).toBe('This is a test bead');
-        expect(bead.context).toEqual(context);
+        expect(pearl.description).toBe('This is a test pearl');
+        expect(pearl.context).toEqual(context);
 
         // 2. Fetch fresh and verify parsing
-        const fresh = await beads.get(bead.id);
+        const fresh = await pearls.get(pearl.id);
         expect(fresh.context).toEqual(context);
-        expect(fresh.description).toBe('This is a test bead');
+        expect(fresh.description).toBe('This is a test pearl');
     });
 
     it('should save structured output from worker agent', async () => {
         // 1. Create a task
-        const bead = await beads.create('Output Test Bead');
+        const pearl = await pearls.create('Output Test Pearl');
 
         // 2. Enqueue it
-        queue.enqueue(bead.id, 1, 'worker');
+        queue.enqueue(pearl.id, 1, 'worker');
 
         // 3. Claim it 
         const ticket = queue.claim('test-worker-id', 'worker');
         expect(ticket).not.toBeNull();
         if (ticket) {
-            expect(ticket.bead_id).toBe(bead.id);
+            expect(ticket.pearl_id).toBe(pearl.id);
         }
 
         // 4. Run Worker Agent Tool (submit_work)
@@ -242,20 +242,20 @@ describe('Data Flow Integration', () => {
         const outputData = "Job finished successfully";
 
         // Transition to in_progress first to satisfy state machine
-        await beads.update(bead.id, { status: 'in_progress' });
+        await pearls.update(pearl.id, { status: 'in_progress' });
 
         // Execute tool directly
         await submitTool.execute({
             summary: 'Job done',
             output: outputData
-        }, { toolCallId: 'call-1', messages: [], beadId: bead.id } as any);
+        }, { toolCallId: 'call-1', messages: [], pearlId: pearl.id } as any);
 
         // 5. Verify Queue State
-        const completedTicket = queue.getOutput(bead.id);
+        const completedTicket = queue.getOutput(pearl.id);
         expect(completedTicket).toEqual(outputData);
 
         // Verify status
-        const freshBead = await beads.get(bead.id);
-        expect(freshBead.status).toBe('verify');
+        const freshPearl = await pearls.get(pearl.id);
+        expect(freshPearl.status).toBe('verify');
     });
 });

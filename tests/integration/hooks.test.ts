@@ -22,12 +22,12 @@ describe('Hook Mechanism Integration', () => {
     });
 
     it('should poll and execute tasks', async () => {
-        queue.enqueue('bead-hook-1', 0, 'worker');
+        queue.enqueue('pearl-hook-1', 0, 'worker');
 
-        let executedBeadId: string | null = null;
+        let executedPearlId: string | null = null;
 
         hook = new Hook('agent-tester', 'worker', async (ticket) => {
-            executedBeadId = ticket.bead_id;
+            executedPearlId = ticket.pearl_id;
         }, queue);
 
         // Reduce polling interval for test speed
@@ -38,11 +38,11 @@ describe('Hook Mechanism Integration', () => {
 
         // Wait for execution
         const start = Date.now();
-        while (!executedBeadId && Date.now() - start < 1000) {
+        while (!executedPearlId && Date.now() - start < 1000) {
             await new Promise(r => setTimeout(r, 50));
         }
 
-        expect(executedBeadId as unknown as string).toBe('bead-hook-1');
+        expect(executedPearlId as unknown as string).toBe('pearl-hook-1');
 
         // Verify completion in queue
         // We need to wait a moment for the hook to finish calling complete() after handler returns
@@ -50,7 +50,7 @@ describe('Hook Mechanism Integration', () => {
 
         // biome-ignore lint/suspicious/noExplicitAny: Access private property
         const db = (queue as any).db;
-        const ticket = db.query('SELECT * FROM tickets WHERE bead_id = ?').get('bead-hook-1');
+        const ticket = db.query('SELECT * FROM tickets WHERE pearl_id = ?').get('pearl-hook-1');
         expect(ticket.status).toBe('completed');
     });
 });

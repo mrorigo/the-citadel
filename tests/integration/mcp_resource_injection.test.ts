@@ -2,7 +2,7 @@ import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
 import { setGlobalSingleton, clearGlobalSingleton } from '../../src/core/registry';
 import { getInstructionService } from '../../src/core/instruction';
 import { setConfig, resetConfig } from '../../src/config';
-import { setBeadsInstance } from '../../src/core/beads';
+import { setPearlsInstance } from '../../src/core/pearls';
 import { setFormulaRegistry } from '../../src/core/formula';
 
 // 1. Mock modules BEFORE importing the code that uses them
@@ -12,32 +12,33 @@ mock.module('@modelcontextprotocol/sdk/types.js', () => ({
     ListRootsRequestSchema: {}
 }));
 
-const getMockBead = () => ({
-    id: 'test-bead',
+const getMockPearl = () => ({
+    id: 'test-pearl',
     labels: ['formula:test-formula'],
     context: {
         mcp_resources: {
-            'bead-server': ['bead://uri']
+            'pearl-server': ['pearl://uri']
         }
     }
 });
 
 describe('MCP Resource Injection Integration', () => {
     beforeEach(() => {
+        resetConfig();
         setGlobalSingleton('mcp_service', {
             readResource: mock(async (server: string, uri: string) => [`Injected content from ${server}:${uri}`]),
             initialize: mock(async () => { }),
             shutdown: mock(async () => { })
         });
 
-        const mockBeads = {
-            get: mock(async () => getMockBead()),
-            update: mock(async () => getMockBead()),
-            create: mock(async () => getMockBead()),
+        const mockPearls = {
+            get: mock(async () => getMockPearl()),
+            update: mock(async () => getMockPearl()),
+            create: mock(async () => getMockPearl()),
             init: mock(async () => { }),
             mapToDomain: (raw: any) => raw,
         };
-        setBeadsInstance(mockBeads as any);
+        setPearlsInstance(mockPearls as any);
 
         const mockRegistry = {
             get: mock((name: string) => {
@@ -71,12 +72,12 @@ describe('MCP Resource Injection Integration', () => {
             },
             worker: { min_workers: 1, max_workers: 5, load_factor: 1.0 },
             gatekeeper: { min_workers: 1, max_workers: 5, load_factor: 1.0 },
-            beads: { path: '.pearls', binary: 'prl' }
+            pearls: { path: '.pearls', binary: 'prl' }
         });
     });
 
     afterEach(() => {
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
         clearGlobalSingleton('mcp_service');
@@ -84,11 +85,11 @@ describe('MCP Resource Injection Integration', () => {
         resetConfig();
     });
 
-    it('should aggregate resources from config, formula, and bead context', async () => {
+    it('should aggregate resources from config, formula, and pearl context', async () => {
         const service = getInstructionService();
         const instructions = await service.buildPrompt({
             role: 'worker',
-            beadId: 'test-bead'
+            pearlId: 'test-pearl'
         }, "Base prompt");
 
         expect(instructions).toContain('# CONTEXT RESOURCES');
@@ -101,9 +102,9 @@ describe('MCP Resource Injection Integration', () => {
         expect(instructions).toContain('## RESOURCE: formula-server:formula://uri');
         expect(instructions).toContain('Injected content from formula-server:formula://uri');
 
-        // From bead context
-        expect(instructions).toContain('## RESOURCE: bead-server:bead://uri');
-        expect(instructions).toContain('Injected content from bead-server:bead://uri');
+        // From pearl context
+        expect(instructions).toContain('## RESOURCE: pearl-server:pearl://uri');
+        expect(instructions).toContain('Injected content from pearl-server:pearl://uri');
     });
 
     it('should NOT include resources if none are configured', async () => {
@@ -118,27 +119,27 @@ describe('MCP Resource Injection Integration', () => {
             },
             worker: { min_workers: 1, max_workers: 5, load_factor: 1.0 },
             gatekeeper: { min_workers: 1, max_workers: 5, load_factor: 1.0 },
-            beads: { path: '.pearls', binary: 'prl' }
+            pearls: { path: '.pearls', binary: 'prl' }
         });
 
-        const testBead = getMockBead();
-        testBead.labels = [];
-        (testBead.context as any) = {};
+        const testPearl = getMockPearl();
+        testPearl.labels = [];
+        (testPearl.context as any) = {};
 
-        // We need to update the mock to return OUR manipulated bead for this test
-        const mockBeads = {
-            get: mock(async () => testBead),
-            update: mock(async () => testBead),
-            create: mock(async () => testBead),
+        // We need to update the mock to return OUR manipulated pearl for this test
+        const mockPearls = {
+            get: mock(async () => testPearl),
+            update: mock(async () => testPearl),
+            create: mock(async () => testPearl),
             init: mock(async () => { }),
             mapToDomain: (raw: any) => raw,
         };
-        setBeadsInstance(mockBeads as any);
+        setPearlsInstance(mockPearls as any);
 
         const service = getInstructionService();
         const instructions = await service.buildPrompt({
             role: 'worker',
-            beadId: 'test-bead'
+            pearlId: 'test-pearl'
         }, "Base prompt");
 
         expect(instructions).not.toContain('# CONTEXT RESOURCES');

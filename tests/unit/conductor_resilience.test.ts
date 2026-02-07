@@ -1,7 +1,7 @@
 import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from 'bun:test';
 import { Conductor } from '../../src/services/conductor';
-import type { Bead, BeadsClient } from '../../src/core/beads';
-import { setBeadsInstance } from '../../src/core/beads';
+import type { Pearl, PearlsClient } from '../../src/core/pearls';
+import { setPearlsInstance } from '../../src/core/pearls';
 import type { WorkQueue } from '../../src/core/queue';
 import { setQueueInstance } from '../../src/core/queue';
 import { clearGlobalSingleton } from '../../src/core/registry';
@@ -31,7 +31,7 @@ mock.module('../../src/core/llm', () => ({
 
 describe('Conductor Resilience', () => {
     let conductor: Conductor;
-    let mockBeads: any;
+    let mockPearls: any;
     let mockQueue: any;
 
     beforeEach(() => {
@@ -39,7 +39,7 @@ describe('Conductor Resilience', () => {
         setConfig({
             env: 'development',
             providers: { ollama: {} },
-            beads: { path: '.beads' },
+            pearls: { path: '.pearls' },
             worker: { min_workers: 0, max_workers: 1, load_factor: 1 },
             gatekeeper: { min_workers: 0, max_workers: 1, load_factor: 1 },
             agents: {
@@ -50,13 +50,13 @@ describe('Conductor Resilience', () => {
             }
         });
 
-        mockBeads = {
+        mockPearls = {
             list: mock(async () => []),
             get: mock(async () => ({ id: 'mock-id', status: 'open' })),
             ready: mock(async () => []),
             doctor: mock(async () => true),
             update: mock(async () => ({})),
-            create: mock(async () => ({ id: 'new-bead' })),
+            create: mock(async () => ({ id: 'new-pearl' })),
             addDependency: mock(async () => ({})),
         };
 
@@ -66,8 +66,8 @@ describe('Conductor Resilience', () => {
             getLatestTicket: mock(() => null),
         };
 
-        conductor = new Conductor(mockBeads as unknown as BeadsClient, mockQueue as unknown as WorkQueue);
-        setBeadsInstance(mockBeads as unknown as BeadsClient);
+        conductor = new Conductor(mockPearls as unknown as PearlsClient, mockQueue as unknown as WorkQueue);
+        setPearlsInstance(mockPearls as unknown as PearlsClient);
         setQueueInstance(mockQueue as unknown as WorkQueue);
     });
 
@@ -77,7 +77,7 @@ describe('Conductor Resilience', () => {
 
     afterAll(() => {
         conductor.stop();
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
         resetConfig();
@@ -86,7 +86,7 @@ describe('Conductor Resilience', () => {
 
     it('should fail startup if environment check fails', async () => {
         // Mock doctor failure
-        mockBeads.doctor.mockResolvedValue(false);
+        mockPearls.doctor.mockResolvedValue(false);
 
         // Mock start log
         const initSpy = mock();
@@ -100,26 +100,26 @@ describe('Conductor Resilience', () => {
         await conductor.start();
 
         // Should check doctor
-        expect(mockBeads.doctor).toHaveBeenCalled();
+        expect(mockPearls.doctor).toHaveBeenCalled();
 
         // Should NOT start loop (isRunning should be false)
         // Access private property via checking if loop ran? 
         // Or check if MCP initialize was called (it is called before check actually)
         // Let's check if update/list were called (loop activity)
         await new Promise(r => setTimeout(r, 50));
-        expect(mockBeads.list).not.toHaveBeenCalled();
-        expect(mockBeads.ready).not.toHaveBeenCalled();
+        expect(mockPearls.list).not.toHaveBeenCalled();
+        expect(mockPearls.ready).not.toHaveBeenCalled();
     });
 
     it('should pass startup if environment check passes', async () => {
-        mockBeads.doctor.mockResolvedValue(true);
+        mockPearls.doctor.mockResolvedValue(true);
 
         await conductor.start();
 
-        expect(mockBeads.doctor).toHaveBeenCalled();
+        expect(mockPearls.doctor).toHaveBeenCalled();
         // Wait for loop
         await new Promise(r => setTimeout(r, 50));
-        expect(mockBeads.ready).toHaveBeenCalled();
+        expect(mockPearls.ready).toHaveBeenCalled();
     });
 
     // Note: Testing exponential backoff with real timeouts is slow. 

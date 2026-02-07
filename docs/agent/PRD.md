@@ -18,7 +18,7 @@ The Citadel is an orchestration engine that decouples **State** (What needs to b
 ---
 
 ## 3. The Data Plane: Durable State ("The Ledger")
-The system relies on a "Beads-like" architecture where work is atomic, trackable, and stored in version control.
+The system relies on a "Pearls-like" architecture where work is atomic, trackable, and stored in version control.
 
 ### 3.1. The Atomic Unit (The Ticket)
 *   **Requirement:** Work must be broken down into atomic units (JSON objects) stored in Git.
@@ -29,7 +29,7 @@ The system relies on a "Beads-like" architecture where work is atomic, trackable
 *   **Requirement:** Workflows must be defined as "Molecules"—chains of atomic tasks (e.g., Plan → Implement → Test).
 *   **Constraint:** Agents cannot invent workflows. They must execute within a pre-defined DAG.
 *   **Implementation:** Use TOML-based "Formulas" to define these workflows (templates) which are instantiated into active tasks.
-*   **Durability:** If a step fails, the workflow pauses at that node. It does not restart from the beginning; it resumes from the last durable state (the last checked-off bead).
+*   **Durability:** If a step fails, the workflow pauses at that node. It does not restart from the beginning; it resumes from the last durable state (the last checked-off pearl).
 
 ---
 
@@ -62,8 +62,8 @@ To prevent the chaos of 30 agents overwriting each other, we implement a strict 
 ### 5.3. The "Idea Compiler" Interface
 The human interface must shift from "Chat" to "Specification."
 *   **Requirement:** A CLI or UI that accepts "Specs" (high-level requirements) rather than conversational prompts.
-*   **Function:** This input is fed to the Router (Mayor), which "compiles" the idea into a tree of Beads (Tickets).
-*   **Human-in-the-Loop:** Critical design decisions must generate a "Blocking Bead" that requires human approval before the swarm continues.
+*   **Function:** This input is fed to the Router (Mayor), which "compiles" the idea into a tree of Pearls (Tickets).
+*   **Human-in-the-Loop:** Critical design decisions must generate a "Blocking Pearl" that requires human approval before the swarm continues.
 
 ---
 
@@ -74,18 +74,18 @@ The human interface must shift from "Chat" to "Specification."
 *   **Cost Controls:** Hard limits on token usage per ticket. If a Worker exceeds $X without closing a ticket, it is terminated by the Supervisor.
 
 ### 6.2. Context Management
-*   **Context Rot Prevention:** Workers are destroyed after every task. Context is never carried over; it must be re-read from the persistent Bead (JSON) and the codebase.
+*   **Context Rot Prevention:** Workers are destroyed after every task. Context is never carried over; it must be re-read from the persistent Pearl (JSON) and the codebase.
 
 ---
 
 ## 7. Implementation Roadmap
 
-### Phase 1: The Skeleton (Beads & Hooks)
-*   Implement the Git-backed issue tracker (Beads).
+### Phase 1: The Skeleton (Pearls & Hooks)
+*   Implement the Git-backed issue tracker (Pearls).
 *   Build the `gt sling` mechanism to assign JSON objects to agent queues.
 
 ### Phase 2: The Factory (Workers & Refinery)
-*   Deploy stateless Worker containers that can read a Bead and execute a Diff.
+*   Deploy stateless Worker containers that can read a Pearl and execute a Diff.
 *   Implement the Gatekeeper (Refinery) to serialize merges.
 
 ### Phase 3: The Guardrails (Supervision)

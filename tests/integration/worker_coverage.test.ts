@@ -1,16 +1,9 @@
 import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from 'bun:test';
 
-// Mock MCP Service FIRST (Hoisting)
-mock.module('../../src/services/mcp', () => ({
-    getMCPService: () => ({
-        getToolsForAgent: async () => ([]),
-        initialize: async () => { },
-        shutdown: async () => { }
-    })
-}));
+// Mock MCP Service moved to beforeEach via registry
 
 import { WorkerAgent } from '../../src/agents/worker';
-import { setBeadsInstance } from '../../src/core/beads';
+import { setPearlsInstance } from '../../src/core/pearls';
 import { setQueueInstance } from '../../src/core/queue';
 import { setFormulaRegistry } from '../../src/core/formula';
 import { clearGlobalSingleton } from '../../src/core/registry';
@@ -31,30 +24,40 @@ const mockModel: any = {
 
 describe('WorkerAgent Integration Coverage', () => {
     let agent: WorkerAgent;
-    let mockBeads: any;
+    let mockPearls: any;
     let mockQueue: any;
     let mockRegistry: any;
 
     // Use afterAll to clean up compilation level mocks
     afterAll(() => {
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
         resetConfig();
+        clearGlobalSingleton('mcp_service');
         mock.restore();
     });
 
     beforeEach(async () => {
         await loadConfig();
-        clearGlobalSingleton('beads_client');
+        const { setGlobalSingleton } = require('../../src/core/registry');
+        setGlobalSingleton('mcp_service', {
+            getToolsForAgent: async () => ([]),
+            initialize: async () => { },
+            shutdown: async () => { },
+            readResource: async () => ([]),
+            callTool: async () => ({}),
+            listResources: async () => ([])
+        });
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
 
-        mockBeads = {
+        mockPearls = {
             update: mock(async () => ({})),
-            create: mock(async () => ({ id: 'new-bead' })),
+            create: mock(async () => ({ id: 'new-pearl' })),
             addDependency: mock(async () => ({})),
-            get: mock(async () => ({ id: 'test-bead', labels: ['formula:test', 'step:prep'] })),
+            get: mock(async () => ({ id: 'test-pearl', labels: ['formula:test', 'step:prep'] })),
             ready: mock(async () => [])
         };
 
@@ -70,7 +73,7 @@ describe('WorkerAgent Integration Coverage', () => {
             }))
         };
 
-        setBeadsInstance(mockBeads);
+        setPearlsInstance(mockPearls);
         setQueueInstance(mockQueue);
         setFormulaRegistry(mockRegistry);
 
@@ -78,7 +81,7 @@ describe('WorkerAgent Integration Coverage', () => {
     });
 
     afterEach(() => {
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
         resetConfig();
@@ -86,26 +89,26 @@ describe('WorkerAgent Integration Coverage', () => {
 
     it('should report progress', async () => {
         const reportProgress = (agent as any).tools['report_progress'];
-        const result = await reportProgress.execute({ message: 'Working' }, { toolCallId: 'call-1', messages: [], beadId: 'b1' } as any);
+        const result = await reportProgress.execute({ message: 'Working' }, { toolCallId: 'call-1', messages: [], pearlId: 'b1' } as any);
 
         expect(result.success).toBe(true);
-        expect(mockBeads.update).toHaveBeenCalledWith('b1', { status: 'in_progress' });
+        expect(mockPearls.update).toHaveBeenCalledWith('b1', { status: 'in_progress' });
     });
 
     it('should delegate tasks', async () => {
         const delegateTask = (agent as any).tools['delegate_task'];
-        const result = await delegateTask.execute({ parentBeadId: 'p1', title: 'Subtask' }, { toolCallId: 'call-2', messages: [], beadId: 'p1' } as any);
+        const result = await delegateTask.execute({ parentPearlId: 'p1', title: 'Subtask' }, { toolCallId: 'call-2', messages: [], pearlId: 'p1' } as any);
 
         if (!result.success) console.error('Delegate failure:', result);
         expect(result.success).toBe(true);
-        expect(mockBeads.create).toHaveBeenCalled();
-        expect(mockBeads.addDependency).toHaveBeenCalledWith('p1', 'new-bead');
+        expect(mockPearls.create).toHaveBeenCalled();
+        expect(mockPearls.addDependency).toHaveBeenCalledWith('p1', 'new-pearl');
     });
 
     it('should handle delegation errors', async () => {
-        mockBeads.create.mockImplementationOnce(() => { throw new Error('Create failed'); });
+        mockPearls.create.mockImplementationOnce(() => { throw new Error('Create failed'); });
         const delegateTask = (agent as any).tools['delegate_task'];
-        const result = await delegateTask.execute({ parentBeadId: 'p1', title: 'Subtask' }, { toolCallId: 'call-3', messages: [], beadId: 'p1' } as any);
+        const result = await delegateTask.execute({ parentPearlId: 'p1', title: 'Subtask' }, { toolCallId: 'call-3', messages: [], pearlId: 'p1' } as any);
 
         expect(result.success).toBe(false);
         expect(result.error).toBe('Failed to delegate: Create failed');
@@ -130,10 +133,10 @@ describe('WorkerAgent Integration Coverage', () => {
 
     it('should handle handleSubmitWork when ticket exists', async () => {
         const submitWork = (agent as any).tools['submit_work'];
-        const result = await submitWork.execute({ summary: 'Done', output: { foo: 'bar' } }, { toolCallId: 'call-4', messages: [], beadId: 'b1' } as any);
+        const result = await submitWork.execute({ summary: 'Done', output: { foo: 'bar' } }, { toolCallId: 'call-4', messages: [], pearlId: 'b1' } as any);
 
         expect(result.success).toBe(true);
-        expect(mockBeads.update).toHaveBeenCalledWith('b1', { status: 'verify' });
+        expect(mockPearls.update).toHaveBeenCalledWith('b1', { status: 'verify' });
         expect(mockQueue.complete).toHaveBeenCalledWith('ticket-1', { foo: 'bar' });
     });
 
@@ -142,7 +145,7 @@ describe('WorkerAgent Integration Coverage', () => {
         const submitWork = (agent as any).tools['submit_work'];
 
         // Now throws an error instead of silently failing
-        await expect(submitWork.execute({ summary: 'Done' }, { toolCallId: 'call-5', messages: [], beadId: 'b1' } as any))
+        await expect(submitWork.execute({ summary: 'Done' }, { toolCallId: 'call-5', messages: [], pearlId: 'b1' } as any))
             .rejects.toThrow('No active ticket found for b1');
         expect(mockQueue.complete).not.toHaveBeenCalled();
     });
@@ -161,15 +164,15 @@ describe('WorkerAgent Integration Coverage', () => {
         const result = await submitWork.execute({
             summary: 'Plan created',
             output: planOutput
-        }, { toolCallId: 'call-6', messages: [], beadId: 'b1' } as any);
+        }, { toolCallId: 'call-6', messages: [], pearlId: 'b1' } as any);
 
         expect(result.success).toBe(true);
-        expect(mockBeads.update).toHaveBeenCalledWith('b1', { status: 'verify' });
+        expect(mockPearls.update).toHaveBeenCalledWith('b1', { status: 'verify' });
         expect(mockQueue.complete).toHaveBeenCalledWith('ticket-1', planOutput);
     });
 
     it('should apply dynamic schema in run()', async () => {
-        await agent.run('test', { beadId: 'test-bead' });
+        await agent.run('test', { pearlId: 'test-pearl' });
 
         const submitWork = (agent as any).tools['submit_work'];
         const schema = submitWork.inputSchema as z.ZodObject<any>;
@@ -181,9 +184,9 @@ describe('WorkerAgent Integration Coverage', () => {
         expect(inner instanceof z.ZodUnion).toBe(true);
     });
 
-    it('should fallback to default schema when bead/formula is missing', async () => {
-        mockBeads.get.mockImplementationOnce(() => { throw new Error('Not found'); });
-        await agent.run('test', { beadId: 'missing' });
+    it('should fallback to default schema when pearl/formula is missing', async () => {
+        mockPearls.get.mockImplementationOnce(() => { throw new Error('Not found'); });
+        await agent.run('test', { pearlId: 'missing' });
 
         const submitWork = (agent as any).tools['submit_work'];
         const outputField = (submitWork.inputSchema as any).shape.output;

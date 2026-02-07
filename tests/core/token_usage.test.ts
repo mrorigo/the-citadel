@@ -1,24 +1,17 @@
 
 import { describe, it, expect, mock, beforeEach, afterAll } from 'bun:test';
 
-// Mock MCP Service FIRST
-mock.module('../../src/services/mcp', () => ({
-    getMCPService: () => ({
-        getToolsForAgent: async () => ([]),
-        initialize: async () => { },
-        shutdown: async () => { }
-    })
-}));
+// Mock MCP Service moved to beforeEach via registry
 
 import { CoreAgent } from '../../src/core/agent';
-import { setBeadsInstance, type BeadsClient } from '../../src/core/beads';
+import { setPearlsInstance, type PearlsClient } from '../../src/core/pearls';
 import { clearGlobalSingleton } from '../../src/core/registry';
 import { loadConfig } from '../../src/config';
 import type { LanguageModel, ModelMessage } from 'ai';
 
 // Concrete implementation of CoreAgent for testing
 class TestAgent extends CoreAgent {
-    constructor(model: LanguageModel, client?: BeadsClient) {
+    constructor(model: LanguageModel, client?: PearlsClient) {
         super('worker', model, client); // Use 'worker' role as it exists in schema
     }
 
@@ -47,49 +40,60 @@ const mockModel = {
 
 describe('CoreAgent Token Usage Tracking', () => {
     let agent: TestAgent;
-    let mockBeads: Partial<BeadsClient>;
+    let mockPearls: Partial<PearlsClient>;
 
     afterAll(() => {
-        clearGlobalSingleton('beads_client');
+        const { clearGlobalSingleton } = require('../../src/core/registry');
+        clearGlobalSingleton('pearls_client');
+        clearGlobalSingleton('mcp_service');
         mock.restore();
     });
 
     beforeEach(async () => {
         await loadConfig();
-        clearGlobalSingleton('beads_client');
+        const { setGlobalSingleton } = require('../../src/core/registry');
+        setGlobalSingleton('mcp_service', {
+            getToolsForAgent: async () => ([]),
+            initialize: async () => { },
+            shutdown: async () => { },
+            readResource: async () => ([]),
+            callTool: async () => ({}),
+            listResources: async () => ([])
+        });
+        clearGlobalSingleton('pearls_client');
 
-        mockBeads = {
+        mockPearls = {
             addComment: mock(async () => "comment-id"),
             // CoreAgent might call these if specific tools are used, but for basic run they shouldn't be needed unless we use tools
             // We'll keep it minimal
-        } as unknown as Partial<BeadsClient>;
+        } as unknown as Partial<PearlsClient>;
 
-        // setBeadsInstance(mockBeads as BeadsClient); // No longer needed with DI, but consistent
-        agent = new TestAgent(mockModel, mockBeads as BeadsClient);
+        // setPearlsInstance(mockPearls as PearlsClient); // No longer needed with DI, but consistent
+        agent = new TestAgent(mockModel, mockPearls as PearlsClient);
     });
 
-    it('should accumulate tokens and report to beads', async () => {
-        const context = { beadId: 'test-bead-123' };
+    it('should accumulate tokens and report to pearls', async () => {
+        const context = { pearlId: 'test-pearl-123' };
 
         // Run agent
         await agent.run("Test Prompt", context);
 
         // Check if addComment was called
-        expect(mockBeads.addComment).toHaveBeenCalled();
+        expect(mockPearls.addComment).toHaveBeenCalled();
 
         // Verify arguments
-        const [beadId, comment] = (mockBeads.addComment as any).mock.calls[0];
-        expect(beadId).toBe('test-bead-123');
+        const [pearlId, comment] = (mockPearls.addComment as any).mock.calls[0];
+        expect(pearlId).toBe('test-pearl-123');
         expect(comment).toContain('**Input Tokens**: 10');
         expect(comment).toContain('**Output Tokens**: 20');
         expect(comment).toContain('**Total Tokens**: 30');
     });
 
-    it('should NOT report if beadId is missing', async () => {
+    it('should NOT report if pearlId is missing', async () => {
         const context = {};
 
         await agent.run("Test Prompt", context);
 
-        expect(mockBeads.addComment).not.toHaveBeenCalled();
+        expect(mockPearls.addComment).not.toHaveBeenCalled();
     });
 });

@@ -11,7 +11,7 @@ mock.module('../../src/services/mcp', () => ({
 }));
 
 import { WorkerAgent } from '../../src/agents/worker';
-import { setBeadsInstance, type BeadsClient, type Bead } from '../../src/core/beads';
+import { setPearlsInstance, type PearlsClient, type Pearl } from '../../src/core/pearls';
 import { setQueueInstance, type WorkQueue } from '../../src/core/queue';
 import { setFormulaRegistry, type FormulaRegistry } from '../../src/core/formula';
 import { clearGlobalSingleton } from '../../src/core/registry';
@@ -33,11 +33,11 @@ const mockModel = {
 
 describe('WorkerAgent Idempotency', () => {
     let agent: WorkerAgent;
-    let mockBeads: Partial<BeadsClient>;
+    let mockPearls: Partial<PearlsClient>;
     let mockQueue: Partial<WorkQueue>;
 
     afterAll(() => {
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
         resetConfig();
@@ -46,15 +46,15 @@ describe('WorkerAgent Idempotency', () => {
 
     beforeEach(async () => {
         await loadConfig();
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
 
-        mockBeads = {
+        mockPearls = {
             update: mock(async () => ({})),
-            get: mock(async () => ({ id: 'test-bead', status: 'verify', title: 'test', created_at: '', updated_at: '' })),
+            get: mock(async () => ({ id: 'test-pearl', status: 'verify', title: 'test', created_at: '', updated_at: '' })),
             ready: mock(async () => [])
-        } as unknown as Partial<BeadsClient>;
+        } as unknown as Partial<PearlsClient>;
 
         mockQueue = {
             getActiveTicket: mock(() => null), // Default: Ticket is GONE (closed)
@@ -62,7 +62,7 @@ describe('WorkerAgent Idempotency', () => {
             getOutput: mock(() => null)
         } as unknown as Partial<WorkQueue>;
 
-        setBeadsInstance(mockBeads as BeadsClient);
+        setPearlsInstance(mockPearls as PearlsClient);
         setQueueInstance(mockQueue as WorkQueue);
         setFormulaRegistry({ get: () => null } as unknown as FormulaRegistry);
 
@@ -72,46 +72,46 @@ describe('WorkerAgent Idempotency', () => {
     it('should handle Double Submit gracefully (Scenario A: Already Verified)', async () => {
         const submitWork = (agent as unknown as { tools: Record<string, CoreTool> }).tools.submit_work;
 
-        // Scenario A: Ticket is null, Bead status is ALREADY 'verify'
-        mockBeads.get = mock(async () => ({
-            id: 'test-bead',
+        // Scenario A: Ticket is null, Pearl status is ALREADY 'verify'
+        mockPearls.get = mock(async () => ({
+            id: 'test-pearl',
             status: 'verify',
             title: '',
             created_at: '',
             updated_at: '',
             priority: 1
-        } as unknown as Bead));
+        } as unknown as Pearl));
 
         const result = await submitWork.execute({
             summary: 'Retry summary'
-        }, { toolCallId: 'call-1', messages: [], beadId: 'test-bead' } as any);
+        }, { toolCallId: 'call-1', messages: [], pearlId: 'test-pearl' } as any);
 
         expect(result.success).toBe(true);
         expect((result as Record<string, unknown>).message).toContain('already submitted');
     });
 
-    it('should RECOVER from partial failure (Scenario B: Ticket closed, Bead not updated)', async () => {
+    it('should RECOVER from partial failure (Scenario B: Ticket closed, Pearl not updated)', async () => {
         const submitWork = (agent as unknown as { tools: Record<string, CoreTool> }).tools.submit_work;
 
         // Scenario B:
         // 1. Ticket is GONE (ActiveTicket = null)
-        // 2. Bead is STILL in_progress (Update failed previously)
+        // 2. Pearl is STILL in_progress (Update failed previously)
         // 3. Output EXISTS in queue (Complete succeeded)
 
-        mockBeads.get = mock(async () => ({
-            id: 'stuck-bead',
+        mockPearls.get = mock(async () => ({
+            id: 'stuck-pearl',
             status: 'in_progress',
             title: '',
             created_at: '',
             updated_at: '',
             priority: 1
-        } as unknown as Bead));
+        } as unknown as Pearl));
         mockQueue.getActiveTicket = mock(() => null);
         mockQueue.getOutput = mock(() => ({ summary: 'Persisted Summary' })); // Output found!
 
         const result = await submitWork.execute({
             summary: 'Retry summary'
-        }, { toolCallId: 'call-1', messages: [], beadId: 'stuck-bead' } as any);
+        }, { toolCallId: 'call-1', messages: [], pearlId: 'stuck-pearl' } as any);
 
         // Verify:
         // 1. Should return success
@@ -121,8 +121,8 @@ describe('WorkerAgent Idempotency', () => {
 
         // 2. Should have triggered a forced UPDATE to verify
         // @ts-expect-error
-        expect(mockBeads.update).toHaveBeenCalled();
+        expect(mockPearls.update).toHaveBeenCalled();
         // @ts-expect-error
-        expect(mockBeads.update.mock.lastCall[1]).toEqual({ status: 'verify' });
+        expect(mockPearls.update.mock.lastCall[1]).toEqual({ status: 'verify' });
     });
 });

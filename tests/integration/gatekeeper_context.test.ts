@@ -33,18 +33,18 @@ mock.module('../../src/agents/evaluator', () => {
 
 // 3. Now import Conductor
 import { Conductor } from '../../src/services/conductor';
-import { setBeadsInstance, type BeadsClient, type Bead } from '../../src/core/beads';
+import { setPearlsInstance, type PearlsClient, type Pearl } from '../../src/core/pearls';
 import { setQueueInstance, type WorkQueue, type Ticket } from '../../src/core/queue';
 import { clearGlobalSingleton } from '../../src/core/registry';
 import { loadConfig } from '../../src/config';
 
 describe('Gatekeeper Context Integration', () => {
-    let mockBeads: Partial<BeadsClient>;
+    let mockPearls: Partial<PearlsClient>;
     let mockQueue: Partial<WorkQueue>;
     let conductor: Conductor;
 
     afterAll(() => {
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
         mock.restore();
@@ -52,13 +52,13 @@ describe('Gatekeeper Context Integration', () => {
 
     beforeEach(async () => {
         await loadConfig();
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
 
         mockRun.mockClear();
         capturedGatekeeperFactory = null;
 
-        mockBeads = {
+        mockPearls = {
             get: mock(async (id) => ({
                 id,
                 title: 'Test Task',
@@ -66,14 +66,14 @@ describe('Gatekeeper Context Integration', () => {
                 created_at: '',
                 updated_at: '',
                 priority: 1
-            } as unknown as Bead)),
-            update: mock(async () => ({} as Bead)),
+            } as unknown as Pearl)),
+            update: mock(async () => ({} as Pearl)),
             doctor: mock(async () => true),
-        } as unknown as Partial<BeadsClient>;
+        } as unknown as Partial<PearlsClient>;
 
         mockQueue = {
             getOutput: mock((id) => {
-                if (id === 'bead-1') return { summary: 'Real Work', data: 'foo' };
+                if (id === 'pearl-1') return { summary: 'Real Work', data: 'foo' };
                 return null;
             }),
             getActiveTicket: mock(() => null),
@@ -82,13 +82,13 @@ describe('Gatekeeper Context Integration', () => {
             complete: mock(() => { })
         } as unknown as Partial<WorkQueue>;
 
-        setBeadsInstance(mockBeads as BeadsClient);
+        setPearlsInstance(mockPearls as PearlsClient);
         setQueueInstance(mockQueue as WorkQueue);
     });
 
     it('should pass persisted output to EvaluatorAgent', async () => {
         // Instantiate Conductor to trigger Pool creation (which we mocked)
-        conductor = new Conductor(mockBeads as BeadsClient, mockQueue as WorkQueue);
+        conductor = new Conductor(mockPearls as PearlsClient, mockQueue as WorkQueue);
 
         expect(capturedGatekeeperFactory).toBeFunction();
 
@@ -104,7 +104,7 @@ describe('Gatekeeper Context Integration', () => {
         // The ticket.output is NULL here (mimicking reality)
         const ticket: Ticket = {
             id: 'ticket-1',
-            bead_id: 'bead-1',
+            pearl_id: 'pearl-1',
             status: 'processing',
             priority: 1,
             target_role: 'gatekeeper',

@@ -59,12 +59,12 @@ Supported operators: `==`, `!=`. Items are treated as strings.
 [[steps]]
 id = "safety_check"
 title = "Production Safety Check"
-if = "{{env}} == 'prod'"   # Only creates this bead if env is 'prod'
+if = "{{env}} == 'prod'"   # Only creates this pearl if env is 'prod'
 ```
 
 ### Loops (`for`)
 
-Generate multiple beads from a single step definition by iterating over a list.
+Generate multiple pearls from a single step definition by iterating over a list.
 
 - **`items`**: Variable containing the list (CSV string or JSON array).
 - **`as`**: Variable name for the current item in the loop context.
@@ -78,7 +78,7 @@ title = "Deploy Service: {{svc}}"
 for = { items = "{{services}}", as = "svc" }
 ```
 
-**Result**: Creates 3 beads: "Deploy Service: auth", "Deploy Service: payment", etc.
+**Result**: Creates 3 pearls: "Deploy Service: auth", "Deploy Service: payment", etc.
 
 ### Failure Handlers (`on_failure`)
 
@@ -97,10 +97,10 @@ description = "Run if migration fails"
 ```
 
 **Resilience Logic**:
-- The **Conductor** monitors recovery steps (beads with the `recovery` label).
+- The **Conductor** monitors recovery steps (pearls with the `recovery` label).
 - If the main step finishes successfully (status `done`), the recovery step is **skipped** automatically.
 - If the main step finishes with a terminal failure (Gatekeeper uses `fail_work` to add the `failed` label), the recovery step is **executed**.
-- Recovery steps are tagged with `recovers:<main_bead_id>` for traceability.
+- Recovery steps are tagged with `recovers:<main_pearl_id>` for traceability.
 
 ## 4. Dynamic Data Piping
 
@@ -182,7 +182,7 @@ title = "Run Migration"
 # ...
 ```
 
-When an agent processes a bead belonging to this formula, the `InstructionService` automatically fetches and appends these prompts to the system message.
+When an agent processes a pearl belonging to this formula, the `InstructionService` automatically fetches and appends these prompts to the system message.
 
 ## 6. Dependencies
 

@@ -3,7 +3,7 @@ import { RouterAgent } from "../agents/router";
 import { WorkerAgent } from "../agents/worker";
 import { getConfig } from "../config";
 import type { CitadelConfig } from "../config/schema";
-import { type BeadsClient, getBeads } from "../core/beads";
+import { type PearlsClient, getPearls } from "../core/pearls";
 import { Hook } from "../core/hooks";
 import { logger } from "../core/logger";
 import { WorkerPool } from "../core/pool";
@@ -22,16 +22,16 @@ export class Conductor {
 	private workerPool: WorkerPool;
 	private gatekeeperPool: WorkerPool;
 
-	private beads: BeadsClient;
+	private pearls: PearlsClient;
 	private queue: WorkQueue;
 
 	constructor(
-		beads?: BeadsClient,
+		pearls?: PearlsClient,
 		queue?: WorkQueue,
 		config?: CitadelConfig,
 		PoolClass: typeof WorkerPool = WorkerPool,
 	) {
-		this.beads = beads || getBeads();
+		this.pearls = pearls || getPearls();
 		this.queue = queue || getQueue();
 		this.config = config || getConfig();
 
@@ -52,55 +52,55 @@ export class Conductor {
 					id,
 					"worker",
 					async (ticket) => {
-						logger.info(`[Worker] Processing ${ticket.bead_id}`, {
-							beadId: ticket.bead_id,
+						logger.info(`[Worker] Processing ${ticket.pearl_id}`, {
+							pearlId: ticket.pearl_id,
 						});
 
-						// Move bead to in_progress when we start processing
-						await this.beads.update(ticket.bead_id, { status: "in_progress" });
+						// Move pearl to in_progress when we start processing
+						await this.pearls.update(ticket.pearl_id, { status: "in_progress" });
 
 						const agent = new WorkerAgent();
-						const bead = await this.beads.get(ticket.bead_id).catch(() => null);
+						const pearl = await this.pearls.get(ticket.pearl_id).catch(() => null);
 
-						if (!bead) {
+						if (!pearl) {
 							logger.error(
-								`[Worker] Failed to retrieve bead ${ticket.bead_id} for processing`,
-								{ beadId: ticket.bead_id },
+								`[Worker] Failed to retrieve pearl ${ticket.pearl_id} for processing`,
+								{ pearlId: ticket.pearl_id },
 							);
-							// We should fail the ticket if the bead is gone
+							// We should fail the ticket if the pearl is gone
 							this.queue.fail(ticket.id, true);
 							return;
 						}
 
 						try {
 							const result = await agent.run(
-								`Process this task: ${bead.title}`,
-								{ beadId: ticket.bead_id, bead },
+								`Process this task: ${pearl.title}`,
+								{ pearlId: ticket.pearl_id, pearl },
 							);
 
-							// Check if the bead was actually transitioned by the agent
-							const finalBead = await this.beads.get(ticket.bead_id);
+							// Check if the pearl was actually transitioned by the agent
+							const finalPearl = await this.pearls.get(ticket.pearl_id);
 
-							if (finalBead.status === "in_progress") {
+							if (finalPearl.status === "in_progress") {
 								// Agent exited without calling submit_work - this is a failure
 								logger.warn(
-									`[Worker] Agent exited without submitting work for ${ticket.bead_id}`,
-									{ beadId: ticket.bead_id },
+									`[Worker] Agent exited without submitting work for ${ticket.pearl_id}`,
+									{ pearlId: ticket.pearl_id },
 								);
-								await this.beads.update(ticket.bead_id, {
+								await this.pearls.update(ticket.pearl_id, {
 									status: "open",
-									labels: [...(finalBead.labels || []), "agent-incomplete"],
+									labels: [...(finalPearl.labels || []), "agent-incomplete"],
 								});
 							}
 							return result;
 						} catch (error) {
 							// Agent crashed - mark as failed
 							logger.error(
-								`[Worker] Agent failed for ${ticket.bead_id}`,
+								`[Worker] Agent failed for ${ticket.pearl_id}`,
 								error,
 							);
-							const currentLabels = bead?.labels || [];
-							await this.beads.update(ticket.bead_id, {
+							const currentLabels = pearl?.labels || [];
+							await this.pearls.update(ticket.pearl_id, {
 								status: "open",
 								labels: [...currentLabels, "failed", "agent-error"],
 							});
@@ -120,52 +120,52 @@ export class Conductor {
 					id,
 					"gatekeeper",
 					async (ticket) => {
-						logger.info(`[Gatekeeper] Verifying ${ticket.bead_id}`, {
-							beadId: ticket.bead_id,
+						logger.info(`[Gatekeeper] Verifying ${ticket.pearl_id}`, {
+							pearlId: ticket.pearl_id,
 						});
 						const agent = new EvaluatorAgent();
-						const bead = await this.beads.get(ticket.bead_id);
+						const pearl = await this.pearls.get(ticket.pearl_id);
 
-						const submittedWork = this.queue.getOutput(ticket.bead_id);
+						const submittedWork = this.queue.getOutput(ticket.pearl_id);
 
 						if (!submittedWork) {
 							logger.warn(
-								`[Gatekeeper] No submitted work found for ${ticket.bead_id} (retrieved 'null' from queue). Evaluator may reject.`,
-								{ beadId: ticket.bead_id },
+								`[Gatekeeper] No submitted work found for ${ticket.pearl_id} (retrieved 'null' from queue). Evaluator may reject.`,
+								{ pearlId: ticket.pearl_id },
 							);
 						}
 
 						try {
-							await agent.run(`Verify this work: ${bead.title}`, {
-								beadId: ticket.bead_id,
-								bead,
+							await agent.run(`Verify this work: ${pearl.title}`, {
+								pearlId: ticket.pearl_id,
+								pearl,
 								submitted_work: submittedWork,
 							});
 
-							// Check if the bead was actually transitioned by the agent
-							const finalBead = await this.beads.get(ticket.bead_id);
+							// Check if the pearl was actually transitioned by the agent
+							const finalPearl = await this.pearls.get(ticket.pearl_id);
 
-							if (finalBead.status === "verify") {
+							if (finalPearl.status === "verify") {
 								// Agent exited without calling approve_work or reject_work
 								logger.warn(
-									`[Gatekeeper] Agent exited without decision for ${ticket.bead_id}`,
-									{ beadId: ticket.bead_id },
+									`[Gatekeeper] Agent exited without decision for ${ticket.pearl_id}`,
+									{ pearlId: ticket.pearl_id },
 								);
-								await this.beads.update(ticket.bead_id, {
+								await this.pearls.update(ticket.pearl_id, {
 									status: "verify",
-									labels: [...(finalBead.labels || []), "evaluator-incomplete"],
+									labels: [...(finalPearl.labels || []), "evaluator-incomplete"],
 								});
 								// Note: We keep it in 'verify' so it can be re-evaluated
 							}
 						} catch (error) {
 							// Agent crashed - keep in verify for retry
 							logger.error(
-								`[Gatekeeper] Agent failed for ${ticket.bead_id}`,
+								`[Gatekeeper] Agent failed for ${ticket.pearl_id}`,
 								error,
 							);
-							await this.beads.update(ticket.bead_id, {
+							await this.pearls.update(ticket.pearl_id, {
 								status: "verify",
-								labels: [...(bead.labels || []), "evaluator-error"],
+								labels: [...(pearl.labels || []), "evaluator-error"],
 							});
 						}
 					},
@@ -218,7 +218,7 @@ export class Conductor {
 
 	private async validateEnvironment(): Promise<boolean> {
 		logger.info("[Conductor] Validating environment...");
-		const healthy = await this.beads.doctor();
+		const healthy = await this.pearls.doctor();
 		if (!healthy) {
 			logger.error(
 				'[Conductor] Environment check failed! "bd doctor" reports issues.',
@@ -261,32 +261,32 @@ export class Conductor {
 	}
 
 	private async cycleRouter() {
-		const beadsClient = this.beads;
+		const pearlsClient = this.pearls;
 		const queue = this.queue;
 
 		// 1. Fetch Candidates (Ready or Verify)
-		// We fetch 'ready' (open beads with all blockers closed) for workers
+		// We fetch 'ready' (open pearls with all blockers closed) for workers
 		// and 'verify' (for gatekeepers)
 
 		// Strategy:
-		// A. Get READY beads (open + all blockers closed) -> Send to Worker
-		const readyBeads = await beadsClient.ready();
+		// A. Get READY pearls (open + all blockers closed) -> Send to Worker
+		const readyPearls = await pearlsClient.ready();
 
-		if (!readyBeads) {
-			logger.error("[Conductor] readyBeads is undefined!");
+		if (!readyPearls) {
+			logger.error("[Conductor] readyPearls is undefined!");
 			return;
 		}
 
-		// --- Stuck Bead Recovery ---
-		// Detect beads stuck in 'in_progress' with no active ticket and reset them
-		const inProgressBeads = await beadsClient.list("in_progress");
-		for (const bead of inProgressBeads) {
-			const active = queue.getActiveTicket(bead.id);
+		// --- Stuck Pearl Recovery ---
+		// Detect pearls stuck in 'in_progress' with no active ticket and reset them
+		const inProgressPearls = await pearlsClient.list("in_progress");
+		for (const pearl of inProgressPearls) {
+			const active = queue.getActiveTicket(pearl.id);
 			if (!active) {
 				// RACE CONDITION FIX: Apply grace period
 				// If a ticket was COMPLETED within the last 5 seconds, don't reset yet.
-				// This gives the worker time to update the bead status via the CLI.
-				const latest = queue.getLatestTicket(bead.id);
+				// This gives the worker time to update the pearl status via the CLI.
+				const latest = queue.getLatestTicket(pearl.id);
 				const GRACE_PERIOD_MS = 5000;
 
 				if (
@@ -296,51 +296,51 @@ export class Conductor {
 					Date.now() - latest.completed_at < GRACE_PERIOD_MS
 				) {
 					logger.debug(
-						`[Router] Deferring reset of bead ${bead.id} (within 5s grace period of ticket completion)`,
-						{ beadId: bead.id },
+						`[Router] Deferring reset of pearl ${pearl.id} (within 5s grace period of ticket completion)`,
+						{ pearlId: pearl.id },
 					);
 					continue;
 				}
 
 				logger.warn(
-					`[Router] Resetting stuck bead ${bead.id} (in_progress with no active ticket)`,
-					{ beadId: bead.id },
+					`[Router] Resetting stuck pearl ${pearl.id} (in_progress with no active ticket)`,
+					{ pearlId: pearl.id },
 				);
-				await beadsClient.update(bead.id, {
+				await pearlsClient.update(pearl.id, {
 					status: "open",
 					labels: [
-						...(bead.labels || []).filter((l) => l !== "auto-recovered"),
+						...(pearl.labels || []).filter((l) => l !== "auto-recovered"),
 						"auto-recovered",
 					],
 				});
 			}
 		}
 
-		for (const bead of readyBeads) {
-			const active = queue.getActiveTicket(bead.id);
+		for (const pearl of readyPearls) {
+			const active = queue.getActiveTicket(pearl.id);
 			if (!active) {
-				// Double-check: ensure bead is STILL open (race condition protect)
-				const fresh = await beadsClient.get(bead.id);
+				// Double-check: ensure pearl is STILL open (race condition protect)
+				const fresh = await pearlsClient.get(pearl.id);
 				if (fresh.status !== "open") {
 					logger.info(
-						`[Router] Skipping ${bead.id} (status changed to ${fresh.status})`,
-						{ beadId: bead.id },
+						`[Router] Skipping ${pearl.id} (status changed to ${fresh.status})`,
+						{ pearlId: pearl.id },
 					);
 					continue;
 				}
 
-				// Skip container/epic beads - they are for organizational purposes only
+				// Skip container/epic pearls - they are for organizational purposes only
 				if (fresh.type === "epic") {
-					logger.info(`[Router] Skipping container/epic bead ${bead.id}`, {
-						beadId: bead.id,
+					logger.info(`[Router] Skipping container/epic pearl ${pearl.id}`, {
+						pearlId: pearl.id,
 					});
 					continue;
 				}
 
-				// ATOMICITY: specific check for beads being cooked by WorkflowEngine
+				// ATOMICITY: specific check for pearls being cooked by WorkflowEngine
 				if (fresh.labels?.includes("molecule:cooking")) {
-					logger.debug(`[Router] Skipping cooking bead ${bead.id}`, {
-						beadId: bead.id,
+					logger.debug(`[Router] Skipping cooking pearl ${pearl.id}`, {
+						pearlId: pearl.id,
 					});
 					continue;
 				}
@@ -348,39 +348,39 @@ export class Conductor {
 				// Race Condition Fix: Double check blockers
 				if (fresh.blockers && fresh.blockers.length > 0) {
 					const blockers = await Promise.all(
-						fresh.blockers.map((id) => beadsClient.get(id)),
+						fresh.blockers.map((id) => pearlsClient.get(id)),
 					);
 					const activeBlockers = blockers.filter((b) => b.status !== "done");
 
 					if (activeBlockers.length > 0) {
 						logger.warn(
-							`[Router] Skipping ${bead.id} - incorrectly marked ready (blocked by ${activeBlockers.map((b) => b.id).join(", ")})`,
-							{ beadId: bead.id },
+							`[Router] Skipping ${pearl.id} - incorrectly marked ready (blocked by ${activeBlockers.map((b) => b.id).join(", ")})`,
+							{ pearlId: pearl.id },
 						);
 						continue;
 					}
 				}
 
 				// --- Recovery Logic ---
-				// Recovery beads should only execute if their dependency (the main task) failed.
-				// If all blockers are done and none failed, we skip the recovery bead.
+				// Recovery pearls should only execute if their dependency (the main task) failed.
+				// If all blockers are done and none failed, we skip the recovery pearl.
 				if (fresh.labels?.includes("recovery")) {
 					const blockers = fresh.blockers || [];
 					if (blockers.length > 0) {
-						const blockerBeads = await Promise.all(
-							blockers.map((id) => beadsClient.get(id)),
+						const blockerPearls = await Promise.all(
+							blockers.map((id) => pearlsClient.get(id)),
 						);
-						const anyFailed = blockerBeads.some((b) =>
+						const anyFailed = blockerPearls.some((b) =>
 							b.labels?.includes("failed"),
 						);
-						const allDone = blockerBeads.every((b) => b.status === "done");
+						const allDone = blockerPearls.every((b) => b.status === "done");
 
 						if (allDone && !anyFailed) {
 							logger.info(
-								`[Router] Skipping recovery bead ${bead.id} (all dependencies succeeded)`,
-								{ beadId: bead.id },
+								`[Router] Skipping recovery pearl ${pearl.id} (all dependencies succeeded)`,
+								{ pearlId: pearl.id },
 							);
-							await beadsClient.update(bead.id, {
+							await pearlsClient.update(pearl.id, {
 								status: "done",
 								acceptance_test:
 									"Skipped: All dependencies succeeded without failure.",
@@ -393,60 +393,60 @@ export class Conductor {
 				// --- Data Piping ---
 				// Try to resolve dynamic context dependencies
 				// If context still has unresolved references, we wait.
-				const piped = await getPiper().pipeData(bead.id);
+				const piped = await getPiper().pipeData(pearl.id);
 				if (piped) {
-					logger.info(`[Router] Piped data for ${bead.id}`);
+					logger.info(`[Router] Piped data for ${pearl.id}`);
 				}
 
 				// Re-fetch to check context state
-				const currentBead = await beadsClient.get(bead.id);
-				if (currentBead.context) {
-					const ctxString = JSON.stringify(currentBead.context);
+				const currentPearl = await pearlsClient.get(pearl.id);
+				if (currentPearl.context) {
+					const ctxString = JSON.stringify(currentPearl.context);
 					if (ctxString.includes("{{steps.")) {
 						logger.info(
-							`[Router] Skipping ${bead.id} (waiting for dependency data)`,
-							{ beadId: bead.id },
+							`[Router] Skipping ${pearl.id} (waiting for dependency data)`,
+							{ pearlId: pearl.id },
 						);
 						continue;
 					}
 				}
 
-				logger.info(`[Router] Found ready bead: ${bead.id}`, {
-					beadId: bead.id,
+				logger.info(`[Router] Found ready pearl: ${pearl.id}`, {
+					pearlId: pearl.id,
 				});
 				// Ask RouterAgent to route it
 				await this.routerAgent.run(
-					`New task found: ${bead.title}. Please route it.`,
-					{ beadId: bead.id, status: bead.status },
+					`New task found: ${pearl.title}. Please route it.`,
+					{ pearlId: pearl.id, status: pearl.status },
 				);
 			}
 		}
 
-		// B. Get VERIFY beads -> Send to Gatekeeper
-		// Note: 'verify' is mapped to in_progress + label 'verify' in our beads client logic?
-		const verifyBeads = await beadsClient.list("verify");
-		for (const bead of verifyBeads) {
-			const active = queue.getActiveTicket(bead.id);
+		// B. Get VERIFY pearls -> Send to Gatekeeper
+		// Note: 'verify' is mapped to in_progress + label 'verify' in our pearls client logic?
+		const verifyPearls = await pearlsClient.list("verify");
+		for (const pearl of verifyPearls) {
+			const active = queue.getActiveTicket(pearl.id);
 			if (!active) {
-				const fresh = await beadsClient.get(bead.id);
+				const fresh = await pearlsClient.get(pearl.id);
 				if (fresh.status !== "verify") {
 					continue;
 				}
 
-				logger.info(`[Router] Found unassigned verify bead: ${bead.id}`, {
-					beadId: bead.id,
+				logger.info(`[Router] Found unassigned verify pearl: ${pearl.id}`, {
+					pearlId: pearl.id,
 				});
 				await this.routerAgent.run(
-					`Task ready for verification: ${bead.title}. Please route to gatekeeper.`,
-					{ beadId: bead.id, status: bead.status },
+					`Task ready for verification: ${pearl.title}. Please route to gatekeeper.`,
+					{ pearlId: pearl.id, status: pearl.status },
 				);
 			} else {
 				// CLEANUP: Check for Zombie Worker Ticket
-				// If bead is 'verify' but active ticket is 'worker' (processing or queued), the worker is effectively done/stuck.
+				// If pearl is 'verify' but active ticket is 'worker' (processing or queued), the worker is effectively done/stuck.
 				if (active.target_role === "worker" && active.status !== "completed") {
 					logger.warn(
-						`[Router] Found zombie worker ticket for verify bead ${bead.id}. Cleaning up.`,
-						{ beadId: bead.id, ticketId: active.id },
+						`[Router] Found zombie worker ticket for verify pearl ${pearl.id}. Cleaning up.`,
+						{ pearlId: pearl.id, ticketId: active.id },
 					);
 
 					// Force complete the ticket to allow gatekeeper assignment

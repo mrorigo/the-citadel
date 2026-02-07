@@ -1,4 +1,4 @@
-import { getBeads } from "../core/beads";
+import { getPearls } from "../core/pearls";
 import { type FormulaRegistry, getFormulaRegistry } from "../core/formula";
 
 export class WorkflowEngine {
@@ -13,10 +13,10 @@ export class WorkflowEngine {
 	}
 
 	/**
-	 * "Cooks" a Formula into a Molecule (a graph of Beads).
+	 * "Cooks" a Formula into a Molecule (a graph of Pearls).
 	 * 1. Creates Root Convoy/Epic.
 	 * 2. Iterates steps, resolving variables.
-	 * 3. Creates Beads for steps.
+	 * 3. Creates Pearls for steps.
 	 * 4. Wires dependencies.
 	 */
 	async instantiateFormula(
@@ -84,21 +84,21 @@ export class WorkflowEngine {
 			return false;
 		};
 
-		const beads = getBeads();
+		const pearls = getPearls();
 
 		console.log(`[WorkflowEngine] Cooking formula '${formulaName}'...`);
 
 		const rootTitle = `[Molecule] ${resolveTemplate(formula.description)}`;
-		const rootBead = await beads.create(rootTitle, {
+		const rootPearl = await pearls.create(rootTitle, {
 			type: "epic",
 			parent: parentContextId,
 		});
 		console.log(
-			`[WorkflowEngine] Created Root Epic: ${rootBead.id}${parentContextId ? ` in Convoy ${parentContextId}` : ""}`,
+			`[WorkflowEngine] Created Root Epic: ${rootPearl.id}${parentContextId ? ` in Convoy ${parentContextId}` : ""}`,
 		);
 
-		// Track StepID -> Array of BeadIDs (for One-to-Many loops)
-		const stepIdToBeadIds = new Map<string, string[]>();
+		// Track StepID -> Array of PearlIDs (for One-to-Many loops)
+		const stepIdToPearlIds = new Map<string, string[]>();
 
 		for (const step of formula.steps) {
 			// 1. Check Condition
@@ -149,14 +149,14 @@ export class WorkflowEngine {
 
 				const finalContext = { ...(step.context || {}), ...iterContext };
 
-				const bead = await beads.create(title, {
-					parent: rootBead.id,
+				const pearl = await pearls.create(title, {
+					parent: rootPearl.id,
 					description: description,
 					context: finalContext, // Merged context
 				});
 
 				// tag with step ID for piping AND 'molecule:cooking' to prevent premature routing
-				await beads.update(bead.id, {
+				await pearls.update(pearl.id, {
 					labels: [
 						`step:${step.id}`,
 						`formula:${formulaName}`,
@@ -164,30 +164,30 @@ export class WorkflowEngine {
 					],
 				});
 
-				createdIds.push(bead.id);
+				createdIds.push(pearl.id);
 				console.log(
-					`[WorkflowEngine] Created Step '${step.id}' -> ${bead.id} (context: ${JSON.stringify(iterContext)})`,
+					`[WorkflowEngine] Created Step '${step.id}' -> ${pearl.id} (context: ${JSON.stringify(iterContext)})`,
 				);
 			}
 
 			if (createdIds.length > 0) {
-				stepIdToBeadIds.set(step.id, createdIds);
+				stepIdToPearlIds.set(step.id, createdIds);
 			}
 		}
 
 		// 3. Wire Dependencies
 		for (const step of formula.steps) {
-			const childIds = stepIdToBeadIds.get(step.id);
+			const childIds = stepIdToPearlIds.get(step.id);
 			if (!childIds) continue;
 
 			// Wire 'needs' (Blocking)
 			if (step.needs && step.needs.length > 0) {
 				for (const parentStepId of step.needs) {
-					const parentIds = stepIdToBeadIds.get(parentStepId);
+					const parentIds = stepIdToPearlIds.get(parentStepId);
 					if (parentIds) {
 						for (const childId of childIds) {
 							for (const parentId of parentIds) {
-								await beads.addDependency(childId, parentId);
+								await pearls.addDependency(childId, parentId);
 								console.log(
 									`[WorkflowEngine] Wired ${childId} (needs) -> ${parentId}`,
 								);
@@ -200,14 +200,14 @@ export class WorkflowEngine {
 			// Wire 'on_failure' (Recovery)
 			// Semantic: "Step A on_failure Step B" => B depends on A, but runs ONLY if A fails.
 			if (step.on_failure) {
-				const recoveryIds = stepIdToBeadIds.get(step.on_failure);
+				const recoveryIds = stepIdToPearlIds.get(step.on_failure);
 				if (recoveryIds) {
 					for (const childId of childIds) {
 						for (const recId of recoveryIds) {
 							// Recovery step (recId) blocked by Main step (childId)
-							await beads.addDependency(recId, childId);
-							// Flag recovery bead and link it to its source for traceability
-							await beads.update(recId, {
+							await pearls.addDependency(recId, childId);
+							// Flag recovery pearl and link it to its source for traceability
+							await pearls.update(recId, {
 								labels: ["recovery", `recovers:${childId}`],
 							});
 							console.log(
@@ -219,20 +219,20 @@ export class WorkflowEngine {
 			}
 		}
 
-		// 4. Release Beads (Remove 'molecule:cooking')
-		console.log(`[WorkflowEngine] Wiring complete. Releasing beads...`);
-		const allCreatedIds = Array.from(stepIdToBeadIds.values()).flat();
+		// 4. Release Pearls (Remove 'molecule:cooking')
+		console.log(`[WorkflowEngine] Wiring complete. Releasing pearls...`);
+		const allCreatedIds = Array.from(stepIdToPearlIds.values()).flat();
 		for (const id of allCreatedIds) {
-			await beads.update(id, {
+			await pearls.update(id, {
 				// @ts-expect-error
 				remove_labels: ["molecule:cooking"],
 			});
 		}
 
 		console.log(
-			`[WorkflowEngine] Cooking complete. Molecule ID: ${rootBead.id}`,
+			`[WorkflowEngine] Cooking complete. Molecule ID: ${rootPearl.id}`,
 		);
-		return rootBead.id;
+		return rootPearl.id;
 	}
 }
 

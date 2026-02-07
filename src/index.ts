@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { Command } from "commander";
 import { startBridge } from "./bridge/index";
 import { loadConfig } from "./config";
-import { getBeads } from "./core/beads";
+import { getPearls } from "./core/pearls";
 import { getQueue } from "./core/queue";
 import { Conductor } from "./services/conductor";
 import { getWorkflowEngine } from "./services/workflow-engine";
@@ -90,8 +90,8 @@ export default {
         max_workers: 5,
         load_factor: 1.0,
     },
-    beads: {
-        path: '.beads',
+    pearls: {
+        path: '.pearls',
         binary: 'bd',
         autoSync: true,
     },
@@ -149,11 +149,11 @@ description = "Create a file named hello_{{name}}.txt with a greeting."
 				console.log("✅ Created .citadel/formulas/hello_world.toml");
 			}
 
-			// 5. Initialize Beads
-			console.log("🔄 Initializing Beads DB...");
-			const beads = getBeads(join(cwd, ".beads"));
-			await beads.init();
-			console.log("✅ Beads initialized");
+			// 5. Initialize Pearls
+			console.log("🔄 Initializing Pearls DB...");
+			const pearls = getPearls(join(cwd, ".pearls"));
+			await pearls.init();
+			console.log("✅ Pearls initialized");
 
 			console.log("\n🚀 Citadel initialized successfully!");
 			console.log("Try running:");
@@ -196,18 +196,18 @@ program
 	});
 
 program
-	.command("reset-queue [beadId]")
+	.command("reset-queue [pearlId]")
 	.description(
-		"Reset the Work Queue (Deletes persistence file or specific bead tickets)",
+		"Reset the Work Queue (Deletes persistence file or specific pearl tickets)",
 	)
-	.action(async (beadId) => {
+	.action(async (pearlId) => {
 		try {
-			if (beadId) {
+			if (pearlId) {
 				await loadConfig();
 				const queue = getQueue();
-				console.log(`Resetting tickets for bead: ${beadId}...`);
-				queue.resetBead(beadId);
-				console.log(`Tickets for ${beadId} have been cleared.`);
+				console.log(`Resetting tickets for pearl: ${pearlId}...`);
+				queue.resetPearl(pearlId);
+				console.log(`Tickets for ${pearlId} have been cleared.`);
 			} else {
 				const dbPath = resolve(process.cwd(), ".citadel", "queue.sqlite");
 				console.log(`Resetting entire queue at ${dbPath}...`);
@@ -215,7 +215,7 @@ program
 				console.log("Queue reset successfully.");
 			}
 		} catch (error) {
-			if (!beadId && (error as { code?: string }).code === "ENOENT") {
+			if (!pearlId && (error as { code?: string }).code === "ENOENT") {
 				console.log("Queue file not found. Nothing to reset.");
 			} else {
 				console.error("Failed to reset queue:", error);
@@ -224,15 +224,15 @@ program
 	});
 
 program
-	.command("inspect <beadId>")
-	.description("Inspect the active ticket for a bead")
-	.action(async (beadId) => {
+	.command("inspect <pearlId>")
+	.description("Inspect the active ticket for a pearl")
+	.action(async (pearlId) => {
 		await loadConfig();
-		const ticket = getQueue().getActiveTicket(beadId);
+		const ticket = getQueue().getActiveTicket(pearlId);
 		if (ticket) {
 			console.log(JSON.stringify(ticket, null, 2));
 		} else {
-			console.log(`No active ticket found for ${beadId}`);
+			console.log(`No active ticket found for ${pearlId}`);
 		}
 	});
 

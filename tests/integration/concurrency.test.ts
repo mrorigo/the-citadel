@@ -4,7 +4,8 @@ import { unlink } from "node:fs/promises";
 import { WorkQueue } from "../../src/core/queue";
 import { Conductor } from "../../src/services/conductor";
 import { setConfig, resetConfig } from "../../src/config";
-import type { BeadsClient, Bead, CreateOptions } from "../../src/core/beads";
+import { type PearlsClient, type Pearl, type CreateOptions, setPearlsInstance } from "../../src/core/pearls";
+import { clearGlobalSingleton } from "../../src/core/registry";
 import type { WorkerPool } from "../../src/core/pool";
 
 type TestConductor = {
@@ -13,19 +14,19 @@ type TestConductor = {
 };
 
 // Mock dependencies
-const mockBeadsCreate = mock();
-const mockBeadsUpdate = mock();
-const mockBeadsList = mock();
-const mockBeadsGet = mock();
+const mockPearlsCreate = mock();
+const mockPearlsUpdate = mock();
+const mockPearlsList = mock();
+const mockPearlsGet = mock();
 
-class MockBeadsClient {
-    private store = new Map<string, Bead>();
+class MockPearlsClient {
+    private store = new Map<string, Pearl>();
 
     async create(title: string, opts: CreateOptions) {
-        mockBeadsCreate(title, opts);
+        mockPearlsCreate(title, opts);
         const id = `bd-${Date.now()}-${Math.random()}`;
         const now = new Date().toISOString();
-        const bead: Bead = {
+        const pearl: Pearl = {
             id,
             title,
             status: 'open',
@@ -35,65 +36,75 @@ class MockBeadsClient {
             labels: [],
             ...opts
         };
-        this.store.set(id, bead);
-        return bead;
+        this.store.set(id, pearl);
+        return pearl;
     }
-    async update(id: string, updates: Partial<Bead>) {
-        mockBeadsUpdate(id, updates);
+    async update(id: string, updates: Partial<Pearl>) {
+        mockPearlsUpdate(id, updates);
         const existing = this.store.get(id);
-        if (!existing) throw new Error(`Bead ${id} not found`);
+        if (!existing) throw new Error(`Pearl ${id} not found`);
         const updated = { ...existing, ...updates };
         this.store.set(id, updated);
         return updated;
     }
     async list(status: string) {
-        mockBeadsList(status);
+        mockPearlsList(status);
         return Array.from(this.store.values()).filter(b => b.status === status);
     }
     async get(id: string) {
-        mockBeadsGet(id);
-        const bead = this.store.get(id);
-        if (!bead) {
+        mockPearlsGet(id);
+        const pearl = this.store.get(id);
+        if (!pearl) {
             // For test stability, return a dummy if not found but requested by ID
             // This happens if queue has IDs not in our store
-            return { id, title: 'Mock Bead', status: 'open', labels: [] } as Bead;
+            const now = new Date().toISOString();
+            return {
+                id,
+                title: 'Mock Pearl',
+                status: 'open',
+                labels: [],
+                priority: 1,
+                created_at: now,
+                updated_at: now
+            } as Pearl;
         }
-        return bead;
+        return pearl;
     }
 }
 
 describe("Concurrency Integration", () => {
     let queue: WorkQueue;
-    let beads: MockBeadsClient;
+    let pearls: MockPearlsClient;
     let conductor: Conductor;
     let dbPath: string;
 
     beforeEach(() => {
         dbPath = `.citadel/test-queue-${Date.now()}.sqlite`;
         queue = new WorkQueue(dbPath);
-        beads = new MockBeadsClient();
+        pearls = new MockPearlsClient();
+        setPearlsInstance(pearls as unknown as PearlsClient);
 
         // Reset mocks
-        mockBeadsList.mockReset();
-        mockBeadsGet.mockReset();
+        mockPearlsList.mockReset();
+        mockPearlsGet.mockReset();
 
         // Default Config
         setConfig({
             env: 'development',
             providers: { ollama: {} },
-            beads: { path: '.beads' },
+            pearls: { path: '.pearls' },
             worker: { min_workers: 1, max_workers: 5, load_factor: 1.0 },
             gatekeeper: { min_workers: 1, max_workers: 5, load_factor: 1.0 },
             agents: {
                 router: { provider: 'ollama', model: 'llama3' },
                 worker: { provider: 'ollama', model: 'llama3' },
-                gatekeeper: { provider: 'ollama', model: 'llama3' },
-                supervisor: { provider: 'ollama', model: 'llama3' }
+                gatekeeper: { provider: 'ollama', model: 'llama3' }
             }
         });
     });
 
     afterEach(async () => {
+        clearGlobalSingleton('pearls_client');
         if (conductor) await conductor.stop();
         if (queue) queue.close();
         if (dbPath) {
@@ -111,18 +122,17 @@ describe("Concurrency Integration", () => {
         setConfig({
             env: 'development',
             providers: { ollama: {} },
-            beads: { path: '.beads' },
+            pearls: { path: '.pearls' },
             worker: { min_workers: 1, max_workers: 10, load_factor: 0.5 },
             gatekeeper: { min_workers: 1, max_workers: 5, load_factor: 1.0 },
             agents: {
                 router: { provider: 'ollama', model: 'llama3' },
                 worker: { provider: 'ollama', model: 'llama3' },
-                gatekeeper: { provider: 'ollama', model: 'llama3' },
-                supervisor: { provider: 'ollama', model: 'llama3' }
+                gatekeeper: { provider: 'ollama', model: 'llama3' }
             }
         });
 
-        conductor = new Conductor(beads as unknown as BeadsClient, queue);
+        conductor = new Conductor(pearls as unknown as PearlsClient, queue);
 
         // Initial state: 0 tasks, should be min_workers = 1 (initialized in constructor)
         expect((conductor as unknown as TestConductor).workerPool.size).toBe(1);
@@ -131,7 +141,7 @@ describe("Concurrency Integration", () => {
         for (let i = 0; i < 10; i++) {
             // We must create them in the store first so update() works
             const id = `bd-${i}`;
-            const bead = {
+            const pearl = {
                 id,
                 title: `Task ${i}`,
                 status: 'open',
@@ -139,8 +149,8 @@ describe("Concurrency Integration", () => {
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
                 labels: []
-            } as Bead;
-            (beads as any).store.set(id, bead);
+            } as Pearl;
+            (pearls as any).store.set(id, pearl);
 
             queue.enqueue(id, 1, 'worker');
         }
@@ -175,24 +185,23 @@ describe("Concurrency Integration", () => {
         setConfig({
             env: 'development',
             providers: { ollama: {} },
-            beads: { path: '.beads' },
+            pearls: { path: '.pearls' },
             worker: { min_workers: 2, max_workers: 4, load_factor: 1.0 },
             gatekeeper: { min_workers: 1, max_workers: 5, load_factor: 1.0 },
             agents: {
                 router: { provider: 'ollama', model: 'llama3' },
                 worker: { provider: 'ollama', model: 'llama3' },
-                gatekeeper: { provider: 'ollama', model: 'llama3' },
-                supervisor: { provider: 'ollama', model: 'llama3' }
+                gatekeeper: { provider: 'ollama', model: 'llama3' }
             }
         });
 
-        conductor = new Conductor(beads as unknown as BeadsClient, queue);
+        conductor = new Conductor(pearls as unknown as PearlsClient, queue);
         expect((conductor as unknown as TestConductor).workerPool.size).toBe(2); // Min
 
         // Enqueue 100 tasks
         for (let i = 0; i < 100; i++) {
             const id = `bd-${i}`;
-            const bead = {
+            const pearl = {
                 id,
                 title: `Task ${i}`,
                 status: 'open',
@@ -200,8 +209,8 @@ describe("Concurrency Integration", () => {
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
                 labels: []
-            } as Bead;
-            (beads as any).store.set(id, bead);
+            } as Pearl;
+            (pearls as any).store.set(id, pearl);
 
             queue.enqueue(id, 1, 'worker');
         }

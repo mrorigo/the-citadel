@@ -4,25 +4,25 @@ import { join } from 'node:path';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { FormulaRegistry } from '../src/core/formula';
 import { WorkflowEngine } from '../src/services/workflow-engine';
-import { setBeadsInstance } from '../src/core/beads';
+import { setPearlsInstance } from '../src/core/pearls';
 import { clearGlobalSingleton } from '../src/core/registry';
 import { getFormulaRegistry } from '../src/core/formula';
 
 describe('Workflow Engine', () => {
     const testRoot = join(process.cwd(), '.test_workflow_engine');
     const formulasDir = join(testRoot, 'formulas');
-    const beadsDir = join(testRoot, 'beads');
+    const pearlsDir = join(testRoot, 'pearls');
 
     let registry: FormulaRegistry;
     let engine: WorkflowEngine;
     // biome-ignore lint/suspicious/noExplicitAny: Mocking
-    let beadsClientMock: any;
+    let pearlsClientMock: any;
 
     beforeEach(async () => {
         // Setup Filesystem
         await rm(testRoot, { recursive: true, force: true });
         await mkdir(formulasDir, { recursive: true });
-        await mkdir(beadsDir, { recursive: true });
+        await mkdir(pearlsDir, { recursive: true });
 
         // Create Sample Formula
         const formulaContent = `
@@ -50,8 +50,8 @@ needs = ["prep"]
         registry = new FormulaRegistry(formulasDir);
         await registry.loadAll(); // Load the formula
 
-        // Mock BeadsClient
-        beadsClientMock = {
+        // Mock PearlsClient
+        pearlsClientMock = {
             // biome-ignore lint/suspicious/noExplicitAny: Mocking
             create: mock(async (title: string, options: any) => ({
                 id: `bd-${Math.random().toString(36).substr(2, 5)}`,
@@ -70,7 +70,7 @@ needs = ["prep"]
         };
 
         // Inject Mock
-        setBeadsInstance(beadsClientMock);
+        setPearlsInstance(pearlsClientMock);
 
         // Setup Engine
         // We need to patch the singleton getFormulaRegistry used by engine,
@@ -92,7 +92,7 @@ needs = ["prep"]
     });
 
     afterAll(() => {
-        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
         // @ts-ignore
@@ -115,10 +115,10 @@ needs = ["prep"]
         // Run with Convoy Parent
         await engine.instantiateFormula('compilation', { target: 'MyApp' }, 'bd-convoy1');
 
-        // Verify Beads Created
+        // Verify Pearls Created
         // 1. Root Epic
-        expect(beadsClientMock.create).toHaveBeenCalled();
-        const createCalls = beadsClientMock.create.mock.calls;
+        expect(pearlsClientMock.create).toHaveBeenCalled();
+        const createCalls = pearlsClientMock.create.mock.calls;
 
         // Needs Root + 2 steps = 3 calls
         expect(createCalls.length).toBe(3);
@@ -142,8 +142,8 @@ needs = ["prep"]
         expect(buildCall).toBeDefined();
 
         // 3. Dependencies
-        expect(beadsClientMock.addDependency).toHaveBeenCalled();
-        const depCalls = beadsClientMock.addDependency.mock.calls;
+        expect(pearlsClientMock.addDependency).toHaveBeenCalled();
+        const depCalls = pearlsClientMock.addDependency.mock.calls;
         expect(depCalls.length).toBe(1);
         // Build needs Prep -> Build is child (blocked), Prep is parent (blocker)? 
         // Logic in engine: addDependency(childId, parentId).

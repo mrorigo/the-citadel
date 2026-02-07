@@ -16,9 +16,9 @@ describe('WorkerAgent Tools', () => {
         await rm(TEST_DIR, { recursive: true, force: true });
         await mkdir(TEST_DIR, { recursive: true });
         agent = new WorkerAgent();
-        // Mock getBeads/getQueue access if needed? 
-        // WorkerAgent constructor doesn't fail, but 'report_progress' touches beads.
-        // We are testing new tools which don't touch beads.
+        // Mock getPearls/getQueue access if needed? 
+        // WorkerAgent constructor doesn't fail, but 'report_progress' touches pearls.
+        // We are testing new tools which don't touch pearls.
     });
 
     afterAll(async () => {

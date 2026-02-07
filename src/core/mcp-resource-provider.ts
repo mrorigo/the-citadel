@@ -1,5 +1,5 @@
 import { getConfig } from "../config";
-import { getBeads } from "./beads";
+import { getPearls } from "./pearls";
 import { getFormulaRegistry } from "./formula";
 import type { InstructionContext, InstructionProvider } from "./instruction";
 import { logger } from "./logger";
@@ -8,6 +8,12 @@ import { getMCPService } from "../services/mcp";
 export class MCPResourceProvider implements InstructionProvider {
     name = "mcp-resources";
     priority = 25; // Between Role (20) and Formula (30)
+
+    private explicitMcpService?: any;
+
+    constructor(mcpService?: any) {
+        this.explicitMcpService = mcpService;
+    }
 
     async getInstructions(ctx: InstructionContext): Promise<string | null> {
         const resourcesToFetch: Record<string, Set<string>> = {};
@@ -20,10 +26,10 @@ export class MCPResourceProvider implements InstructionProvider {
         }
 
         // 2. Formula-level resources
-        if (ctx.beadId) {
+        if (ctx.pearlId) {
             try {
-                const bead = await getBeads().get(ctx.beadId);
-                const formulaLabel = bead.labels?.find((l) => l.startsWith("formula:"));
+                const pearl = await getPearls().get(ctx.pearlId);
+                const formulaLabel = pearl.labels?.find((l) => l.startsWith("formula:"));
                 if (formulaLabel) {
                     const formulaName = formulaLabel.split(":")[1];
                     if (formulaName) {
@@ -35,17 +41,17 @@ export class MCPResourceProvider implements InstructionProvider {
                 }
 
                 // 3. Dynamic Context Override
-                if (bead.context?.mcp_resources) {
-                    this.mergeResources(resourcesToFetch, bead.context.mcp_resources as Record<string, string[]>);
+                if (pearl.context?.mcp_resources) {
+                    this.mergeResources(resourcesToFetch, pearl.context.mcp_resources as Record<string, string[]>);
                 }
             } catch (err) {
-                logger.debug(`[MCPResourceProvider] Error fetching resources from bead/formula: ${err}`);
+                logger.debug(`[MCPResourceProvider] Error fetching resources from pearl/formula: ${err}`);
             }
         }
 
         if (Object.keys(resourcesToFetch).length === 0) return null;
 
-        const mcpService = getMCPService();
+        const mcpService = this.explicitMcpService || getMCPService();
         const results: string[] = [];
 
         for (const [serverName, uris] of Object.entries(resourcesToFetch)) {
