@@ -14,37 +14,41 @@ While the system uses singletons for runtime convenience (via `src/core/registry
   const agent = new WorkerAgent(model); 
   
   // Testing (injects mock)
-  const mockBeads = { ... };
-  const agent = new WorkerAgent(model, mockBeads);
+  const mockPearls = { ... };
+  const agent = new WorkerAgent(model, mockPearls);
   ```
 
-### 2. Beads Client (`bd`)
-- **JSONL Source of Truth**: The system relies exclusively on `.beads/issues.jsonl`.
-- **`--no-db` Mode**: All `bd` commands MUST use the `--no-db` flag to prevent SQLite corruption and stack overflow crashes in the underlying Go binary.
-- **Integration**: `BeadsClient` wraps the CLI. Do not spawn child processes for `bd` manually; use `BeadsClient.runCommand()`.
+### 2. Pearls Client (`prl`)
+- **JSONL Source of Truth**: The system relies exclusively on `.pearls/issues.jsonl`.
+- **Integration**: `PearlsClient` wraps the CLI. Do not spawn child processes for `prl` manually; use `PearlsClient.runCommand()`.
 
 ### 3. Context Management
-- **Token Counting**: `CoreAgent` automatically tracks token usage and reports it to the Bead via comments.
+- **Token Counting**: `CoreAgent` automatically tracks token usage and reports it to the Pearl via comments.
 - **History Pruning**: Configurable in `citadel.config.ts`. The agent automatically prunes history but preserves:
     - System prompt
     - The most recent `tool-call` / `tool-result` pairs (to avoid hanging tool calls).
 
 ## 🧪 Testing Strategy (Non-Obvious patterns)
 
-### 1. Unit Test Isolation
-Global singletons (`beads_client`, `work_queue`) persist across tests if not managed. 
+### 1. Registry & Singleton Isolation
+Global singletons (`pearls_client`, `work_queue`, `mcp_service`) persist across tests if not managed. 
 
-**Rule**: Always clean up globals in `beforeEach` or `afterAll`.
+**Rule**: Always clean up globals in `afterEach` or `afterAll` using the registry tools.
 
 ```typescript
 import { clearGlobalSingleton } from '../../src/core/registry';
 
-beforeEach(() => {
-    clearGlobalSingleton('beads_client');
+afterEach(() => {
+    clearGlobalSingleton('pearls_client');
+    clearGlobalSingleton('mcp_service');
     clearGlobalSingleton('work_queue');
-    // ... setup mocks
 });
 ```
+
+### 2. Mocking Guidelines
+- **Avoid `mock.module` for Core Services**: Bun's `mock.module` pollutes the module cache and can leak into unrelated tests. Prefer `setGlobalSingleton` from the registry for `mcp_service` or `pearls_client`.
+- **Interface Completeness**: When mocking shared services (like `MCPService`), implement the **full interface**. Leaving methods like `readResource` or `callTool` as undefined will cause downstream failures in components like `InstructionService`.
+- **Config Context**: Any test path involving `PearlsClient` or `MCPResourceProvider` requires a loaded configuration. Use `setConfig` in `beforeEach` to avoid "Config not loaded" errors.
 
 ### 2. Mocking AI SDK
 We use a mock provider pattern for `LanguageModel`. 
@@ -74,7 +78,7 @@ For E2E tests (`tests/e2e/`), we run the full `Conductor` loop in-process. To br
 2. **Tool implementation**:
    - Tools must validate inputs using `zod`.
    - Tool outputs must be strictly typed.
-   - Use `AgentContext` to access `beadId` inside tools (auto-injected).
+   - Use `AgentContext` to access `pearlId` inside tools (auto-injected).
 
 3. **Release Flow**:
    - Bump version in `package.json`.

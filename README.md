@@ -22,7 +22,7 @@ npm install the-citadel@0.0.1
 - **Process Integrity** – The *state machine* guarantees `Open → In Progress → Verify → Done` transitions for every task.
 - **Dynamic Bonding** – Agents can spawn sub‑tasks in parallel to handle complex objectives (research, coding, analysis).
 - **Resilient Recovery** – Automated `on_failure` handling with conditional skips.
-- **Durable State** – All context is stored in Git‑backed SQLite **Beads** (audit‑ready, restartable).
+- **Durable State** – All context is stored in Git‑backed SQLite **Pearls** (audit‑ready, restartable).
 - **Parallel Execution** – Configurable `max_workers` and `load_factor` for high-throughput concurrency.
 - **Provider‑agnostic** – Works with Ollama, OpenAI, Anthropic, and more.
 - **Provider‑agnostic** – Works with Ollama, OpenAI, Anthropic, and more.
@@ -82,7 +82,7 @@ The dashboard remains open until you hit **Ctrl+C**.
 │   ├─ bridge/               # Terminal UI (Ink)
 │   │  ├─ index.tsx          # Entry point
 │   │  └─ components/         # Dashboard panes
-│   ├─ core/                 # Core engine (queue, logger, beads)
+│   ├─ core/                 # Core engine (queue, logger, pearls)
 │   ├─ config/               # Config handling
 │   ├─ services/              # Conductor & agent services
 │   └─ types/                # Shared TS types
@@ -118,9 +118,9 @@ bun test tests/
 
 ## Contribution
 
-1. `bd ready` → Find a work item.
-2. `bd update <id> --status in_progress` → Claim it.
+1. `prl ready` → Find a work item.
+2. `prl update <id> --status in_progress` → Claim it.
 3. execute & verify → Pass all checks.
-4. `bd close <id>` → Ship it.
+4. `prl close <id>` → Ship it.
 
 Love to see you play around!

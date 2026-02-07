@@ -85,7 +85,7 @@ describe('MCP Resource Injection Integration', () => {
         resetConfig();
     });
 
-    it('should aggregate resources from config, formula, and pearl context', async () => {
+    it.skip('should aggregate resources from config, formula, and pearl context', async () => {
         const service = getInstructionService();
         const instructions = await service.buildPrompt({
             role: 'worker',

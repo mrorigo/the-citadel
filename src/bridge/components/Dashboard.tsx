@@ -141,7 +141,7 @@ const AgentMatrix = () => {
 				<Box key={t.id} flexDirection="row">
 					<Text color="cyan">{t.target_role}</Text>
 					<Text> -&gt; </Text>
-					<Text>{t.bead_id}</Text>
+					<Text>{t.pearl_id}</Text>
 					<Text color="yellow"> ({t.status})</Text>
 				</Box>
 			))}
