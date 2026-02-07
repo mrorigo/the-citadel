@@ -1,14 +1,15 @@
 
 import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
-import { BeadsClient } from '../src/core/beads';
+import { BeadsClient, setBeadsInstance } from '../src/core/beads';
 import { WorkQueue } from '../src/core/queue';
 import { Conductor } from '../src/services/conductor';
 import { clearGlobalSingleton } from '../src/core/registry';
-import { loadConfig } from '../src/config';
+import { setConfig, resetConfig } from '../src/config';
 import { logger } from '../src/core/logger';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { promisify } from 'node:util';
 
 // Mock WorkerPool to avoid actual agents
 class MockPool {
@@ -46,7 +47,20 @@ describe('Zombie Worker Ticket (Reproduction)', () => {
     let tempDir: string;
 
     beforeEach(async () => {
-        await loadConfig();
+        // Setup initial config for Pearls
+        setConfig({
+            env: 'development',
+            providers: { ollama: {} },
+            beads: { path: '.pearls', binary: 'prl' },
+            worker: { min_workers: 0, max_workers: 1, load_factor: 1 },
+            gatekeeper: { min_workers: 0, max_workers: 1, load_factor: 1 },
+            agents: {
+                router: { provider: 'ollama', model: 'mock' },
+                worker: { provider: 'ollama', model: 'mock' },
+                gatekeeper: { provider: 'ollama', model: 'mock' }
+            }
+        });
+
         clearGlobalSingleton('beads_client');
         clearGlobalSingleton('work_queue');
 
@@ -55,13 +69,16 @@ describe('Zombie Worker Ticket (Reproduction)', () => {
 
         // Setup temp dir for beads
         tempDir = mkdtempSync(join(tmpdir(), 'citadel-repro-'));
-        beads = new BeadsClient(join(tempDir, '.beads'));
+
+        // IMPORTANT: Pearls requires a git repo
+        const execAsync = promisify(require('node:child_process').exec);
+        await execAsync('git init', { cwd: tempDir });
+
+        beads = new BeadsClient(join(tempDir, '.pearls'));
         await beads.init();
 
         conductor = new TestConductor(beads, queue, undefined, MockPool);
-
-        // Silence logs for test cleanliness
-        // logger.level = 'silent'; 
+        setBeadsInstance(beads);
     });
 
     afterEach(() => {
@@ -69,6 +86,7 @@ describe('Zombie Worker Ticket (Reproduction)', () => {
         if (tempDir) {
             rmSync(tempDir, { recursive: true, force: true });
         }
+        resetConfig();
     });
 
     it('should route to Gatekeeper even if a zombie worker ticket exists', async () => {

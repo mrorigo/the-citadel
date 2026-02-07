@@ -1,29 +1,37 @@
-
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { BeadsClient } from '../../src/core/beads';
 import { mkdtempSync, rmSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
 
-describe('Beads Integration', () => {
+const execAsync = promisify(exec);
+
+describe('Pearls Integration', () => {
     let client: BeadsClient;
     let tempDir: string;
-    let beadsPath: string;
+    let pearlsPath: string;
 
     beforeAll(async () => {
         // Setup isolated temp dir
-        tempDir = mkdtempSync(join(tmpdir(), 'citadel-beads-int-'));
-        beadsPath = join(tempDir, '.beads');
+        tempDir = mkdtempSync(join(tmpdir(), 'citadel-pearls-int-'));
 
-        client = new BeadsClient(beadsPath);
-        await client.init(); // bd init
+        // Pearls requires a git repo
+        await execAsync('git init', { cwd: tempDir });
+
+        pearlsPath = join(tempDir, '.pearls');
+        mkdirSync(pearlsPath, { recursive: true });
+
+        client = new BeadsClient(pearlsPath);
+        await client.init(); // prl init
     });
 
     afterAll(async () => {
         rmSync(tempDir, { recursive: true, force: true });
     });
 
-    it('should create a new bead', async () => {
+    it('should create a new pearl', async () => {
         const bead = await client.create('Test Task', { priority: 0 });
         expect(bead.title).toBe('Test Task');
         expect(bead.priority).toBe(0);
@@ -45,7 +53,6 @@ describe('Beads Integration', () => {
 
     it('should allow skipping (open -> done)', async () => {
         const bead = await client.create('Skip Me');
-        // Test the new transition I added
         const skipped = await client.update(bead.id, {
             status: 'done',
             acceptance_test: 'Skipped for test'
@@ -55,7 +62,7 @@ describe('Beads Integration', () => {
 
     it('should fail invalid transition', async () => {
         const bead = await client.create('Invalid Jump');
-        // In Progress -> Done (skip Verify) - STILL invalid
+        // In Progress -> Done (skip Verify) - invalid
         await client.update(bead.id, { status: 'in_progress' });
         expect(client.update(bead.id, { status: 'done' })).rejects.toThrow('Invalid state transition');
     });

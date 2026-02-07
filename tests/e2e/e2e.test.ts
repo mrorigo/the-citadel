@@ -1,27 +1,18 @@
 import { describe, it, expect, mock, beforeEach, afterEach, afterAll } from 'bun:test';
 import { rm, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execAsync = promisify(exec);
 
 const TEST_ENV = join(process.cwd(), `tests/temp_e2e_env_${Date.now()}_${Math.floor(Math.random() * 1000)}`);
-const TEST_BEADS_PATH = join(TEST_ENV, '.beads');
+const TEST_PEARLS_PATH = join(TEST_ENV, '.pearls');
 const TEST_QUEUE_PATH = join(TEST_ENV, 'queue.sqlite');
 
-// 1. Mock Registry (Ultimate Isolation)
-const localRegistry: Record<string, any> = {};
-mock.module('../../src/core/registry', () => ({
-    getGlobalSingleton: (key: string, factory: () => any) => {
-        if (!localRegistry[key]) {
-            localRegistry[key] = factory();
-        }
-        return localRegistry[key];
-    },
-    setGlobalSingleton: (key: string, value: any) => {
-        localRegistry[key] = value;
-    },
-    clearGlobalSingleton: (key: string) => {
-        delete localRegistry[key];
-    }
-}));
+// ... (removed mock.module for registry)
+import { clearGlobalSingleton } from '../../src/core/registry';
+import { resetConfig } from '../../src/config';
 
 // 2. Mock Agents
 mock.module('../../src/agents/router', () => ({
@@ -99,7 +90,12 @@ describe('E2E Lifecycle', () => {
 
     beforeEach(async () => {
         await rm(TEST_ENV, { recursive: true, force: true });
-        await mkdir(TEST_BEADS_PATH, { recursive: true });
+        await mkdir(TEST_ENV, { recursive: true });
+
+        // Pearls requires git repo
+        await execAsync('git init', { cwd: TEST_ENV });
+
+        await mkdir(TEST_PEARLS_PATH, { recursive: true });
 
         queueInstance = new WorkQueue(TEST_QUEUE_PATH);
         setQueueInstance(queueInstance);
@@ -111,7 +107,7 @@ describe('E2E Lifecycle', () => {
         // @ts-ignore
         globalThis.__TEST_QUEUE__ = queueInstance;
 
-        beadsClient = new BeadsClient(TEST_BEADS_PATH);
+        beadsClient = new BeadsClient(TEST_PEARLS_PATH);
         // FORCE doctor to pass in E2E tests (ignores git dirty state)
         beadsClient.doctor = async () => true;
         setBeadsInstance(beadsClient);
@@ -171,7 +167,9 @@ describe('E2E Lifecycle', () => {
         // 4. Inject Config directly (Bypass global state)
         const testConfig = {
             env: 'development',
-            providers: {},
+            providers: {
+                ollama: { baseURL: 'http://localhost:11434/v1', apiKey: 'ollama' }
+            },
             agents: {
                 router: { provider: 'ollama', model: 'mock' },
                 worker: { provider: 'ollama', model: 'mock' },
@@ -180,8 +178,13 @@ describe('E2E Lifecycle', () => {
             },
             worker: { timeout: 300, maxRetries: 3, costLimit: 1, min_workers: 1, max_workers: 2, load_factor: 1 },
             gatekeeper: { min_workers: 1, max_workers: 1, load_factor: 1 },
-            beads: { path: TEST_BEADS_PATH, autoSync: true },
-            bridge: { maxLogs: 1000 }
+            beads: { path: TEST_PEARLS_PATH, binary: 'prl', autoSync: true },
+            bridge: { maxLogs: 1000 },
+            context: {
+                maxHistoryMessages: 20,
+                maxToolResponseSize: 50000,
+                maxMessageSize: 100000
+            }
         };
 
         const { setConfig } = await import('../../src/config');
@@ -198,12 +201,13 @@ describe('E2E Lifecycle', () => {
         // @ts-ignore
         delete globalThis.__TEST_QUEUE__;
         await rm(TEST_ENV, { recursive: true, force: true });
+        resetConfig();
     });
 
     afterAll(async () => {
-        for (const key of Object.keys(localRegistry)) {
-            delete localRegistry[key];
-        }
+        clearGlobalSingleton('beads_client');
+        clearGlobalSingleton('work_queue');
+        clearGlobalSingleton('formula_registry');
         mock.restore();
     });
 

@@ -15,7 +15,7 @@ import { setBeadsInstance, type BeadsClient, type Bead } from '../../src/core/be
 import { setQueueInstance, type WorkQueue } from '../../src/core/queue';
 import { setFormulaRegistry, type FormulaRegistry } from '../../src/core/formula';
 import { clearGlobalSingleton } from '../../src/core/registry';
-import { loadConfig } from '../../src/config';
+import { loadConfig, resetConfig } from '../../src/config';
 import type { LanguageModel } from 'ai';
 import type { CoreTool } from '../../src/core/tool';
 
@@ -40,6 +40,7 @@ describe('WorkerAgent Idempotency', () => {
         clearGlobalSingleton('beads_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
+        resetConfig();
         mock.restore();
     });
 

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [0.5.0] - 2026-02-07
+
+### Added
+- **Migration to Pearls**: Successfully migrated the iteration engine from `beads` (`bd`) to `pearls` (`prl`).
+  - Improved data stability with JSONL-only storage (`issues.jsonl`).
+  - Simplified CLI interaction by removing daemon dependency and complex sync logic.
+  - Adopted P0-P4 priority system and native Pearls status flow.
+  - Native support for Pearls comments and link-based dependencies.
+- **Improved Performance**: Reduced latency in task transitions by moving to direct file-based state management.
+
 ## [0.4.5] - 2026-02-06
 
 ### Added

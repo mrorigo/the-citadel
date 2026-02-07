@@ -17,18 +17,25 @@ import type { CitadelConfig } from '../../src/config/schema';
 // Mock Config
 const MOCK_CONFIG: CitadelConfig = {
     env: 'development',
-    providers: { openai: { apiKey: 'mock' } },
+    providers: {
+        openai: { apiKey: 'mock' },
+        ollama: { baseURL: 'http://localhost:11434/v1', apiKey: 'ollama' }
+    },
     agents: {
         worker: { model: 'mock', provider: 'openai' },
         router: { model: 'mock', provider: 'openai' },
-        gatekeeper: { model: 'mock', provider: 'openai' },
-        supervisor: { model: 'mock', provider: 'openai' }
+        gatekeeper: { model: 'mock', provider: 'openai' }
     },
-    beads: { path: '.beads', binary: 'bd', autoSync: false },
+    beads: { path: '.pearls', binary: 'prl', autoSync: false },
     worker: { min_workers: 1, max_workers: 1, load_factor: 1, timeout: 300, maxRetries: 1, costLimit: 1 },
     gatekeeper: { min_workers: 1, max_workers: 1, load_factor: 1 },
     bridge: { maxLogs: 100 },
-    mcpServers: {}
+    mcpServers: {},
+    context: {
+        maxHistoryMessages: 20,
+        maxToolResponseSize: 50000,
+        maxMessageSize: 100000
+    }
 };
 
 const TEST_DIR = resolve(process.cwd(), '.test_ddp');
@@ -40,35 +47,54 @@ class MockBeadsClient extends BeadsClient {
     public store: Map<string, any> = new Map();
 
     protected override async runCommand(args: string): Promise<string> {
+        // console.log(`[MockBeadsClient] runCommand: ${args}`);
         // Create
         if (args.startsWith('create')) {
             const titleMatch = args.match(/create "([^"]+)"/);
             const title = titleMatch ? titleMatch[1] : 'Untitled';
 
-            // Extract description with context
-            let description = '';
-            const descMatch = args.match(/--description "((?:[^"\\]|\\.)*)"/);
-            if (descMatch && descMatch[1]) {
-                description = descMatch[1].replace(/\\"/g, '"');
-            }
-
             const id = `bead-${Math.random().toString(36).substr(2, 9)}`;
 
             const bead: any = {
-                id, title, status: 'open', priority: 0,
-                description, labels: [],
+                id, title, status: 'open', priority: 2,
+                description: '', labels: [], metadata: {}, links: [],
                 created_at: new Date().toISOString(), updated_at: new Date().toISOString()
             };
             this.store.set(id, bead);
             return JSON.stringify(bead);
         }
 
+        // Meta Set
+        if (args.startsWith('meta set')) {
+            const parts = args.split(' ');
+            const id = parts[2];
+            const key = parts[3];
+            let valueStr = args.substring(args.indexOf(key) + key.length + 1);
+            if (valueStr.includes('--format')) {
+                valueStr = valueStr.substring(0, valueStr.indexOf('--format')).trim();
+            }
+            if (valueStr.startsWith('"') && valueStr.endsWith('"')) {
+                valueStr = valueStr.substring(1, valueStr.length - 1);
+            }
+            const value = JSON.parse(valueStr.replace(/\\"/g, '"'));
+            const bead = this.store.get(id);
+            if (bead) {
+                if (!bead.metadata) bead.metadata = {};
+                bead.metadata[key] = value;
+                this.store.set(id, bead);
+            }
+            return JSON.stringify({ status: 'ok' });
+        }
+
         // Update
         if (args.startsWith('update')) {
             const idPart = args.split(' ')[1];
             if (!idPart) throw new Error('Missing ID');
-            const bead = this.store.get(idPart);
+            let bead = this.store.get(idPart);
             if (!bead) throw new Error('Not found');
+
+            bead = { ...bead };
+            if (!bead.labels) bead.labels = [];
 
             // Handle labels
             if (args.includes('--add-label')) {
@@ -86,16 +112,10 @@ class MockBeadsClient extends BeadsClient {
                 }
             }
 
-            // Handle context/description update
+            // Handle description update
             const descMatch = args.match(/--description "((?:[^"\\]|\\.)*)"/);
             if (descMatch && descMatch[1]) {
                 bead.description = descMatch[1].replace(/\\"/g, '"');
-                // update context property for in-memory mock consistency
-                // (Real client reparses from desc)
-                const match = bead.description.match(/^---\n([\s\S]*?)\n---\n/);
-                if (match) {
-                    bead.context = JSON.parse(match[1]);
-                }
             }
 
             // Handle status
@@ -118,21 +138,21 @@ class MockBeadsClient extends BeadsClient {
             }
         }
 
-        // Dep Add
-        if (args.startsWith('dep add')) {
+        // Link (Pearls dep add replacement)
+        if (args.startsWith('link')) {
             const parts = args.split(' ');
             if (parts.length >= 4) {
-                const child = parts[2];
-                const parent = parts[3];
+                const child = parts[1];
+                const parent = parts[2];
                 if (child && parent) {
                     const c = this.store.get(child);
                     if (c) {
-                        c.blockers = c.blockers || [];
-                        c.blockers.push(parent);
+                        c.links = c.links || [];
+                        c.links.push({ target_id: parent, link_type: parts[3] || 'blocks' });
                         this.store.set(child, c);
                     }
                 }
-                return 'ok';
+                return JSON.stringify({ status: 'ok' });
             }
         }
 

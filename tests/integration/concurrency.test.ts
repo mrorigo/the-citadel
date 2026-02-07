@@ -3,7 +3,7 @@ import { describe, test, expect, beforeEach, afterEach, mock } from "bun:test";
 import { unlink } from "node:fs/promises";
 import { WorkQueue } from "../../src/core/queue";
 import { Conductor } from "../../src/services/conductor";
-import { setConfig } from "../../src/config";
+import { setConfig, resetConfig } from "../../src/config";
 import type { BeadsClient, Bead, CreateOptions } from "../../src/core/beads";
 import type { WorkerPool } from "../../src/core/pool";
 
@@ -103,6 +103,7 @@ describe("Concurrency Integration", () => {
                 // Ignore if not exists
             }
         }
+        resetConfig();
     });
 
     test("should scale workers based on load factor", async () => {

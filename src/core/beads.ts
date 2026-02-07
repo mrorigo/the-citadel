@@ -19,41 +19,38 @@ export const BeadStatusSchema = z.enum([
 ]);
 export type BeadStatus = z.infer<typeof BeadStatusSchema>;
 
-export const BeadPrioritySchema = z
-    .union([
-        z.literal(0),
-        z.literal(1),
-        z.literal(2),
-        z.literal(3),
-        z.literal("0"),
-        z.literal("1"),
-        z.literal("2"),
-        z.literal("3"),
-    ])
-    .transform((val) =>
-        typeof val === "string"
-            ? (parseInt(val, 10) as 0 | 1 | 2 | 3)
-            : (val as 0 | 1 | 2 | 3),
-    );
+export const BeadPrioritySchema = z.any().transform((val) => {
+    if (typeof val === "number") return val as 0 | 1 | 2 | 3 | 4;
+    if (typeof val === "string") {
+        const s = val.replace(/^P/, "");
+        const n = parseInt(s, 10);
+        if (!isNaN(n)) return n as 0 | 1 | 2 | 3 | 4;
+    }
+    return 2 as 0 | 1 | 2 | 3 | 4; // Default to P2
+});
 
 export type BeadPriority = z.infer<typeof BeadPrioritySchema>;
 
-// Raw schema matching 'bd' CLI output
+// Raw schema matching 'prl' CLI output
 const RawBeadSchema = z.object({
     id: z.string(),
     title: z.string(),
-    status: z.string(), // Raw status from CLI, e.g., 'closed'
+    status: z.string(), // Raw status from CLI, e.g., 'InProgress'
     priority: BeadPrioritySchema,
-    assignee: z.string().optional(),
+    author: z.string().optional(),
     labels: z.array(z.string()).optional(),
-    parent: z.string().optional(),
-    dependencies: z.array(z.any()).optional(),
-    blockers: z.array(z.string()).optional(),
-    issue_type: z.string().optional(), // Added type field, maps to type in domain
-    acceptance_criteria: z.string().optional(), // Maps to acceptance_test in domain
+    links: z.array(z.object({
+        target_id: z.string(),
+        link_type: z.string(),
+    })).optional(),
+    deps: z.array(z.object({
+        target_id: z.string(),
+        dep_type: z.string(),
+    }).or(z.string())).optional(),
+    metadata: z.record(z.string(), z.any()).optional(),
     description: z.string().optional(),
-    created_at: z.string(),
-    updated_at: z.string(),
+    created_at: z.any(),
+    updated_at: z.any(),
 });
 
 type RawBead = z.infer<typeof RawBeadSchema>;
@@ -79,7 +76,7 @@ export const BeadSchema = z.object({
 export type Bead = z.infer<typeof BeadSchema>;
 
 export interface CreateOptions {
-    priority?: 0 | 1 | 2 | 3;
+    priority?: 0 | 1 | 2 | 3 | 4;
     assignee?: string;
     blockers?: string[];
     acceptance_test?: string;
@@ -103,73 +100,32 @@ export class BeadsClient {
         } catch {
             // Config might not be loaded during init
         }
-        this.basePath = basePath || config?.beads.path || ".beads";
-        this.binary = binary || config?.beads.binary || "bd";
+        this.basePath = basePath || config?.beads?.path || ".pearls";
+        this.binary = binary || config?.beads?.binary || "prl";
     }
 
-    protected async runCommand(args: string, retryCount = 0): Promise<string> {
-        // Use --sandbox mode to avoid daemon issues in Docker containers
-        // Sandbox mode operates in "direct mode" without requiring a daemon
-        // Use --no-db to avoid SQLite crashes ("split stack overflow") and corruption
-        const command = `${this.binary} --sandbox --no-db ${args}`;
+    protected async runCommand(args: string): Promise<string> {
+        const command = `${this.binary} ${args}`;
 
-        // Determine CWD: The folder containing .beads folder, or the basePath itself if it is the root
-        const cwd = this.basePath.endsWith(".beads")
+        // Determine CWD: The folder containing .pearls folder, or the basePath itself if it is the root
+        const cwd = this.basePath.endsWith(".pearls")
             ? resolve(this.basePath, "..")
             : this.basePath;
 
         try {
             const { stdout, stderr } = await this.execute(command, cwd);
-            if (stderr && !stdout) {
+            if (stderr && !stdout && !stderr.includes("warning")) {
                 // Some tools print info to stderr?
-                // Assuming strictly JSON output on stdout for --json commands
             }
             return stdout.trim();
         } catch (error: unknown) {
             const err = error as Error;
-
-            // Staleness detection and recovery
-            const isStale =
-                err.message.includes("Database out of sync with JSONL") ||
-                err.message.includes("bd sync");
-
-            if (isStale && retryCount === 0) {
-                let autoSync = true;
-                try {
-                    const config = getConfig();
-                    autoSync = config.beads.autoSync !== false;
-                } catch {
-                    /* ignore if config fails */
-                }
-
-                if (autoSync) {
-                    logger.warn(
-                        `[Beads] Staleness detected. Triggering auto-sync and retry.`,
-                    );
-                    await this.sync(); // Default to import-only for speed/safety
-                    return this.runCommand(args, retryCount + 1);
-                }
-            }
-
-            // Flaky binary recovery (Split Stack Overflow) - RETRY LOGIC KEPT JUST IN CASE
-            // Even with --no-db, if the binary is unstable, we might want to keep this.
-            // But --no-db should prevent the specific sqlite split stack.
-            if (
-                err.message.includes("fatal error: runtime: split stack overflow") &&
-                retryCount < 2
-            ) {
-                logger.warn(
-                    `[Beads] 'split stack overflow' detected. Retrying command (attempt ${retryCount + 1}).`,
-                );
-                return this.runCommand(args, retryCount + 1);
-            }
-
-            throw new Error(`Beads command failed: ${command}\n${err.message}`);
+            throw new Error(`Pearls command failed: ${command}\n${err.message}`);
         }
     }
 
     async init(): Promise<void> {
-        await this.runCommand("init"); // runCommand adds --no-db
+        await this.runCommand("init");
     }
 
     protected async execute(
@@ -181,77 +137,135 @@ export class BeadsClient {
 
     async sync(): Promise<void> {
         await this.runCommand(`sync`);
-        logger.info(`[Beads] Database synchronized`);
+        logger.info(`[Pearls] Database synchronized`);
     }
 
     async doctor(): Promise<boolean> {
         try {
-            // bd doctor returns JSON with overall_ok status
-            const output = await this.runCommand("doctor --json");
-            const result = JSON.parse(output);
-            return result.overall_ok === true;
+            const output = await this.runCommand("doctor --format json");
+            return !output.toLowerCase().includes("error");
         } catch (_error) {
-            // If bd doctor fails completely, it's not healthy
             return false;
         }
     }
 
     private parseRaw(output: string): Bead {
-        if (!output) throw new Error("Empty output from bd");
-        const json = JSON.parse(output);
-        const raw = RawBeadSchema.parse(Array.isArray(json) ? json[0] : json);
-        return this.mapToDomain(raw);
-    }
-    private parseRawList(output: string): Bead[] {
-        if (!output) return [];
+        if (!output) throw new Error("Empty output from prl");
+        let json: any;
         try {
-            const json = JSON.parse(output);
-            if (Array.isArray(json)) {
-                return json
-                    .map((item) => {
-                        try {
-                            return this.mapToDomain(RawBeadSchema.parse(item));
-                        } catch (e) {
-                            console.warn(`[Beads] Failed to parse bead item:`, e, item);
-                            return null;
+            json = JSON.parse(output);
+        } catch (e) {
+            // Find start of JSON
+            const start = output.indexOf("{");
+            if (start !== -1) {
+                // Try to find the matching end brace
+                let braceCount = 0;
+                let end = -1;
+                for (let i = start; i < output.length; i++) {
+                    if (output[i] === "{") braceCount++;
+                    else if (output[i] === "}") {
+                        braceCount--;
+                        if (braceCount === 0) {
+                            end = i;
+                            break;
                         }
-                    })
-                    .filter((b) => !!b) as Bead[];
+                    }
+                }
+
+                if (end !== -1) {
+                    try {
+                        json = JSON.parse(output.substring(start, end + 1));
+                    } catch {
+                        throw new Error(`Failed to parse Pearls JSON (with extraction): ${output}`);
+                    }
+                } else {
+                    throw new Error(`Failed to parse Pearls JSON (no end brace): ${output}`);
+                }
+            } else {
+                throw new Error(`Failed to parse Pearls JSON: ${output}`);
             }
-        } catch (_e) {
-            // Fallback to line delimited
         }
 
-        return output
-            .split("\n")
-            .filter((line) => line.trim())
-            .flatMap((line) => {
-                try {
-                    const parsed = JSON.parse(line);
-                    // Handle if line is a full array (CLI sometimes does this)
-                    if (Array.isArray(parsed)) {
-                        return parsed.map((item) => {
-                            try {
-                                return this.mapToDomain(RawBeadSchema.parse(item));
-                            } catch (_e) {
-                                return null;
-                            }
-                        });
+        // Pearls returns a wrapper: { action: 'create', pearl: { ... }, status: 'ok' }
+        // Or sometimes just the pearl object.
+        const pearl = json.pearl || json.issue || (Array.isArray(json) ? json[0] : json);
+
+        if (!pearl || typeof pearl !== "object") {
+            // Handle if it's nested in 'pearls' array
+            if (json.pearls && Array.isArray(json.pearls) && json.pearls.length > 0) {
+                return this.mapToDomain(RawBeadSchema.parse(json.pearls[0]));
+            }
+            throw new Error(`Unexpected Pearls output format: ${output}`);
+        }
+
+        const raw = RawBeadSchema.parse(pearl);
+        return this.mapToDomain(raw);
+    }
+
+    private parseRawList(output: string): Bead[] {
+        if (!output) return [];
+        let json: any;
+        try {
+            json = JSON.parse(output);
+        } catch (e) {
+            // Find start of JSON
+            const start = output.indexOf("[") !== -1 ? output.indexOf("[") : output.indexOf("{");
+            if (start !== -1) {
+                // Use matching brace/bracket logic
+                const opener = output[start];
+                const closer = opener === "[" ? "]" : "}";
+                let count = 0;
+                let end = -1;
+                for (let i = start; i < output.length; i++) {
+                    if (output[i] === opener) count++;
+                    else if (output[i] === closer) {
+                        count--;
+                        if (count === 0) {
+                            end = i;
+                            break;
+                        }
                     }
-                    return this.mapToDomain(RawBeadSchema.parse(parsed));
-                } catch (_e) {
-                    return null;
                 }
-            })
-            .filter((b) => !!b) as Bead[];
+
+                if (end !== -1) {
+                    try {
+                        json = JSON.parse(output.substring(start, end + 1));
+                    } catch {
+                        return [];
+                    }
+                } else {
+                    return [];
+                }
+            } else {
+                return [];
+            }
+        }
+
+        // Handle wrapper { pearls/ready/issues: [...], total: n }
+        const list = json.pearls || json.ready || json.issues || (Array.isArray(json) ? json : [json]);
+
+        if (Array.isArray(list)) {
+            return list
+                .map((item) => {
+                    try {
+                        return this.mapToDomain(RawBeadSchema.parse(item));
+                    } catch (e) {
+                        console.warn(`[Pearls] Failed to parse bead item:`, e, item);
+                        return null;
+                    }
+                })
+                .filter((b) => !!b) as Bead[];
+        }
+        return [];
     }
 
     private mapToDomain(raw: RawBead): Bead {
         let status: BeadStatus = "open";
 
-        if (raw.status === "closed") {
+        const rawStatus = raw.status.toLowerCase();
+        if (rawStatus === "closed") {
             status = "done";
-        } else if (raw.status === "in_progress") {
+        } else if (rawStatus === "inprogress" || rawStatus === "in_progress") {
             if (raw.labels?.includes("verify")) {
                 status = "verify";
             } else {
@@ -261,21 +275,44 @@ export class BeadsClient {
             status = "open";
         }
 
-        // Map dependencies to blockers
-        let blockers: string[] = [];
-        if (raw.dependencies) {
-            blockers = raw.dependencies
-                .filter((d) => d.dependency_type === "blocks")
-                .map((d) => d.id);
-        } else if (raw.blockers) {
-            blockers = raw.blockers;
+        // Map links to blockers/parent
+        const blockers: string[] = [];
+        let parent: string | undefined;
+
+        // Pearls uses 'deps' as well as 'links'? Let's check from list output
+        // List output has 'deps': []
+        if (raw.links) {
+            for (const link of raw.links) {
+                if (link.link_type === "blocks") {
+                    blockers.push(link.target_id);
+                } else if (link.link_type === "parent_child") {
+                    parent = link.target_id;
+                }
+            }
         }
 
-        // Parse context from description
-        let context: Record<string, unknown> | undefined;
-        let description = raw.description || undefined;
+        if (raw.deps && Array.isArray(raw.deps)) {
+            for (const dep of raw.deps) {
+                if (typeof dep === 'string') {
+                    blockers.push(dep);
+                } else {
+                    if (dep.dep_type === "blocks") {
+                        blockers.push(dep.target_id);
+                    } else if (dep.dep_type === "parent_child") {
+                        parent = dep.target_id;
+                    }
+                }
+            }
+        }
 
-        if (description) {
+        // Pearls metadata
+        let acceptance_test = raw.metadata?.acceptance_test as string | undefined;
+        const type = (raw.metadata?.type || raw.metadata?.issue_type) as string | undefined;
+        let context = raw.metadata?.context as Record<string, unknown> | undefined;
+
+        // Fallback for context from description frontmatter (backward compat)
+        let description = raw.description || undefined;
+        if (description && !context) {
             const match = description.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
             if (match?.[1] && match[2]) {
                 try {
@@ -284,40 +321,37 @@ export class BeadsClient {
                         context = parsed;
                         description = match[2];
                     }
-                } catch {
-                    // Ignore parse error
-                }
+                } catch { /* ignore */ }
             }
         }
 
         return {
-            ...raw,
+            id: raw.id,
+            title: raw.title,
             status,
-            type: raw.issue_type,
+            priority: raw.priority as any,
+            assignee: raw.author,
+            labels: raw.labels,
             blockers,
-            acceptance_test: raw.acceptance_criteria,
+            acceptance_test,
+            parent,
+            type,
             description,
             context,
+            created_at: typeof raw.created_at === "number" ? new Date(raw.created_at * 1000).toISOString() : raw.created_at,
+            updated_at: typeof raw.updated_at === "number" ? new Date(raw.updated_at * 1000).toISOString() : raw.updated_at,
         };
     }
 
     async list(status?: BeadStatus): Promise<Bead[]> {
-        // List logic complicates things because we map domain status -> CLI status
-        // For 'verify', we need 'in_progress' and verify label...
-        // bd list --status doesn't support complex filters easily?
-        // We'll list all (or broad category) and filter in memory for now.
-
-        // Minimal mapping for CLI query
         let cliStatus = "";
         if (status === "done") cliStatus = "closed";
         else if (status === "verify") cliStatus = "in_progress";
         else if (status === "in_progress") cliStatus = "in_progress";
         else if (status === "open") cliStatus = "open";
 
-        // If querying verify, we'll get in_progress and filter.
         const flag = cliStatus ? `--status ${cliStatus}` : "";
-
-        const output = await this.runCommand(`list ${flag} --json`);
+        const output = await this.runCommand(`list ${flag} --format json`);
         const beads = this.parseRawList(output);
 
         if (status) {
@@ -327,79 +361,69 @@ export class BeadsClient {
     }
 
     async ready(): Promise<Bead[]> {
-        const output = await this.runCommand("ready --json");
+        const output = await this.runCommand("ready --format json");
         return this.parseRawList(output);
     }
 
     async getAll(): Promise<Bead[]> {
-        const output = await this.runCommand("list --json");
+        const output = await this.runCommand("list --format json");
         return this.parseRawList(output);
     }
 
     async get(id: string): Promise<Bead> {
-        const output = await this.runCommand(`show ${id} --json`);
+        const output = await this.runCommand(`show ${id} --format json`);
         return this.parseRaw(output);
     }
 
     async create(title: string, options: CreateOptions = {}): Promise<Bead> {
-        let args = `create "${title}" --json`;
-        if (options.priority !== undefined) args += ` -p ${options.priority}`;
-        if (options.parent) args += ` --parent ${options.parent}`;
-        if (options.type) args += ` --type ${options.type}`;
-
-        let description = options.description || "";
-        if (options.context) {
-            const frontmatter = JSON.stringify(options.context, null, 2);
-            description = `---\n${frontmatter}\n---\n${description}`;
-        }
-
-        if (description) {
-            // Escape double quotes for CLI
-            const escaped = description.replace(/"/g, '\\"');
+        let args = `create "${title}"`;
+        if (options.priority !== undefined) args += ` --priority ${options.priority}`;
+        if (options.description) {
+            const escaped = options.description.replace(/"/g, '\\"');
             args += ` --description "${escaped}"`;
         }
-
-        // Note: bd CLI might not support setting everything at create time yet,
+        args += " --format json";
 
         const output = await this.runCommand(args);
         const bead = this.parseRaw(output);
 
-        // Apply extra fields if needed via update for robustness
-        const updates: Partial<Bead> = {};
-        let hasUpdates = false;
+        // Update metadata and links
+        const updates: any = {};
+        if (options.acceptance_test) updates.acceptance_test = options.acceptance_test;
+        if (options.type) updates.type = options.type;
+        if (options.context) updates.context = options.context;
 
-        if (options.acceptance_test) {
-            updates.acceptance_test = options.acceptance_test;
-            hasUpdates = true;
+        for (const [key, val] of Object.entries(updates)) {
+            const escaped = JSON.stringify(val).replace(/"/g, '\\"');
+            await this.runCommand(`meta set ${bead.id} ${key} "${escaped}" --format json`);
         }
 
-        if (options.labels && options.labels.length > 0) {
-            updates.labels = options.labels;
-            hasUpdates = true;
-        }
-
-        if (hasUpdates) {
-            await this.update(bead.id, updates);
+        if (options.labels?.length) {
+            for (const label of options.labels) {
+                await this.runCommand(`update ${bead.id} --add-label "${label}" --format json`);
+            }
         }
 
         if (options.blockers?.length) {
             for (const blockerId of options.blockers) {
-                // Dependency: bead depends on blocker (bead is child/blocked, blocker is parent/blocker)
-                await this.addDependency(bead.id, blockerId);
+                await this.runCommand(`link ${bead.id} ${blockerId} blocks --format json`);
             }
         }
 
-        // Return fresh
+        if (options.parent) {
+            await this.runCommand(`link ${bead.id} ${options.parent} parent_child --format json`);
+        }
+
         return this.get(bead.id);
     }
 
     async update(id: string, changes: Partial<Bead>): Promise<Bead> {
-        // strict state machine enforcement
+        let current: Bead | undefined;
+
         if (changes.status) {
-            const current = await this.get(id);
+            current = await this.get(id);
             this.validateTransition(current, changes.status);
 
-            // Enforce acceptance test for 'done' (unless failed)
             const isFailed =
                 changes.labels?.includes("failed") ||
                 (!changes.labels && current.labels?.includes("failed"));
@@ -415,79 +439,91 @@ export class BeadsClient {
             }
         }
 
-        // Construct update args
         let args = `update ${id}`;
 
         if (changes.status) {
-            if (changes.status === "done") {
-                args += ` --status closed`;
-            } else if (changes.status === "verify") {
-                args += ` --status in_progress --add-label verify`;
+            if (!current) current = await this.get(id);
+
+            // Domain status -> CLI status mapping
+            let targetCliStatus = "";
+            if (changes.status === "done") targetCliStatus = "closed";
+            else if (changes.status === "verify") targetCliStatus = "in_progress";
+            else if (changes.status === "in_progress") targetCliStatus = "in_progress";
+            else if (changes.status === "open") targetCliStatus = "open";
+
+            // Map current domain status back to raw CLI status for comparison
+            let currentCliStatus = "";
+            if (current.status === "done") currentCliStatus = "closed";
+            else if (current.status === "verify") currentCliStatus = "in_progress";
+            else if (current.status === "in_progress") currentCliStatus = "in_progress";
+            else if (current.status === "open") currentCliStatus = "open";
+
+            if (targetCliStatus && targetCliStatus !== currentCliStatus) {
+                args += ` --status ${targetCliStatus}`;
+            }
+
+            // Handle labels for 'verify'
+            if (changes.status === "verify") {
+                args += ` --add-label verify`;
             } else if (changes.status === "in_progress") {
-                args += ` --status in_progress --remove-label verify`;
+                args += ` --remove-label verify`;
             } else if (changes.status === "open") {
-                args += ` --status open --remove-label verify`;
+                args += ` --remove-label verify`;
             }
         }
 
-        if (changes.acceptance_test) {
-            args += ` --acceptance "${changes.acceptance_test}"`;
+        if (changes.title) {
+            args += ` --title "${changes.title}"`;
+        }
+
+        if (changes.description) {
+            const escaped = changes.description.replace(/"/g, '\\"');
+            args += ` --description "${escaped}"`;
         }
 
         if (changes.labels) {
-            // Append labels using --add-label
             for (const label of changes.labels) {
                 args += ` --add-label "${label}"`;
             }
         }
 
-        // @ts-expect-error - Extension for internal use
+        // @ts-expect-error
         if (changes.remove_labels) {
-            // Remove labels using --remove-label
             // @ts-expect-error
             for (const label of changes.remove_labels) {
                 args += ` --remove-label "${label}"`;
             }
         }
 
-        if (changes.context) {
-            // Context is stored in description frontmatter.
-            // We need to preserve the text body of description.
-            // If we didn't fetch 'current' yet, we must.
-            // (changes.status logic fetches it, but scoped)
-            const current = await this.get(id);
-            let descText = current.description || "";
-
-            // Strip existing frontmatter
-            const match = descText.match(/^---\n[\s\S]*?\n---\n([\s\S]*)$/);
-            if (match?.[1]) {
-                descText = match[1];
-            }
-
-            const frontmatter = JSON.stringify(changes.context, null, 2);
-            const newDesc = `---\n${frontmatter}\n---\n${descText}`;
-
-            const escaped = newDesc.replace(/"/g, '\\"');
-            args += ` --description "${escaped}"`;
-        }
-
-        // ... other fields
-        args += ` --json`;
-
+        args += ` --format json`;
         const output = await this.runCommand(args);
-        if (!output) {
-            // Fallback: fetch updated bead if update command had no output
-            return this.get(id);
+
+        // Update meta fields
+        if (changes.acceptance_test) {
+            const escaped = JSON.stringify(changes.acceptance_test).replace(/"/g, '\\"');
+            await this.runCommand(`meta set ${id} acceptance_test "${escaped}" --format json`);
         }
+
+        if (changes.type) {
+            const escaped = JSON.stringify(changes.type).replace(/"/g, '\\"');
+            await this.runCommand(`meta set ${id} type "${escaped}" --format json`);
+        }
+
+        if (changes.context) {
+            const escaped = JSON.stringify(changes.context).replace(/"/g, '\\"');
+            await this.runCommand(`meta set ${id} context "${escaped}" --format json`);
+        }
+
+        if (!output) return this.get(id);
         return this.parseRaw(output);
     }
 
     private validateTransition(current: Bead, next: BeadStatus) {
         const validTransitions: Record<BeadStatus, BeadStatus[]> = {
-            open: ["in_progress", "done"], // Allow skipping (open->done)
-            in_progress: ["verify", "open"], // Allow moving back to open if dropped
-            verify: ["done", "in_progress", "open"], // FIX: Allow rejecting back to open
-            done: ["in_progress", "open"], // Reopen cases
+            open: ["in_progress", "done"],
+            in_progress: ["verify", "open"],
+            verify: ["done", "in_progress", "open"],
+            done: ["in_progress", "open"],
         };
 
         if (current.status === next) return;
@@ -501,8 +537,7 @@ export class BeadsClient {
     }
 
     async addDependency(childId: string, parentId: string): Promise<void> {
-        // bd dep add <child> <parent>
-        await this.runCommand(`dep add ${childId} ${parentId}`);
+        await this.runCommand(`link ${childId} ${parentId} blocks`);
     }
 
     async addComment(id: string, comment: string): Promise<string> {
@@ -521,7 +556,7 @@ export function getBeads(basePath?: string): BeadsClient {
                 const config = getConfig();
                 path = config.beads.path;
             } catch {
-                path = ".beads";
+                path = ".pearls";
             }
         }
         return new BeadsClient(path);

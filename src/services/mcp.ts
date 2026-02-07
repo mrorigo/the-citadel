@@ -2,9 +2,14 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
-import { ListRootsRequestSchema, ReadResourceRequestSchema, ListResourcesRequestSchema } from "@modelcontextprotocol/sdk/types.js";
+import {
+	ListRootsRequestSchema,
+	ReadResourceRequestSchema,
+	ListResourcesRequestSchema,
+} from "@modelcontextprotocol/sdk/types.js";
 import { getConfig } from "../config";
 import { logger } from "../core/logger";
+import { getGlobalSingleton } from "../core/registry";
 
 export interface MCPTool {
 	serverName: string;
@@ -14,18 +19,10 @@ export interface MCPTool {
 }
 
 export class MCPService {
-	private static instance: MCPService;
 	private clients: Map<string, Client> = new Map();
 	private tools: Map<string, MCPTool[]> = new Map(); // serverName -> tools
 
-	private constructor() { }
-
-	static getInstance(): MCPService {
-		if (!MCPService.instance) {
-			MCPService.instance = new MCPService();
-		}
-		return MCPService.instance;
-	}
+	constructor() { }
 
 	async initialize(): Promise<void> {
 		const config = getConfig();
@@ -207,5 +204,5 @@ export class MCPService {
 }
 
 export function getMCPService(): MCPService {
-	return MCPService.getInstance();
+	return getGlobalSingleton("mcp_service", () => new MCPService());
 }

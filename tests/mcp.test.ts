@@ -1,6 +1,6 @@
-import { describe, it, expect, mock, beforeEach } from 'bun:test';
+import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
 import { getMCPService } from '../src/services/mcp';
-import { setConfig } from '../src/config';
+import { setConfig, resetConfig } from '../src/config';
 import { WorkerAgent } from '../src/agents/worker';
 
 // Mock the SDK
@@ -37,6 +37,10 @@ describe('MCP Tools Integration', () => {
     beforeEach(async () => {
         const mcp = getMCPService();
         await mcp.shutdown(); // Ensure clean state
+    });
+
+    afterEach(() => {
+        resetConfig();
     });
 
     it('should discover tools from configured servers', async () => {

@@ -1,5 +1,6 @@
 import { describe, it, expect, mock, beforeAll, afterAll } from 'bun:test';
 import { getInstructionService } from '../../src/core/instruction';
+import { clearGlobalSingleton } from '../../src/core/registry';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
@@ -19,6 +20,7 @@ describe('InstructionService', () => {
             // Only remove test files we created
             // await rm(testDir, { recursive: true });
         }
+        clearGlobalSingleton('instruction_service');
     });
 
     it('should build a prompt with multiple providers', async () => {

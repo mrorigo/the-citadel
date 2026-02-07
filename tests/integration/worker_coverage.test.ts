@@ -15,7 +15,7 @@ import { setQueueInstance } from '../../src/core/queue';
 import { setFormulaRegistry } from '../../src/core/formula';
 import { clearGlobalSingleton } from '../../src/core/registry';
 import { z } from 'zod';
-import { loadConfig } from '../../src/config';
+import { loadConfig, resetConfig } from '../../src/config';
 
 // Mock LanguageModel
 const mockModel: any = {
@@ -40,6 +40,7 @@ describe('WorkerAgent Integration Coverage', () => {
         clearGlobalSingleton('beads_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
+        resetConfig();
         mock.restore();
     });
 
@@ -80,6 +81,7 @@ describe('WorkerAgent Integration Coverage', () => {
         clearGlobalSingleton('beads_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
+        resetConfig();
     });
 
     it('should report progress', async () => {

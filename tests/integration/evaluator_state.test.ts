@@ -2,10 +2,14 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { BeadsClient } from '../../src/core/beads';
 import { clearGlobalSingleton } from '../../src/core/registry';
-import { loadConfig } from '../../src/config';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { setConfig, resetConfig } from '../../src/config';
+import { mkdtempSync, rmSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execAsync = promisify(exec);
 
 // Test suite for verifying FSM bugs reported in Evaluator
 describe('Evaluator State Logic (Reproduction)', () => {
@@ -13,15 +17,29 @@ describe('Evaluator State Logic (Reproduction)', () => {
     let tempDir: string;
 
     beforeEach(async () => {
-        await loadConfig();
         clearGlobalSingleton('beads_client');
 
         // Setup isolated temp dir
         tempDir = mkdtempSync(join(tmpdir(), 'citadel-eval-state-'));
-        const beadsPath = join(tempDir, '.beads');
 
-        beads = new BeadsClient(beadsPath);
-        await beads.init(); // bd init
+        // Pearls requires git repo
+        await execAsync('git init', { cwd: tempDir });
+
+        const pearlsPath = join(tempDir, '.pearls');
+        mkdirSync(pearlsPath, { recursive: true });
+
+        // Force config for prl
+        setConfig({
+            env: 'development',
+            providers: { ollama: {} },
+            agents: { router: { provider: 'ollama', model: 'mock' }, worker: { provider: 'ollama', model: 'mock' }, gatekeeper: { provider: 'ollama', model: 'mock' } },
+            beads: { path: pearlsPath, binary: 'prl', autoSync: true },
+            worker: { min_workers: 0, max_workers: 1, load_factor: 1 },
+            gatekeeper: { min_workers: 0, max_workers: 1, load_factor: 1 }
+        });
+
+        beads = new BeadsClient(pearlsPath);
+        await beads.init();
     });
 
     afterEach(() => {

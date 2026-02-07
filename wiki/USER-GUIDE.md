@@ -11,16 +11,14 @@ The Citadel is agnostic to the domain of work. It shines whenever you need to ma
 
 ## Core Concepts
 
-### 1. Beads (The Atoms)
-**Beads** are the fundamental unit of work and state. Every task, issue, or decision is captured as a Bead in a Git-backed SQLite database.
+### 1. Pearls (The Atoms)
+**Pearls** are the fundamental unit of work and state. Every task, issue, or decision is captured as a Pearl in a JSONL-based storage format.
 - **Intent**: What needs to be done.
-- **State**: Strictly tracked (`open` -> `in_progress` -> `verify` -> `done`).
+- **State**: Strictly tracked (`Open` -> `InProgress` -> `verify` -> `Closed`). (Note: `verify` is an internal state mapped from InProgress + label).
 - **Context**: Structured input data (JSON) required for the task.
-- **History**: An immutable log of all agent actions.
+- **History**: An immutable log of all agent actions and comments.
 
-👉 **reference: [steveyegge/beads](https://github.com/steveyegge/beads)**
-
-> **Note:** A list of community-built UIs, extensions, and tools for interacting with Beads can be found here: [Community Tools](https://github.com/steveyegge/beads/blob/main/docs/COMMUNITY_TOOLS.md).
+👉 **reference: [mrorigo/pearls](https://github.com/mrorigo/pearls)**
 
 ### 2. The Foundry (Workflow Engine)
 The Citadel goes beyond simple task lists by implementing a **Workflow Engine** that compiles static templates into dynamic graphs of work.
@@ -49,84 +47,18 @@ description = "Update user guide"
 needs = ["impl"] # Dependency: 'docs' is blocked by 'impl'
 ```
 
-**Example 2: Podcast Production (Content)**
-This formula orchestrates a creative pipeline with parallel tasks.
-
-```toml
-# .citadel/formulas/podcast.toml
-formula = "podcast"
-description = "Produce episode {{episode_num}}"
-
-[vars.guest]
-description = "Guest Name"
-required = true
-
-[[steps]]
-id = "script"
-title = "Draft Questions for {{guest}}"
-description = "Research guest and draft interview outline"
-
-[[steps]]
-id = "scheduling"
-title = "Schedule Recording"
-description = "Coordinate time with {{guest}}"
-
-[[steps]]
-id = "record"
-title = "Record Interview"
-description = "Conduct remote recording session"
-needs = ["script", "scheduling"] # Waits for both script and booking
-
-[[steps]]
-id = "edit"
-title = "Edit Audio"
-description = "Post-production and mastering"
-needs = ["record"]
-```
-
-**Advanced Example: Deep Research Agent**
-This formula demonstrates resilience. If analysis fails (e.g., due to insufficient data), the system automatically triggers a rollback to the gathering phase.
-
-```toml
-# .citadel/formulas/deep_research.toml
-formula = "deep_research"
-description = "Conduct deep research on {{topic}}"
-
-[vars.topic]
-description = "Research topic"
-required = true
-
-[[steps]]
-id = "gather"
-title = "Gather Information"
-description = "Search web and filesystem for {{topic}}"
-
-[[steps]]
-id = "analyze"
-title = "Analyze Findings"
-description = "Synthesize gathered data into a summary"
-needs = ["gather"]
-on_failure = "gather" # <--- If analysis fails, retry gathering with new instructions
-
-[[steps]]
-id = "report"
-title = "Write Report"
-description = "Draft final report based on analysis"
-needs = ["analyze"]
-```
-
 #### Molecules (The Instances)
 When a Formula is instantiated (e.g., "Run feature release for Dark Mode"), The Citadel "cooks" it into a **Molecule**.
 - A Molecule is a Root Epic containing all the steps defined in the formula.
-- Dependencies are automatically wired using `bd dep add`.
+- Dependencies are automatically wired using `prl link`.
 
 #### Convoys (The Shipments)
 A **Convoy** is a long-lived context (Meta-Epic) used to group unrelated Molecules together, such as "Q1 Deliverables" or "Release v1.2". Agents can assign new Molecules directly to a specific Convoy.
 
 ### 3. Agents (The Workforce)
 - **RouterAgent**: The foreman. Analyzes requests, instantiates Formulas, and assigns tasks.
-- **WorkerAgent**: The executor. Picks up `open` Beads, executes tasks (research, writing, coding, analysis) and can **recursively breakdown work** (Dynamic Bonding).
-- **EvaluatorAgent**: The editor/verifier. Verifies `verify` Beads against acceptance criteria (accuracy, style, functionality) before closing them. **Requires explicit `acceptance_test` details for every approval.**
+- **WorkerAgent**: The executor. Picks up `Open` Pearls, executes tasks (research, writing, coding, analysis) and can **recursively breakdown work** (Dynamic Bonding).
+- **EvaluatorAgent**: The editor/verifier. Verifies `verify` Pearls against acceptance criteria (accuracy, style, functionality) before closing them. **Requires explicit `acceptance_test` details for every approval.**
 
 ---
 
@@ -143,7 +75,7 @@ This creates:
 - `.citadel/formulas/`: Where you store workflow templates.
 - `citadel.config.ts`: Configuration file.
 - `AGENTS.md`: Project-specific rules.
-- `.beads/`: Local database.
+- `.pearls/`: Local database in JSONL format.
 
 ### 2. Starting the System
 The **Conductor** manages the agent loop.
@@ -153,18 +85,18 @@ citadel start
 ```
 
 ### 3. Running Workflows
-You don't talk to agents directly; you assign them work via Beads. To trigger a workflow, simply create a request that the Router understands.
+You don't talk to agents directly; you assign them work via Pearls. To trigger a workflow, simply create a request that the Router understands.
 
 **Natural Language Trigger:**
 ```bash
-bd create "Run the system migration formula for the Auth module"
+prl create "Run the system migration formula for the Auth module"
 ```
 
 _or_
 
 **Business Operations Trigger:**
 ```bash
-bd create "Prepare Q3 Business Review for Sales Team"
+prl create "Prepare Q3 Business Review for Sales Team"
 # Router -> formula: qbr_prep, vars: quarter=Q3, team=Sales
 ```
 
@@ -172,8 +104,8 @@ bd create "Prepare Q3 Business Review for Sales Team"
 1.  The **Router** picks up this request.
 2.  It identifies the `system_migration` formula.
 3.  It extracts the variable `target_system=Auth`.
-4.  It compiles the Formula into a **Molecule** (a graph of Beads).
-5.  **Workers** immediately start claiming the `open` steps.
+4.  It compiles the Formula into a **Molecule** (a graph of Pearls).
+5.  **Workers** immediately start claiming the `Open` steps.
 
 ### 4. Explicit Trigger (CLI)
 For deterministic execution without relying on the Router to parse intent, use the CLI directly:
@@ -189,27 +121,27 @@ citadel create "AI Trends Whitepaper" --formula whitepaper --vars topic="Agentic
 ```
 
 ### 5. Dynamic Bonding
-Workers are not limited to single tasks. If a Worker picks up a large objective, it can recursively spawn child beads using the `delegate_task` tool.
+Workers are not limited to single tasks. If a Worker picks up a large objective, it can recursively spawn child pearls using the `delegate_task` tool.
 
 The system automatically manages the parent-child relationships based on the execution context. This allows for infinite recursive breakdown of work without losing state tracking.
 
 **Example A: Refactoring (Software)**
 1.  Worker claims "Refactor API".
 2.  Explores code, finds 3 distinct services.
-3.  Spawns 3 child beads: "Refactor Auth", "Refactor Billing", "Refactor Users".
-4.  Delegates beads to other workers.
+3.  Spawns 3 child pearls: "Refactor Auth", "Refactor Billing", "Refactor Users".
+4.  Delegates pearls to other workers.
 
 **Example B: Market Analysis (Research)**
 1.  Worker claims "Competitor Analysis 2024".
 2.  Identifies 5 key competitors.
-3.  Spawns 5 child beads (one per competitor) to gather deep data in parallel.
+3.  Spawns 5 child pearls (one per competitor) to gather deep data in parallel.
 4.  Synthesizes the results once all children complete.
 
 ### 6. Agent Tooling & Context
 The Citadel provides a "Context-Aware" runtime for all agents.
 
 **Automatic Context Injection:**
-When an agent executes a tool (like `submit_work` or `report_progress`), the system automatically injects the current `beadId` and execution environment. Operations are always strictly scoped to the active Bead, preventing cross-task interference.
+When an agent executes a tool (like `submit_work` or `report_progress`), the system automatically injects the current `beadId` and execution environment. Operations are always strictly scoped to the active Pearl, preventing cross-task interference.
 
 ### 7. Project Awareness & Custom Instructions
 You can "teach" agents about your specific project by placing rules in your repository. The Citadel uses a tiered **Instruction Discovery Service** to build agent prompts dynamically.
@@ -220,8 +152,8 @@ You can "teach" agents about your specific project by placing rules in your repo
 3.  **Role Overrides**: Files in `.citadel/instructions/role-${role}.md` (e.g., `role-worker.md`).
 4.  **MCP Resources (Automatic)**: Automatically injected context from MCP servers (e.g., CodeFlow memory).
 5.  **Formula Prompts**: Task-specific instructions defined in a workflow's TOML.
-6.  **Tag-based Instructions**: Triggered by bead labels (e.g., `tag:git` loads `tag-git.md`).
-7.  **Context (Dynamic)**: Instructions passed directly in the bead's JSON context.
+6.  **Tag-based Instructions**: Triggered by pearl labels (e.g., `tag:git` loads `tag-git.md`).
+7.  **Context (Dynamic)**: Instructions passed directly in the pearl's JSON context.
 
 #### Automatic Resource Injection
 The Citadel supports automatic injection of MCP resources into the agent context. This allows agents to leverage rich context sources like CodeFlow's Cortex memory system (`memory://top`) or other MCP-exposed knowledge bases automatically.
@@ -229,7 +161,7 @@ The Citadel supports automatic injection of MCP resources into the agent context
 Resources are aggregated from three levels:
 1.  **Agent Level**: Configured in `citadel.config.ts`.
 2.  **Formula Level**: Declared in `.toml` formula files via `mcp_resources`.
-3.  **Bead Level**: Specified dynamically in the bead's JSON context.
+3.  **Bead Level**: Specified dynamically in the pearl's JSON context.
 
 **Example Formula Property:**
 ```toml
@@ -246,7 +178,7 @@ To customize a specific agent role project-wide, create a file in `.citadel/inst
 ```
 
 #### Tag-based Specialization
-If you have specific tools or domains (like Git, Research, or SQL), you can create tag-based instruction files. Any bead with a `tag:NAME` label will automatically pull in `.citadel/instructions/tag-NAME.md`.
+If you have specific tools or domains (like Git, Research, or SQL), you can create tag-based instruction files. Any pearl with a `tag:NAME` label will automatically pull in `.citadel/instructions/tag-NAME.md`.
 
 **Example 1: Specialized Git Instructions**
 ```markdown
@@ -274,18 +206,7 @@ Workers handling `tag:planning` tasks are thus "primed" to provide the structure
 The Citadel supports passing rich data between steps, enabling complex chaining and branching.
 
 **Input (Context):**
-Pass structured data to any task using the `context` field.
-
-```bash
-# Define context in bead description using JSON frontmatter
-bd create "Analyze Data" --description "---
-{
-  \"dataset_url\": \"s3://...\",
-  \"parameters\": { \"depth\": 5 }
-}
----
-Analyze the dataset..."
-```
+Pass structured data to any task using the `context` field or Pearls metadata.
 
 **Output (Structured Results):**
 Workers can return structured JSON outputs instead of just text summaries. These outputs are stored in the queue and can be used by subsequent steps or for automated verification.
@@ -432,21 +353,21 @@ mcpServers: {
 }
 ```
 
-### 5. Beads Integration
+### 5. Pearls Integration
 Configure the underlying state engine.
 
-*   **`path`**: Directory for the SQLite database (default: `.beads`).
-*   **`binary`**: Path to the `bd` CLI (default: `bd`).
+*   **`path`**: Directory for the Pearls data (default: `.pearls`).
+*   **`binary`**: Path to the `prl` CLI (default: `prl`).
 *   **`autoSync`**: Automatically sync state with Git (default: true).
 
 ```typescript
-    path: '.beads',
-    binary: '/usr/local/bin/bd',
+    path: '.pearls',
+    binary: '/usr/local/bin/prl',
     autoSync: true
 }
 ```
 
-> **Note on Storage Mode**: The Citadel forces `bd` to run in `--no-db` mode effectively treating `.beads/issues.jsonl` as the single source of truth. This avoids potential SQLite corruption issues during agent crashes, and a potential race condition bug in `bd` itself. The `beads.db` file is ignored if it exists.
+> **Note on Storage Mode**: The Citadel uses `prl` to manage work items in `issues.jsonl`. This ensures stability across all environments and high-load state transitions.
 
 
 ### 6. Context Management

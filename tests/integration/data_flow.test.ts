@@ -16,18 +16,18 @@ const MOCK_CONFIG: CitadelConfig = {
     env: 'development',
     providers: {
         openai: { apiKey: 'mock' },
-        anthropic: { apiKey: 'mock' }
+        anthropic: { apiKey: 'mock' },
+        ollama: { baseURL: 'http://localhost:11434/v1', apiKey: 'ollama' }
     },
     agents: {
         worker: { model: 'mock-model', provider: 'openai' },
         router: { model: 'mock-model', provider: 'openai' },
-        supervisor: { model: 'mock-model', provider: 'openai' },
         gatekeeper: { model: 'mock-model', provider: 'openai' }
     },
     beads: {
-        path: '.beads',
-        binary: 'bd',
-        autoSync: false // Mock doesn't sync
+        path: '.pearls',
+        binary: 'prl',
+        autoSync: false
     },
     worker: {
         min_workers: 1, max_workers: 2, load_factor: 1,
@@ -37,23 +37,20 @@ const MOCK_CONFIG: CitadelConfig = {
         min_workers: 1, max_workers: 2, load_factor: 1
     },
     bridge: { maxLogs: 1000 },
-    mcpServers: {}
+    mcpServers: {},
+    context: {
+        maxHistoryMessages: 20,
+        maxToolResponseSize: 50000,
+        maxMessageSize: 100000
+    }
 };
-
-// ... (MockBeadsClient implementation same as before but safer regex) ...
-// For brevity, I'll just update MOCK_CONFIG here and the test case logic.
-// The regex lint errors require touching MockBeadsClient code which is above.
-// I will use multi_replace to target both areas.
-
-// ...
-
 
 const TEST_DIR = resolve(process.cwd(), '.test_data_flow');
 const DB_PATH = resolve(TEST_DIR, 'queue.sqlite');
 
 // Mock BeadsClient to simulate CLI behavior without 'bd' binary
 class MockBeadsClient extends BeadsClient {
-    private beads: Map<string, Bead> = new Map();
+    private beads: Map<string, any> = new Map();
 
     protected override async runCommand(args: string): Promise<string> {
         console.log(`[Mock] runCommand: ${args}`);
@@ -62,21 +59,20 @@ class MockBeadsClient extends BeadsClient {
             const title = titleMatch ? titleMatch[1] : 'Untitled';
 
             let description = '';
-            // Use non-capturing group for potential escaped content logic if needed
             const descMatch = args.match(/--description "((?:[^"\\]|\\.)*)"/);
             if (descMatch && descMatch[1]) {
                 description = descMatch[1].replace(/\\"/g, '"');
             }
 
             const id = `bead-${Math.random().toString(36).substr(2, 9)}`;
-            // Store as Raw format essentially, or at least compatible
             const bead: any = {
                 id,
                 title,
                 status: 'open',
-                priority: 0,
+                priority: 2,
                 description,
                 labels: [],
+                metadata: {},
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };
@@ -91,6 +87,36 @@ class MockBeadsClient extends BeadsClient {
             const bead = this.beads.get(id);
             if (!bead) throw new Error('Not found');
             return JSON.stringify(bead);
+        }
+
+        if (args.startsWith('meta set')) {
+            const parts = args.split(' ');
+            const id = parts[2];
+            const key = parts[3];
+            let valueStr = args.substring(args.indexOf(key) + key.length + 1);
+            if (valueStr.includes('--format')) {
+                valueStr = valueStr.substring(0, valueStr.indexOf('--format')).trim();
+            }
+            console.log(`[Mock] Meta set: id=${id}, key=${key}, rawValue=${valueStr}`);
+            if (valueStr.startsWith('"') && valueStr.endsWith('"')) {
+                valueStr = valueStr.substring(1, valueStr.length - 1);
+            }
+            // Value is JSON stringified and escaped
+            try {
+                const value = JSON.parse(valueStr.replace(/\\"/g, '"'));
+                console.log(`[Mock] Parsed meta value:`, value);
+
+                const bead = this.beads.get(id);
+                if (bead) {
+                    if (!bead.metadata) bead.metadata = {};
+                    bead.metadata[key] = value;
+                    this.beads.set(id, bead);
+                    console.log(`[Mock] Updated bead ${id} metadata`);
+                }
+            } catch (e) {
+                console.error(`[Mock] Failed to parse meta value: ${valueStr}`, e);
+            }
+            return JSON.stringify({ status: 'ok' });
         }
 
         if (args.startsWith('update')) {
@@ -119,6 +145,13 @@ class MockBeadsClient extends BeadsClient {
             }
             else if (args.includes('--status in_progress')) {
                 bead.status = 'in_progress';
+            }
+
+            if (args.includes('--description')) {
+                const descMatch = args.match(/--description "((?:[^"\\]|\\.)*)"/);
+                if (descMatch && descMatch[1]) {
+                    bead.description = descMatch[1].replace(/\\"/g, '"');
+                }
             }
 
             this.beads.set(id, bead);

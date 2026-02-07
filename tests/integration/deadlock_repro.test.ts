@@ -6,10 +6,14 @@ import { rm, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { setConfig, resetConfig } from '../../src/config';
 import { clearGlobalSingleton } from '../../src/core/registry';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const execAsync = promisify(exec);
 
 // Setup test env
 const TEST_ENV = join(process.cwd(), `tests/temp_deadlock_${Date.now()}`);
-const TEST_BEADS_PATH = join(TEST_ENV, '.beads');
+const TEST_PEARLS_PATH = join(TEST_ENV, '.pearls');
 const TEST_QUEUE_PATH = join(TEST_ENV, 'queue.sqlite');
 
 describe('Deadlock Reproduction', () => {
@@ -19,9 +23,14 @@ describe('Deadlock Reproduction', () => {
 
     beforeEach(async () => {
         await rm(TEST_ENV, { recursive: true, force: true }).catch(() => { });
-        await mkdir(TEST_BEADS_PATH, { recursive: true });
+        await mkdir(TEST_ENV, { recursive: true });
 
-        beadsClient = new BeadsClient(TEST_BEADS_PATH);
+        // Pearls requires git repo
+        await execAsync('git init', { cwd: TEST_ENV });
+
+        await mkdir(TEST_PEARLS_PATH, { recursive: true });
+
+        beadsClient = new BeadsClient(TEST_PEARLS_PATH);
         await beadsClient.init();
         setBeadsInstance(beadsClient);
 
@@ -31,8 +40,12 @@ describe('Deadlock Reproduction', () => {
         setConfig({
             env: 'development',
             providers: { ollama: {} },
-            agents: { router: { provider: 'ollama', model: 'mock' }, worker: { provider: 'ollama', model: 'mock' }, gatekeeper: { provider: 'ollama', model: 'mock' }, supervisor: { provider: 'ollama', model: 'mock' } },
-            beads: { path: TEST_BEADS_PATH },
+            agents: {
+                router: { provider: 'ollama', model: 'mock' },
+                worker: { provider: 'ollama', model: 'mock' },
+                gatekeeper: { provider: 'ollama', model: 'mock' }
+            },
+            beads: { path: TEST_PEARLS_PATH },
             worker: { min_workers: 0, max_workers: 1, load_factor: 1 },
             gatekeeper: { min_workers: 0, max_workers: 1, load_factor: 1 }
         });

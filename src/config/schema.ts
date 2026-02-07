@@ -84,8 +84,8 @@ export const ConfigSchema = z.object({
 		}),
 
 	beads: z.object({
-		path: z.string().default(".beads"),
-		binary: z.string().default("bd"),
+		path: z.string().default(".pearls"),
+		binary: z.string().default("prl"),
 		autoSync: z.boolean().default(true),
 	}),
 

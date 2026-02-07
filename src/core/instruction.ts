@@ -7,6 +7,7 @@ import { getBeads } from "./beads";
 import { getFormulaRegistry } from "./formula";
 import { logger } from "./logger";
 import { MCPResourceProvider } from "./mcp-resource-provider";
+import { getGlobalSingleton } from "./registry";
 
 export interface InstructionContext {
 	role: AgentRole;
@@ -241,10 +242,6 @@ ${additions.join("\n\n---\n\n")}
 	}
 }
 
-let _instance: InstructionService | null = null;
 export function getInstructionService(): InstructionService {
-	if (!_instance) {
-		_instance = new InstructionService();
-	}
-	return _instance;
+	return getGlobalSingleton("instruction_service", () => new InstructionService());
 }
