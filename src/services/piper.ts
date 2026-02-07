@@ -111,35 +111,12 @@ export class DataPiper {
 		outputKey?: string,
 	): Promise<unknown> {
 		// 1. Find the target pearl ID.
-		// The 'stepId' in the template usually refers to the Formula Step ID,
-		// NOT the Pearl ID directly (since Pearl IDs are GUIDs).
-		// However, we don't easily know the map from Formula Step ID -> Pearl ID here
-		// unless we traverse the dependency graph or look at metadata labels.
-
-		// Strategy: look at dependencies.
 		// Use logic: "Which dependency was created from stepId?"
-		// Ideally, pearls should have a label or property `formula_step:ID`
-
-		// FALLBACK: For V1, assume specific labeling or name matching?
-		// Better: WorkflowEngine creates pearls. It should tag them?
-		// Let's assume for this implementation plan we need to find the dependency pearl.
-
-		// Let's look at block dependencies (needs).
-		const blockers = currentPearl.blockers || [];
-
-		// We need to resolve `stepId` (e.g. "generator") to a `pearlId`.
-		// The Pearl doesn't natively store "I am step 'generator'".
-		// FIX Needed: Update WorkflowEngine to add labels!
-		// But for now, we can try to search dependencies by title or description context?
-		// No, that's brittle.
-
-		// CRITICAL: We need a way to map 'stepId' to 'pearlId'.
 		// Assumption: The WorkflowEngine adds a label `step:ID`.
-		// I will add this to WorkflowEngine in the next step.
 
 		// Find dependency with label `step:{targetStepId}`
 		const dependencyId = await this.findDependencyIdByStep(
-			blockers,
+			currentPearl,
 			targetStepId,
 		);
 
@@ -167,16 +144,33 @@ export class DataPiper {
 	}
 
 	private async findDependencyIdByStep(
-		candidateIds: string[],
+		currentPearl: Pearl,
 		stepId: string,
 	): Promise<string | undefined> {
 		const pearls = getPearls();
+		const candidateIds = currentPearl.blockers || [];
+
+		// 1. Check immediate blockers
 		for (const id of candidateIds) {
 			const pearl = await pearls.get(id);
 			if (pearl.labels?.includes(`step:${stepId}`)) {
 				return id;
 			}
 		}
+
+		// 2. Deep Search: Check siblings in the same molecule (same parent)
+		if (currentPearl.parent) {
+			logger.debug(`[Piper] Shallow search failed for step:${stepId} in ${currentPearl.id}. Performing deep search...`);
+			const allPearls = await pearls.getAll();
+			const sibling = allPearls.find((p) =>
+				p.parent === currentPearl.parent &&
+				p.labels?.includes(`step:${stepId}`)
+			);
+			if (sibling) {
+				return sibling.id;
+			}
+		}
+
 		return undefined;
 	}
 }

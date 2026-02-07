@@ -153,6 +153,7 @@ export class WorkflowEngine {
 					parent: rootPearl.id,
 					description: description,
 					context: finalContext, // Merged context
+					labels: step.labels, // Pass formula-defined labels
 				});
 
 				// tag with step ID for piping AND 'molecule:cooking' to prevent premature routing

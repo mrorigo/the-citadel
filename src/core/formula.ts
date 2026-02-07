@@ -30,6 +30,7 @@ export const FormulaStepSchema = z.object({
 	// Dynamic Data Piping
 	output_schema: z.any().optional(), // Zod definition or JSON schema
 	context: z.record(z.string(), z.string()).optional(), // Input context with {{ref}} support
+	labels: z.array(z.string()).optional(), // Custom labels for the pearl
 });
 
 export const FormulaSchema = z.object({
