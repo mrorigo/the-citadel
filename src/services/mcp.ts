@@ -22,8 +22,6 @@ export class MCPService {
 	private clients: Map<string, Client> = new Map();
 	private tools: Map<string, MCPTool[]> = new Map(); // serverName -> tools
 
-	constructor() { }
-
 	async initialize(): Promise<void> {
 		const config = getConfig();
 		if (!config.mcpServers) return;
@@ -149,10 +147,10 @@ export class MCPService {
 					params: { uri },
 				},
 				ReadResourceRequestSchema,
-			)) as any;
+			)) as unknown as { contents: Array<{ text?: string; blob?: string }> };
 
-			return (result.contents as any[])
-				.map((content: any) => {
+			return result.contents
+				.map((content) => {
 					if ("text" in content && content.text) {
 						return content.text as string;
 					}
@@ -181,8 +179,8 @@ export class MCPService {
 					method: "resources/list",
 				},
 				ListResourcesRequestSchema,
-			)) as any;
-			return result.resources as unknown[];
+			)) as unknown as { resources: unknown[] };
+			return result.resources;
 		} catch (error) {
 			logger.error(`[MCP] Failed to list resources for ${serverName}:`, error);
 			return [];

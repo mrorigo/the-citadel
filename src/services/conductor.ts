@@ -10,6 +10,7 @@ import { WorkerPool } from "../core/pool";
 import { getQueue, type WorkQueue } from "../core/queue";
 import { getMCPService } from "./mcp";
 import { getPiper } from "./piper";
+import { APICallError } from "ai";
 
 export class Conductor {
 	private isRunning = false;
@@ -242,7 +243,7 @@ export class Conductor {
 
 			// Success! Reset failures
 			this.consecutiveFailures = 0;
-		} catch (error) {
+		} catch (error: unknown) {
 			this.consecutiveFailures++;
 
 			// Exponential backoff: 5s * 2^failures, max ~5m (300s)
@@ -415,10 +416,28 @@ export class Conductor {
 					pearlId: pearl.id,
 				});
 				// Ask RouterAgent to route it
-				await this.routerAgent.run(
-					`New task found: ${pearl.title}. Please route it.`,
-					{ pearlId: pearl.id, status: pearl.status },
-				);
+				try {
+					await this.routerAgent.run(
+						`New task found: ${pearl.title}. Please route it.`,
+						{ pearlId: pearl.id, status: pearl.status },
+					);
+				} catch (error: unknown) {
+					let message: string = "Unknown error";
+					if (error instanceof APICallError) {
+						message = `${error.message} :: ${error.cause}`;
+
+						logger.debug('Response debug:', {
+							headers: error.responseHeaders,
+							body: error.responseBody,
+							url: error.url,
+						}
+						);
+					}
+					logger.error(
+						`[Router] Failed to route pearl ${pearl.id}`,
+						message,
+					);
+				}
 			}
 		}
 

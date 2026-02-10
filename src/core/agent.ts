@@ -277,7 +277,7 @@ export abstract class CoreAgent {
      * - Handles tool execution manually for better control/logging
      */
     async run(prompt: string, context?: AgentContext): Promise<string> {
-        logger.info(`[${this.role}] Running...`, { role: this.role, prompt: prompt.length > 400 ? prompt.slice(0, 400) + "..." : prompt });
+        logger.info(`[${this.role}] Running...`, { role: this.role, prompt: prompt.length > 400 ? `${prompt.slice(0, 400)}...` : prompt });
 
         // Ensure MCP tools are loaded
         await this.registerBuiltinTools();
@@ -617,8 +617,8 @@ If you are still working, continue with your next step.`,
 
                     // --- AUDIT LOGGING ---
                     // Check for 'audit' field in output
-                    if (output && typeof output === 'object' && (output as any).audit) {
-                        const auditMsg = (output as any).audit;
+                    if (output && typeof output === 'object' && (output as Record<string, unknown>).audit) {
+                        const auditMsg = (output as Record<string, unknown>).audit;
                         if (typeof auditMsg === 'string') {
                             auditLogs.push(auditMsg);
                         }

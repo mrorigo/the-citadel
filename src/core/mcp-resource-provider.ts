@@ -3,15 +3,15 @@ import { getPearls } from "./pearls";
 import { getFormulaRegistry } from "./formula";
 import type { InstructionContext, InstructionProvider } from "./instruction";
 import { logger } from "./logger";
-import { getMCPService } from "../services/mcp";
+import { type MCPService, getMCPService } from "../services/mcp";
 
 export class MCPResourceProvider implements InstructionProvider {
     name = "mcp-resources";
     priority = 25; // Between Role (20) and Formula (30)
 
-    private explicitMcpService?: any;
+    private explicitMcpService?: MCPService;
 
-    constructor(mcpService?: any) {
+    constructor(mcpService?: MCPService) {
         this.explicitMcpService = mcpService;
     }
 

@@ -83,7 +83,7 @@ export const runCommandTool = {
 		}
 
 		return new Promise((resolve) => {
-			const child = spawn(command!, { shell: true });
+			const child = spawn(command, { shell: true });
 			let stdout = "";
 			let stderr = "";
 
@@ -91,8 +91,10 @@ export const runCommandTool = {
 				// Kill the process group if it hangs
 				try {
 					// On Unix, prepending '-' to the pid kills the process group
-					process.kill(-child.pid!, 'SIGTERM');
-				} catch (e) {
+					if (child.pid) {
+						process.kill(-child.pid, 'SIGTERM');
+					}
+				} catch (_e) {
 					child.kill('SIGTERM');
 				}
 
@@ -116,7 +118,7 @@ export const runCommandTool = {
 				clearTimeout(timer);
 
 				// Post-Git Sync
-				if (command!.trim().startsWith("git ")) {
+				if (command?.trim().startsWith("git ")) {
 					let autoSync = true;
 					try {
 						const config = getConfig();

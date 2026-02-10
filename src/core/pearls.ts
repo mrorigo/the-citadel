@@ -21,7 +21,7 @@ export const PearlPrioritySchema = z.any().transform((val) => {
     if (typeof val === "string") {
         const s = val.replace(/^P/, "");
         const n = parseInt(s, 10);
-        if (!isNaN(n)) return n as 0 | 1 | 2 | 3 | 4;
+        if (!Number.isNaN(n)) return n as 0 | 1 | 2 | 3 | 4;
     }
     return 2 as 0 | 1 | 2 | 3 | 4; // Default to P2
 });
@@ -171,10 +171,10 @@ export class PearlsClient {
 
     private parseRaw(output: string): Pearl {
         if (!output) throw new Error("Empty output from prl");
-        let json: any;
+        let json: Record<string, unknown>;
         try {
             json = JSON.parse(output);
-        } catch (e) {
+        } catch (_e) {
             // Find start of JSON
             const start = output.indexOf("{");
             if (start !== -1) {
@@ -224,10 +224,10 @@ export class PearlsClient {
 
     private parseRawList(output: string): Pearl[] {
         if (!output) return [];
-        let json: any;
+        let json: Record<string, unknown>;
         try {
             json = JSON.parse(output);
-        } catch (e) {
+        } catch (_e) {
             // Find start of JSON
             const start = output.indexOf("[") !== -1 ? output.indexOf("[") : output.indexOf("{");
             if (start !== -1) {
@@ -326,7 +326,7 @@ export class PearlsClient {
         }
 
         // Pearls metadata
-        let acceptance_test = raw.metadata?.acceptance_test as string | undefined;
+        const acceptance_test = raw.metadata?.acceptance_test as string | undefined;
         const type = (raw.metadata?.type || raw.metadata?.issue_type) as string | undefined;
         let context = raw.metadata?.context as Record<string, unknown> | undefined;
 
@@ -349,7 +349,7 @@ export class PearlsClient {
             id: raw.id,
             title: raw.title,
             status,
-            priority: raw.priority as any,
+            priority: raw.priority as PearlPriority,
             assignee: raw.author,
             labels: raw.labels,
             blockers,
@@ -407,7 +407,7 @@ export class PearlsClient {
         const pearl = this.parseRaw(output);
 
         // Update metadata and links
-        const updates: any = {};
+        const updates: Record<string, unknown> = {};
         if (options.acceptance_test) updates.acceptance_test = options.acceptance_test;
         if (options.type) updates.type = options.type;
         if (options.context) updates.context = options.context;
