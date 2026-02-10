@@ -237,6 +237,41 @@ program
 	});
 
 program
+	.command("queue")
+	.description("List all tickets in the work queue")
+	.option("-s, --status <status>", "Filter by status (queued, processing, completed, failed)")
+	.option("-j, --json", "Output in JSON format")
+	.action(async (options) => {
+		await loadConfig();
+		const queue = getQueue();
+		const tickets = queue.getAllTickets(options.status);
+
+		if (options.json) {
+			console.log(JSON.stringify(tickets, null, 2));
+			return;
+		}
+
+		if (tickets.length === 0) {
+			console.log("No tickets found in the queue.");
+			return;
+		}
+
+		console.log("Work Queue:");
+		console.log("=".repeat(80));
+		console.log(
+			`${"ID".padEnd(38)} | ${"Pearl ID".padEnd(20)} | ${"Status".padEnd(12)} | ${"Created At"}`,
+		);
+		console.log("-".repeat(80));
+		for (const t of tickets) {
+			const createdAt = new Date(t.created_at).toLocaleString();
+			console.log(
+				`${t.id.padEnd(38)} | ${t.pearl_id.padEnd(20)} | ${t.status.padEnd(12)} | ${createdAt}`,
+			);
+		}
+		console.log("=".repeat(80));
+	});
+
+program
 	.command("bridge")
 	.description("Start The Bridge (TUI Dashboard)")
 	.action(async () => {

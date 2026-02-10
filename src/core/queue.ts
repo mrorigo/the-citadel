@@ -360,6 +360,20 @@ export class WorkQueue {
 	}
 
 	/**
+	 * Get all tickets, optionally filtered by status
+	 */
+	getAllTickets(status?: TicketStatus): Ticket[] {
+		if (status) {
+			return this.db
+				.query("SELECT * FROM tickets WHERE status = ? ORDER BY created_at DESC")
+				.all(status) as Ticket[];
+		}
+		return this.db
+			.query("SELECT * FROM tickets ORDER BY created_at DESC")
+			.all() as Ticket[];
+	}
+
+	/**
 	 * Get count of pending (queued) tickets for a specific role
 	 */
 	getPendingCount(role: string): number {

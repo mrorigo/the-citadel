@@ -14,7 +14,7 @@ import {
 } from "./schema";
 
 // Load .env immediately
-dotenv.config();
+dotenv.config({ quiet: true });
 
 export const CONFIG_KEY = "config_cache";
 
