@@ -695,7 +695,7 @@ If you are still working, continue with your next step.`,
                 auditContent.push(auditLogs.join("\n\n"));
             }
 
-            if (auditContent.length > 0 || (finished && totalUsage.totalTokens > 0)) {
+            if (auditContent.length > 0 || totalUsage.totalTokens > 0) {
                 const parts: string[] = [];
                 if (auditContent.length > 0) {
                     parts.push(auditContent.join("\n\n"));

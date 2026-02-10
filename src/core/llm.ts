@@ -17,7 +17,7 @@ export function getAgentModel(role: AgentRole): LanguageModel {
 
     switch (provider) {
         case "openai":
-            return openai(model);
+            return openai.chat(model);
 
         case "anthropic":
             return anthropic(model);
@@ -33,7 +33,7 @@ export function getAgentModel(role: AgentRole): LanguageModel {
                 apiKey: config.providers.ollama.apiKey,
             });
 
-            return ollama(model);
+            return ollama.chat(model);
         }
 
         default:
