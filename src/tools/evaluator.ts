@@ -31,7 +31,12 @@ export const createApproveWorkTool = (_context: AgentContext) => {
                 status: "done",
                 acceptance_test: finalTest,
             });
-            return { success: true, message: `Approved work for ${pearlId}` };
+            const audit = `**Work Approved**\n\n${feedback || "No feedback provided."}`;
+            return {
+                success: true,
+                message: `Approved work for ${pearlId}`,
+                audit,
+            };
         },
     });
 };
@@ -63,9 +68,12 @@ export const createRejectWorkTool = (_context: AgentContext) => {
                 labels: Array.from(labels),
             });
 
+            const audit = `**Work Rejected**\n\nReason: ${args.reason}\nFeedback: ${args.feedback}`;
+
             return {
                 success: true,
                 message: `Rejected work for ${pearlId}. Sent back to worker.`,
+                audit,
             };
         },
     });
@@ -95,7 +103,13 @@ export const createFailWorkTool = (_context: AgentContext) => {
                 labels: Array.from(labels),
             });
 
-            return { success: true, message: `Marked ${pearlId} as failed` };
+            const audit = `**Work Failed**\n\nReason: ${args.reason}`;
+
+            return {
+                success: true,
+                message: `Marked ${pearlId} as failed`,
+                audit,
+            };
         },
     });
 };

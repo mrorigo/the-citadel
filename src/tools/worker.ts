@@ -117,11 +117,14 @@ export const createSubmitWorkTool = (
                 status: "verify",
             });
 
+            const audit = `**Work Submitted**\n\n${summary}\n\n\`\`\`json\n${JSON.stringify(output || {}, null, 2)}\n\`\`\``;
+
             return {
                 success: true,
                 status: "verify",
                 summary,
                 message: "Work submitted successfully.",
+                audit,
             };
         },
     });

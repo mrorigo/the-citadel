@@ -41,9 +41,11 @@ export const createEnqueueTaskTool = (_context: AgentContext) => {
                 const active = getQueue().getActiveTicket(pearlId);
                 if (active) {
                     if (active.target_role === args.queue) {
+                        const audit = `**Routed to ${args.queue} (Already Active)**\n\nTask was already in queue (ticket ${active.id}).\nReasoning: ${args.reasoning}`;
                         return {
                             success: true,
                             message: `Pearl ${pearlId} is already in ${args.queue} queue (ticket ${active.id})`,
+                            audit,
                         };
                     }
                     return {
@@ -53,9 +55,11 @@ export const createEnqueueTaskTool = (_context: AgentContext) => {
                 }
 
                 getQueue().enqueue(pearlId, args.priority ?? 2, args.queue);
+                const audit = `**Routed to ${args.queue}**\n\n${args.reasoning}`;
                 return {
                     success: true,
                     message: `Enqueued ${pearlId} to ${args.queue}`,
+                    audit,
                 };
             } catch (error: unknown) {
                 const err = error as Error;

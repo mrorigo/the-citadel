@@ -324,6 +324,10 @@ export abstract class CoreAgent {
             totalTokens: 0,
         };
 
+        // Audit Log Collection
+        const auditLogs: string[] = [];
+        let finished = false;
+
         // Max steps 50 to prevent infinite loops but allow complex tasks
         for (let i = 0; i < 50; i++) {
             // Prune History
@@ -434,7 +438,9 @@ If you are still working, continue with your next step.`,
 
             // Execute tools
             const toolResults: ToolResultPart[] = [];
-            let finished = false;
+            // Reset finished state for this turn (or maybe not? Logic check: finished breaks loop anyway.
+            // But we promoted 'finished' to outer scope. If we set it true here, we break.
+            // Wait, we need to ensure we don't re-declare it.
 
             for (const tc of toolCalls) {
                 logger.info(`[${this.role}] Executing tool: ${tc.toolName}`, {
@@ -609,6 +615,16 @@ If you are still working, continue with your next step.`,
                         completionToolCalled = true;
                     }
 
+                    // --- AUDIT LOGGING ---
+                    // Check for 'audit' field in output
+                    if (output && typeof output === 'object' && (output as any).audit) {
+                        const auditMsg = (output as any).audit;
+                        if (typeof auditMsg === 'string') {
+                            auditLogs.push(auditMsg);
+                        }
+                    }
+                    // ---------------------
+
                     // --- TRUNCATION LOGIC ---
                     let toolOutputValue = typeof output === "string" ? output : JSON.stringify(output);
 
@@ -671,16 +687,45 @@ If you are still working, continue with your next step.`,
 
 
         // Report Token Usage if linked to a pearl
+        // Combine Audit Logs + Token Usage and Post Comment
         if (context?.pearlId) {
-            try {
-                const summary = `**Agent Execution Summary**\n- **Role**: ${this.role}\n- **Input Tokens**: ${totalUsage.inputTokens}\n- **Output Tokens**: ${totalUsage.outputTokens}\n- **Total Tokens**: ${totalUsage.totalTokens}`;
-                // Usage injected client or global singleton
-                const client = this.pearlsClient || getPearls();
-                client.addComment(context.pearlId, summary).catch(err => {
-                    logger.warn(`[${this.role}] Failed to report token usage to pearl ${context.pearlId}`, { error: err });
-                });
-            } catch (err) {
-                logger.warn(`[${this.role}] Error preparing token usage report`, { error: err });
+            const auditContent: string[] = [];
+
+            if (auditLogs.length > 0) {
+                auditContent.push(auditLogs.join("\n\n"));
+            }
+
+            if (auditContent.length > 0 || (finished && totalUsage.totalTokens > 0)) {
+                const parts: string[] = [];
+                if (auditContent.length > 0) {
+                    parts.push(auditContent.join("\n\n"));
+                }
+
+                // Append usage stats (collapsed)
+                if (totalUsage.totalTokens > 0) {
+                    parts.push(
+                        `
+<details>
+<summary>Agent Usage Stats (${this.role})</summary>
+
+- **Input Tokens**: ${totalUsage.inputTokens}
+- **Output Tokens**: ${totalUsage.outputTokens}
+- **Total Tokens**: ${totalUsage.totalTokens}
+</details>`.trim()
+                    );
+                }
+
+                const finalComment = parts.join("\n\n---\n\n");
+
+                try {
+                    const client = this.pearlsClient || getPearls();
+                    // Run in background to not block agent loop
+                    client.addComment(context.pearlId, finalComment).catch(err => {
+                        logger.warn(`[${this.role}] Failed to post audit comment to pearl ${context.pearlId}`, { error: err });
+                    });
+                } catch (err) {
+                    logger.warn(`[${this.role}] Error preparing audit comment`, { error: err });
+                }
             }
         }
 

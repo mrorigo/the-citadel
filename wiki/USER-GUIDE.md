@@ -202,7 +202,32 @@ When submitting your plan (via `submit_work`), you **MUST** include a `verificat
 
 Workers handling `tag:planning` tasks are thus "primed" to provide the structured output the Gatekeeper demands.
 
-### 8. Structured Data Flow
+### 8. Audit Logging & Observability
+The Citadel ensures transparency by automatically logging critical agent actions directly to the Pearl's history.
+
+**What gets logged?**
+- **Routing Decisions**: When the Router assigns a task, it logs the reasoning and target queue.
+- **Work Submissions**: When a Worker submits a task, the summary and structured output are logged.
+- **Verification Results**: When a Gatekeeper approves or rejects work, the decision and feedback are logged.
+- **Token Usage**: Every agent run includes a collapsed "Agent Usage Stats" section detailing token consumption.
+
+**Example Audit Log:**
+```markdown
+**Routed to worker**
+
+Task has status 'open', routing to worker queue for implementation.
+Reasoning: The user requested a new feature implementation.
+
+---
+
+**Agent Usage Stats (router)**
+
+- **Input Tokens**: 1584
+- **Output Tokens**: 103
+- **Total Tokens**: 1687
+```
+
+### 9. Structured Data Flow
 The Citadel supports passing rich data between steps, enabling complex chaining and branching.
 
 **Input (Context):**
@@ -237,7 +262,7 @@ context = { target = "{{steps.scout.output.coordinates}}" }
 
 ## Advanced: Creating a New Formula
 
-### 9. Writing Formulas
+### 10. Writing Formulas
 
 1.  Create a file in `.citadel/formulas/my_workflow.toml`.
 2.  Define `vars` for any inputs you need.
@@ -246,7 +271,7 @@ context = { target = "{{steps.scout.output.coordinates}}" }
 
 The Router will automatically discover the new formula on its next cycle.
 
-### 10. Smart Molecules
+### 11. Smart Molecules
 Formulas support advanced logic like **Conditions**, **Loops**, and **Resilient Recovery**.
 
 ```toml
