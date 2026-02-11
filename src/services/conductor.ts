@@ -1,5 +1,4 @@
 import { EvaluatorAgent } from "../agents/evaluator";
-import { RouterAgent } from "../agents/router";
 import { WorkerAgent } from "../agents/worker";
 import { getConfig } from "../config";
 import type { CitadelConfig } from "../config/schema";
@@ -14,7 +13,6 @@ import { APICallError } from "ai";
 
 export class Conductor {
 	private isRunning = false;
-	private routerAgent = new RouterAgent();
 	private routerTimer: Timer | null = null;
 	private consecutiveFailures = 0;
 	private config: CitadelConfig;
@@ -25,7 +23,6 @@ export class Conductor {
 
 	private pearls: PearlsClient;
 	private queue: WorkQueue;
-	private recentlyRouted = new Map<string, number>();
 
 	constructor(
 		pearls?: PearlsClient,
@@ -321,7 +318,7 @@ export class Conductor {
 		for (const pearl of readyPearls) {
 			const active = queue.getActiveTicket(pearl.id);
 			if (!active) {
-				// Double-check: ensure pearl is STILL open (race condition protect)
+				// Double-check: ensure pearl is STILL open
 				const fresh = await pearlsClient.get(pearl.id);
 				if (fresh.status !== "open") {
 					logger.info(
@@ -347,7 +344,7 @@ export class Conductor {
 					continue;
 				}
 
-				// Race Condition Fix: Double check blockers
+				// Double check blockers
 				if (fresh.blockers && fresh.blockers.length > 0) {
 					const blockers = await Promise.all(
 						fresh.blockers.map((id) => pearlsClient.get(id)),
@@ -413,83 +410,51 @@ export class Conductor {
 					}
 				}
 
-				logger.info(`[Router] Found ready pearl: ${pearl.id}`, {
+				// Final TOCTOU check before enqueuing
+				const stillNoTicket = queue.getActiveTicket(pearl.id);
+				if (stillNoTicket) {
+					logger.debug(
+						`[Router] Pearl ${pearl.id} already has ticket (race avoided)`,
+						{ pearlId: pearl.id },
+					);
+					continue;
+				}
+
+				logger.info(`[Router] Routing pearl ${pearl.id} to worker`, {
 					pearlId: pearl.id,
 				});
-				// Ask RouterAgent to route it
-				try {
-					await this.routerAgent.run(
-						`New task found: ${pearl.title}. Please route it.`,
-						{ pearlId: pearl.id, status: pearl.status },
-					);
-				} catch (error: unknown) {
-					let message: string = "Unknown error";
-					if (error instanceof APICallError) {
-						message = `${error.message} :: ${error.cause}`;
 
-						logger.debug('Response debug:', {
-							headers: error.responseHeaders,
-							body: error.responseBody,
-							url: error.url,
-						}
-						);
-					}
-					logger.error(
-						`[Router] Failed to route pearl ${pearl.id}`,
-						message,
-					);
-				}
+				// Deterministic routing: open -> worker
+				queue.enqueue(pearl.id, currentPearl.priority, "worker");
 			}
 		}
 
 		// B. Get VERIFY pearls -> Send to Gatekeeper
-		// Note: 'verify' is mapped to in_progress + label 'verify' in our pearls client logic?
 		const verifyPearls = await pearlsClient.list("verify");
 		for (const pearl of verifyPearls) {
-			// Fix 2: Router-Level Deduplication Cache
-			const lastRouted = this.recentlyRouted.get(pearl.id);
-			if (lastRouted && Date.now() - lastRouted < 10000) {
-				logger.debug(
-					`[Router] Skipping ${pearl.id} (recently routed)`,
-					{ pearlId: pearl.id }
-				);
-				continue;
-			}
-
 			const active = queue.getActiveTicket(pearl.id);
 			if (!active) {
-				// OPTIMISTIC LOCK: Mark as routed immediately to prevent concurrent cycles from picking it up
-				// while we await the async checks.
-				this.recentlyRouted.set(pearl.id, Date.now());
-
 				const fresh = await pearlsClient.get(pearl.id);
 				if (fresh.status !== "verify") {
-					this.recentlyRouted.delete(pearl.id); // Rollback lock
 					continue;
 				}
 
-				// Fix 3: Pre-LLM Queue State Verification (TOCTOU protection)
+				// Final TOCTOU check before enqueuing
 				const stillNoTicket = queue.getActiveTicket(pearl.id);
 				if (stillNoTicket) {
 					logger.debug(
 						`[Router] Pearl ${pearl.id} already has ticket (race avoided)`,
 						{ pearlId: pearl.id }
 					);
-					// Note: We leave the cache entry to prevent immediate retry
-					// (essentially penalizing this race condition)
 					continue;
 				}
 
-				logger.info(`[Router] Found unassigned verify pearl: ${pearl.id}`, {
+				logger.info(`[Router] Routing pearl ${pearl.id} to gatekeeper`, {
 					pearlId: pearl.id,
 				});
 
-				// (Lock already held)
-
-				await this.routerAgent.run(
-					`Task ready for verification: ${pearl.title}. Please route to gatekeeper.`,
-					{ pearlId: pearl.id, status: pearl.status },
-				);
+				// Deterministic routing: verify -> gatekeeper
+				queue.enqueue(pearl.id, fresh.priority, "gatekeeper");
 			} else {
 				// CLEANUP: Check for Zombie Worker Ticket
 				// If pearl is 'verify' but active ticket is 'worker' (processing or queued), the worker is effectively done/stuck.
@@ -514,13 +479,6 @@ export class Conductor {
 					}
 					// Continue to next cycle to pick it up as free
 				}
-			}
-		}
-
-		// Cleanup old cache entries
-		for (const [id, timestamp] of this.recentlyRouted.entries()) {
-			if (Date.now() - timestamp > 30000) {
-				this.recentlyRouted.delete(id);
 			}
 		}
 	}
