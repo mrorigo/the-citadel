@@ -20,12 +20,12 @@ stateDiagram-v2
     done --> [*]
 ```
 
-| Status            | Description                                                                                                                                          |
-| :---------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Status            | Description                                                                                                                                           |
+| :---------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **`open`**        | The task is defined and ready for execution (provided dependencies are met). <br/> *Note: Pearls with `molecule:cooking` are hidden from the Router.* |
-| **`in_progress`** | A **Worker Agent** has actively claimed the task and is executing it.                                                                                |
-| **`verify`**      | The Worker has submitted the work. It is now waiting for a **Gatekeeper** (Evaluator) to review it.                                                  |
-| **`done`**        | The task has been successfully completed and verified.                                                                                               |
+| **`in_progress`** | A **Worker Agent** has actively claimed the task and is executing it.                                                                                 |
+| **`verify`**      | The Worker has submitted the work. It is now waiting for a **Gatekeeper** (Evaluator) to review it.                                                   |
+| **`done`**        | The task has been successfully completed and verified.                                                                                                |
 
 ## State Validation & Persistence Guard
 
@@ -153,7 +153,7 @@ sequenceDiagram
 | **Worker No-Op**           | Conductor Worker Hook (post-run logic)     | Rollback to open | `open` + `agent-incomplete`       |
 | **Gatekeeper Crash**       | Conductor Gatekeeper Hook (try/catch)      | Log error        | `verify` + `evaluator-error`      |
 | **Gatekeeper No-Op**       | Conductor Gatekeeper Hook (post-run logic) | Flag for retry   | `verify` + `evaluator-incomplete` |
-| **Stuck in `in_progress`** | Router (stuck pearl recovery)               | Reset to open    | `open` + `auto-recovered`         |
+| **Stuck in `in_progress`** | Router (stuck pearl recovery)              | Reset to open    | `open` + `auto-recovered`         |
 | **Gatekeeper Rejection**   | EvaluatorAgent (`reject_work`)             | Reset to open    | `open` + `rejected`               |
 
 This robust state machine ensures that **no task is ever left behind** (Zombified), regardless of LLM stability or runtime errors.
@@ -176,10 +176,12 @@ Citadel uses labels as semantic modifiers to the 4 primary states. This creates 
 - **`open` + `rejected`**: A task that was rejected by the Gatekeeper and is pending rework by a Worker.
 - **`open` + `auto-recovered`**: A task that was stuck in `in_progress` with no active ticket and was automatically reset by the Router.
 
-### 2. Race Condition Mitigation
-The transition from `open` to `in_progress` is technically a race condition.
-- **The Gap**: The Router fetches a pearl as `open` and enqueues it. Between enqueuing and the Worker Hook claiming the ticket, the pearl status could change.
-- **The Fix**: The Conductor implements a **Double-Check** inside the Worker Hook. Before invoking the agent, it re-fetches the pearl from the database. If the status is no longer `open`, the hook exits without processing.
+### 2. Deterministic Routing
+The Conductor routes pearls based on their status without requiring LLM inference:
+-   **`open` status** → `worker` queue (uses pearl's priority field)
+-   **`verify` status** → `gatekeeper` queue (uses pearl's priority field)
+
+This deterministic routing is **synchronous** and eliminates race conditions that previously existed with async LLM calls. The only remaining check is a final TOCTOU (Time-of-Check to Time-of-Use) verification before enqueuing to ensure no ticket was created between checks.
 
 ### 3. Verification Retry Loops
 When a Gatekeeper fails (e.g., `evaluator-incomplete`), the pearl remains in `verify`.

@@ -28,6 +28,14 @@ While the system uses singletons for runtime convenience (via `src/core/registry
     - System prompt
     - The most recent `tool-call` / `tool-result` pairs (to avoid hanging tool calls).
 
+### 4. Deterministic Routing
+The Conductor uses **deterministic routing** based on pearl status, eliminating the need for LLM-based routing decisions:
+- **`open` pearls** → Routed to `worker` queue
+- **`verify` pearls** → Routed to `gatekeeper` queue
+- **Priority**: Uses the pearl's `priority` field (0-4) directly from the Pearls database.
+
+This approach is synchronous, fast, and eliminates race conditions that previously existed with async Router Agent calls.
+
 ## 🧪 Testing Strategy (Non-Obvious patterns)
 
 ### 1. Registry & Singleton Isolation

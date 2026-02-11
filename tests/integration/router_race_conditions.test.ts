@@ -62,10 +62,10 @@ describe("Router Race Conditions", () => {
                 title,
                 status: options.status || "open",
                 type: options.type || "task",
+                priority: options.priority || 2,
                 labels: options.labels || [],
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-                //... other fields
             };
             this.pearls.set(id, pearl);
             return pearl;
@@ -91,14 +91,7 @@ describe("Router Race Conditions", () => {
             const pearl = await this.get(id);
             const updated = { ...pearl, ...changes, updated_at: new Date().toISOString() };
 
-            // Handle label addition logic simply
             if (changes.labels) {
-                // In real client, update accepts labels to ADD.
-                // Here we just replace or merge? 
-                // The real client uses --add-label.
-                // But Conductor passes { labels: [...] } which usually means overwrite or append?
-                // Conductor usage: labels: [...(current.labels || []), "new-label"]
-                // So it passes Key-Value pair as replacement in the object.
                 updated.labels = changes.labels;
             }
 
@@ -127,44 +120,40 @@ describe("Router Race Conditions", () => {
         mock.restore();
     });
 
-    test("should not route verify pearl twice within 10 seconds", async () => {
-        // Create a pearl in verify status
+    test("should route verify pearl deterministically to gatekeeper", async () => {
         // Create a pearl in verify status
         const pearl = await pearls.create("Test Verification Task", {
             status: "verify",
             type: "task",
+            priority: 1,
         });
         const pearlId = pearl.id;
 
-        // Mock router agent run to avoid actual LLM calls
-        conductor["routerAgent"].run = mock(async (prompt, context) => {
-            // Artificial delay to simulate LLM latency and increase race window
-            await new Promise(r => setTimeout(r, 100));
-            queue.enqueue(context.pearlId, 2, "gatekeeper");
-            return "Routed to gatekeeper";
-        });
+        // Spy on queue.enqueue to verify it's called
+        const originalEnqueue = queue.enqueue.bind(queue);
+        const enqueueSpy = mock(originalEnqueue);
+        queue.enqueue = enqueueSpy;
 
-        // Run two cycles "concurrently"
-        // Without the fix, both might pass the checks and call run()
-        const p1 = conductor["cycleRouter"]();
-        const p2 = conductor["cycleRouter"]();
+        // Run cycle
+        await conductor["cycleRouter"]();
 
-        await Promise.all([p1, p2]);
-
-        // Verify successful routing happened exactly once
-        expect(conductor["routerAgent"].run).toHaveBeenCalledTimes(1);
+        // Verify enqueue was called with correct parameters (deterministic routing)
+        expect(enqueueSpy).toHaveBeenCalledTimes(1);
+        expect(enqueueSpy).toHaveBeenCalledWith(pearlId, 1, "gatekeeper");
     });
 
-    // Helper to simulate TOCTOU
     test("should detect ticket created between checks (TOCTOU)", async () => {
         const pearl = await pearls.create("Test TOCTOU", {
             status: "verify",
             type: "task",
+            priority: 2,
         });
         const pearlId = pearl.id;
 
-        // Mock router agent
-        conductor["routerAgent"].run = mock(async () => "Routed");
+        // Spy on queue.enqueue
+        const originalEnqueue = queue.enqueue.bind(queue);
+        const enqueueSpy = mock(originalEnqueue);
+        queue.enqueue = enqueueSpy;
 
         // Simulate race condition: ticket created between checks
         let checkCount = 0;
@@ -175,34 +164,41 @@ describe("Router Race Conditions", () => {
                 // First check: no ticket
                 return null;
             } else if (checkCount === 2) {
-                // Second check (the one we will add): ticket appeared (race condition simulated)
-                // We inject a ticket now
-                const ticketId = "race-ticket";
-                // We can't easily inject into sqlite mid-transaction if specific lock, but here it's fine
-                // But better to just mock return
+                // Second check (TOCTOU protection): ticket appeared
                 return { id: "race-ticket", status: "queued" } as any;
             }
             return originalGetActiveTicket(id);
         };
 
-        // This test *SHOULD FAIL* before we implement the Fix 3 (double check)
-        // Because current code only checks once.
-        // Actually, if we only check once, we won't even trigger the second check logic we plan to add.
-        // So this test is designed to verifying the *fix*, not strictly reproducing the failure 
-        // unless we assert that "routerAgent.run" was NOT called.
-
-        // If we run this on CURRENT code:
-        // checkCount=1 (returns null) -> proceeds to routerAgent.run()
-        // routerAgent.run called -> FAIL (we want it to skip)
-
         await conductor["cycleRouter"]();
 
-        // With current code, this expect should FAIL (it will be called 1 time)
-        // With fix, it should PASS (called 0 times)
-        expect(conductor["routerAgent"].run).toHaveBeenCalledTimes(0);
+        // With TOCTOU protection, enqueue should NOT be called
+        expect(enqueueSpy).toHaveBeenCalledTimes(0);
 
         // Restore
         queue.getActiveTicket = originalGetActiveTicket;
+    });
+
+    test("should route OPEN pearl deterministically to worker", async () => {
+        // Create a pearl in OPEN status
+        const pearl = await pearls.create("Test Open Task", {
+            status: "open",
+            type: "task",
+            priority: 3,
+        });
+        const pearlId = pearl.id;
+
+        // Spy on queue.enqueue
+        const originalEnqueue = queue.enqueue.bind(queue);
+        const enqueueSpy = mock(originalEnqueue);
+        queue.enqueue = enqueueSpy;
+
+        // Run cycle
+        await conductor["cycleRouter"]();
+
+        // Verify enqueue was called with correct parameters (deterministic routing)
+        expect(enqueueSpy).toHaveBeenCalledTimes(1);
+        expect(enqueueSpy).toHaveBeenCalledWith(pearlId, 3, "worker");
     });
 
 });
