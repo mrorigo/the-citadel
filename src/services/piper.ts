@@ -128,7 +128,18 @@ export class DataPiper {
 		}
 
 		const queue = getQueue();
-		const output = await queue.getOutput(dependencyId);
+
+		// Try getting output from Pearl metadata first (Canonical Source)
+		// This avoids the issue where Gatekeeper tickets (which return null output)
+		// shadow the actual Worker ticket output in the Queue.
+		const targetPearl = await getPearls().get(dependencyId);
+		let output = targetPearl.output;
+
+		// Fallback to Queue (Legacy/Retry support)
+		if (!output) {
+			output = await queue.getOutput(dependencyId);
+		}
+
 		if (!output) return null;
 
 		if (!outputKey) return output;

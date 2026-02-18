@@ -66,6 +66,7 @@ export const PearlSchema = z.object({
     type: z.string().optional(), // Added type field
     description: z.string().optional(),
     context: z.record(z.string(), z.unknown()).optional(),
+    output: z.unknown().optional(), // New field
     created_at: z.string(),
     updated_at: z.string(),
 });
@@ -329,6 +330,7 @@ export class PearlsClient {
         const acceptance_test = raw.metadata?.acceptance_test as string | undefined;
         const type = (raw.metadata?.type || raw.metadata?.issue_type) as string | undefined;
         let context = raw.metadata?.context as Record<string, unknown> | undefined;
+        const output = raw.metadata?.output;
 
         // Fallback for context from description frontmatter (backward compat)
         let description = raw.description || undefined;
@@ -358,6 +360,7 @@ export class PearlsClient {
             type,
             description,
             context,
+            output,
             created_at: typeof raw.created_at === "number" ? new Date(raw.created_at * 1000).toISOString() : raw.created_at,
             updated_at: typeof raw.updated_at === "number" ? new Date(raw.updated_at * 1000).toISOString() : raw.updated_at,
         };
@@ -530,6 +533,11 @@ export class PearlsClient {
         if (changes.context) {
             const valStr = JSON.stringify(changes.context);
             await this.runCommand(["meta", "set", id, "context", valStr, "--format", "json"]);
+        }
+
+        if (changes.output !== undefined) {
+            const valStr = JSON.stringify(changes.output);
+            await this.runCommand(["meta", "set", id, "output", valStr, "--format", "json"]);
         }
 
         if (!output) return this.get(id);

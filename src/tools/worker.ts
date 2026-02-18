@@ -115,6 +115,7 @@ export const createSubmitWorkTool = (
 
             await getPearls().update(pearlId, {
                 status: "verify",
+                output: output || { summary },
             });
 
             const audit = `**Work Submitted**\n\n${summary}\n\n\`\`\`json\n${JSON.stringify(output || {}, null, 2)}\n\`\`\``;
