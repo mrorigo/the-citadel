@@ -3,7 +3,7 @@ import { createOpenAI, openai } from "@ai-sdk/openai";
 import type { LanguageModel } from "ai";
 import { getConfig } from "../config";
 
-type AgentRole = "router" | "worker" | "gatekeeper";
+type AgentRole = "worker" | "gatekeeper";
 
 export function getAgentModel(role: AgentRole): LanguageModel {
     const config = getConfig();

@@ -13,10 +13,6 @@ export default defineConfig({
 
     // Per-agent model configuration
     agents: {
-        router: {
-            provider: 'ollama',
-            model: 'gpt-oss:20b-cloud',
-        },
         worker: {
             provider: 'ollama',
             model: 'gpt-oss:120b-cloud',

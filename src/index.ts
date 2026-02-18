@@ -58,7 +58,6 @@ export default {
         },
     },
     agents: {
-        router: { provider: 'ollama', model: 'llama3:8b' },
         worker: { 
             provider: 'ollama', 
             model: 'llama3:8b',

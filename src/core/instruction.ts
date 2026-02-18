@@ -74,18 +74,6 @@ You have access to the \`filesystem\` MCP server tools.
 `;
 		}
 
-		if (ctx.role === "router") {
-			return `
-# Routing Mode
-You are the Router Agent. Your purpose is to route tasks to the correct agent queue.
-
-# Routing Rules (CRITICAL)
-- Tasks with status='open' → enqueue_task with queue='worker'
-- Tasks with status='verify' → enqueue_task with queue='gatekeeper'
-- ALWAYS specify the queue parameter explicitly in enqueue_task
-`;
-		}
-
 		if (ctx.role === "gatekeeper") {
 			return `
 # Verification Mode
@@ -217,10 +205,12 @@ export class InstructionService {
 	): Promise<string> {
 		const additions: string[] = [];
 
+		logger.debug(`[InstructionService] Building prompt for role ${ctx.role} with base prompt of ${basePrompt.length} chars`);
 		for (const provider of this.providers) {
 			try {
 				const instructions = await provider.getInstructions(ctx);
 				if (instructions) {
+					logger.debug(`[InstructionService] Provider ${provider.name} added instructions ${instructions.length} chars`);
 					additions.push(instructions);
 				}
 			} catch (err) {
@@ -233,12 +223,14 @@ export class InstructionService {
 
 		if (additions.length === 0) return basePrompt;
 
-		return `
+		const finalPrompt = `
 ${basePrompt}
 
 # ADDITIONAL INSTRUCTIONS
 ${additions.join("\n\n---\n\n")}
 `;
+		logger.debug(`[InstructionService] Final prompt ${finalPrompt.length} chars`);
+		return finalPrompt;
 	}
 }
 

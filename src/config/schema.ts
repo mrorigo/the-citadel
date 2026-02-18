@@ -23,12 +23,6 @@ export const ConfigSchema = z.object({
 	}),
 
 	agents: z.object({
-		router: z.object({
-			provider: z.enum(["openai", "anthropic", "ollama"]),
-			model: z.string(),
-			mcpTools: z.array(z.string()).optional(), // Format: ["server:tool", "server:*"]
-			mcpResources: z.record(z.string(), z.array(z.string())).optional(),
-		}),
 		worker: z.object({
 			provider: z.enum(["openai", "anthropic", "ollama"]),
 			model: z.string(),
@@ -79,7 +73,7 @@ export const ConfigSchema = z.object({
 		})
 		.default({
 			min_workers: 1,
-			max_workers: 5,
+			max_workers: 3,
 			load_factor: 1.0,
 		}),
 
