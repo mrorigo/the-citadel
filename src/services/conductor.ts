@@ -125,7 +125,7 @@ export class Conductor {
 						const agent = new EvaluatorAgent();
 						const pearl = await this.pearls.get(ticket.pearl_id);
 
-						const submittedWork = this.queue.getOutput(ticket.pearl_id);
+						const submittedWork = pearl.output || this.queue.getOutput(ticket.pearl_id);
 
 						if (!submittedWork) {
 							logger.warn(
