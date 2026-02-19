@@ -330,6 +330,27 @@ export class Conductor {
 
 				// Skip container/epic pearls - they are for organizational purposes only
 				if (fresh.type === "epic") {
+					// Check for Auto-Close
+					if (this.config.gatekeeper.auto_close_epics) {
+						if (fresh.blockers && fresh.blockers.length > 0) {
+							const blockers = await Promise.all(
+								fresh.blockers.map((id) => pearlsClient.get(id))
+							);
+							const allDone = blockers.every((b) => b.status === "done");
+							if (allDone) {
+								logger.info(
+									`[Router] Auto-closing Epic ${pearl.id} (all subtasks completed)`,
+									{ pearlId: pearl.id }
+								);
+								await pearlsClient.update(pearl.id, {
+									status: "done",
+									acceptance_test: "Auto-closed: All subtasks completed.",
+								});
+								continue;
+							}
+						}
+					}
+
 					logger.info(`[Router] Skipping container/epic pearl ${pearl.id}`, {
 						pearlId: pearl.id,
 					});

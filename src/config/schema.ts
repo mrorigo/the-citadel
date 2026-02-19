@@ -70,11 +70,13 @@ export const ConfigSchema = z.object({
 			min_workers: z.number().default(1),
 			max_workers: z.number().default(5),
 			load_factor: z.number().default(1.0),
+			auto_close_epics: z.boolean().default(false),
 		})
 		.default({
 			min_workers: 1,
 			max_workers: 3,
 			load_factor: 1.0,
+			auto_close_epics: false,
 		}),
 
 	pearls: z.object({
