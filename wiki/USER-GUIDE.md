@@ -347,6 +347,7 @@ Settings for agents processing standard tasks.
 Settings for agents verifying tasks.
 
 *   **`min_workers`**, **`max_workers`**, **`load_factor`**: Same logic as worker pool.
+*   **`auto_close_epics`**: Automatically close Epic pearls when all subtasks are completed (default: false).
 
 ```typescript
 worker: {
@@ -357,7 +358,8 @@ worker: {
 },
 gatekeeper: {
     min_workers: 1,
-    max_workers: 3
+    max_workers: 3,
+    auto_close_epics: true
 }
 ```
 

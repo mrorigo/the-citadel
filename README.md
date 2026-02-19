@@ -11,7 +11,7 @@ Use The Citadel for complex, multi-step objectives: **building software features
 ## Installation
 
 ```bash
-npm install the-citadel@0.0.1
+npm install the-citadel@0.8.4
 ```
 
 ---
@@ -34,7 +34,7 @@ npm install the-citadel@0.0.1
 
 ```bash
 # 1️⃣ Install globally
-npm install -g the-citadel@0.0.1
+npm install -g the-citadel@0.8.4
 
 # 2️⃣ Bootstrap a new project
 citadel init   # creates .citadel/ + config + sample formula
