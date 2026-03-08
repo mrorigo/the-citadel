@@ -154,6 +154,7 @@ export class WorkflowEngine {
 					description: description,
 					context: finalContext, // Merged context
 					labels: step.labels, // Pass formula-defined labels
+					assignee: step.agent, // Assign specific agent role if defined
 				});
 
 				// tag with step ID for piping AND 'molecule:cooking' to prevent premature routing

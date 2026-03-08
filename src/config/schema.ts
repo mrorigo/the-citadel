@@ -100,6 +100,10 @@ export const ConfigSchema = z.object({
 		maxToolResponseSize: 50000,
 		maxMessageSize: 100000,
 	}),
+
+	hooks: z.object({
+		onPearlDone: z.any().optional(), // typed as (pearl: Pearl) => Promise<void> in intersection or usage
+	}).optional(),
 });
 
 export type CitadelConfig = z.infer<typeof ConfigSchema>;

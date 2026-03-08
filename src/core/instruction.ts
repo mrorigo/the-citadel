@@ -29,7 +29,30 @@ export class GlobalProvider implements InstructionProvider {
 	name = "global";
 	priority = 10;
 
-	async getInstructions(_ctx: InstructionContext): Promise<string | null> {
+	async getInstructions(ctx: InstructionContext): Promise<string | null> {
+		// 1. Attempt to read specific agent file based on assignee
+		if (ctx.pearlId) {
+			try {
+				const pearl = await getPearls().get(ctx.pearlId);
+				if (pearl.assignee) {
+					const agentPath = resolve(process.cwd(), `agents/${pearl.assignee}.md`);
+					if (existsSync(agentPath)) {
+						const content = await readFile(agentPath, "utf-8");
+						return `
+# AGENT ROLE: ${pearl.assignee.toUpperCase()}
+You are acting as ${pearl.assignee}. Follow these specific instructions and style guidelines:
+
+## Role Configuration
+${content}
+`;
+					}
+				}
+			} catch (err) {
+				logger.warn(`[GlobalProvider] Error fetching assignee prompt for ${ctx.pearlId}: ${err}`);
+			}
+		}
+
+		// 2. Fallback to Project-wide AGENTS.md
 		const projectContext = await getProjectContext().resolveContext(
 			process.cwd(),
 			process.cwd(),

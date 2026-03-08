@@ -540,8 +540,26 @@ export class PearlsClient {
             await this.runCommand(["meta", "set", id, "output", valStr, "--format", "json"]);
         }
 
-        if (!output) return this.get(id);
-        return this.parseRaw(output);
+        let finalPearl: Pearl;
+        if (!output) {
+            finalPearl = await this.get(id);
+        } else {
+            finalPearl = this.parseRaw(output);
+        }
+
+        // --- Lifecycle Hooks ---
+        if (changes.status === "done" && current?.status !== "done") {
+            try {
+                const config = getConfig();
+                if (config.hooks?.onPearlDone) {
+                    await config.hooks.onPearlDone(finalPearl);
+                }
+            } catch (err) {
+                logger.error(`[Pearls] Error executing onPearlDone hook for ${id}:`, err);
+            }
+        }
+
+        return finalPearl;
     }
 
     private validateTransition(current: Pearl, next: PearlStatus) {
