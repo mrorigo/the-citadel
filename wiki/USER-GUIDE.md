@@ -147,13 +147,14 @@ When an agent executes a tool (like `submit_work` or `report_progress`), the sys
 You can "teach" agents about your specific project by placing rules in your repository. The Citadel uses a tiered **Instruction Discovery Service** to build agent prompts dynamically.
 
 #### The Instruction Hierarchy (Priority order)
-1.  **Global Rules**: Loaded from `AGENTS.md` in the project root.
-2.  **Builtin Defaults**: Hardcoded core safety and persistence rules for each role.
-3.  **Role Overrides**: Files in `.citadel/instructions/role-${role}.md` (e.g., `role-worker.md`).
-4.  **MCP Resources (Automatic)**: Automatically injected context from MCP servers (e.g., CodeFlow memory).
-5.  **Formula Prompts**: Task-specific instructions defined in a workflow's TOML.
-6.  **Tag-based Instructions**: Triggered by pearl labels (e.g., `tag:git` loads `tag-git.md`).
-7.  **Context (Dynamic)**: Instructions passed directly in the pearl's JSON context.
+1.  **Agent-Specific Conventions**: Loaded dynamically from `agents/<assignee>.md` in the project root if the Pearl is explicitly assigned to a role.
+2.  **Global Rules**: Loaded from `AGENTS.md` in the project root.
+3.  **Builtin Defaults**: Hardcoded core safety and persistence rules for each role.
+4.  **Role Overrides**: Files in `.citadel/instructions/role-${role}.md` (e.g., `role-worker.md`).
+5.  **MCP Resources (Automatic)**: Automatically injected context from MCP servers (e.g., CodeFlow memory).
+6.  **Formula Prompts**: Task-specific instructions defined in a workflow's TOML.
+7.  **Tag-based Instructions**: Triggered by pearl labels (e.g., `tag:git` loads `tag-git.md`).
+8.  **Context (Dynamic)**: Instructions passed directly in the pearl's JSON context.
 
 #### Automatic Resource Injection
 The Citadel supports automatic injection of MCP resources into the agent context. This allows agents to leverage rich context sources like CodeFlow's Cortex memory system (`memory://top`) or other MCP-exposed knowledge bases automatically.
@@ -415,5 +416,17 @@ context: {
 ### 7. Bridge Environment
 *   **`env`**: `'development'` or `'production'`.
 *   **`bridge.maxLogs`**: Number of log lines maintained in TUI memory (default: 1000).
+
+### 8. Lifecycle Hooks
+Connect your application to the Citadel state orchestration engine by providing JavaScript closures to react to graph state transitions.
+
+```typescript
+hooks: {
+    // Fired immediately when a pearl successfully transitions into `done` (closed)
+    onPearlDone: async (pearl) => {
+        // e.g. update external database, notify webhook
+    }
+}
+```
 
 ---
