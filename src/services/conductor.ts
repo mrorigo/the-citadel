@@ -18,7 +18,7 @@ export class Conductor {
 	private config: CitadelConfig;
 
 	// Pools
-	private workerPool: WorkerPool;
+	private pools: Map<string, WorkerPool> = new Map();
 	private gatekeeperPool: WorkerPool;
 
 	private pearls: PearlsClient;
@@ -41,79 +41,81 @@ export class Conductor {
 			`[Conductor] Config: min_workers=${this.config.worker.min_workers}`,
 		);
 
-		// Initialize Worker Pool
-		// We use the injected PoolClass (defaulting to WorkerPool) to allow tests to override the implementation
-		// while preserving the internal factory logic (which binds agent execution).
-		this.workerPool = new PoolClass(
-			"worker",
-			(id: string) =>
-				new Hook(
-					id,
-					"worker",
-					async (ticket) => {
-						logger.info(`[Worker] Processing ${ticket.pearl_id}`, {
-							pearlId: ticket.pearl_id,
-						});
+		// Initialize Specialized Worker Pools
+		// We create a pool for every agent role defined in the configuration (except gatekeeper)
+		const roles = Object.keys(this.config.agents).filter(r => r !== 'gatekeeper');
+		for (const role of roles) {
+			const pool = new PoolClass(
+				role,
+				(id: string) =>
+					new Hook(
+						id,
+						role,
+						async (ticket) => {
+							logger.info(`[${role}] Processing ${ticket.pearl_id}`, {
+								pearlId: ticket.pearl_id,
+							});
 
-						const pearl = await this.pearls.get(ticket.pearl_id).catch(() => null);
-						if (!pearl) {
-							logger.error(
-								`[Worker] Failed to retrieve pearl ${ticket.pearl_id} for processing`,
-								{ pearlId: ticket.pearl_id },
-							);
-							this.queue.fail(ticket.id, true);
-							return;
-						}
-
-						// Move pearl to in_progress when we start processing
-						const role = (pearl.context?.role as string) || (pearl.metadata?.role as string) || "worker";
-						await this.pearls.update(ticket.pearl_id, {
-							status: "in_progress",
-							assignee: role,
-						});
-
-						logger.info(`[Worker] Instantiating agent for role: ${role}`, { pearlId: ticket.pearl_id });
-						const agent = new WorkerAgent(role);
-
-						try {
-							const result = await agent.run(
-								`Process this task: ${pearl.title}`,
-								{ pearlId: ticket.pearl_id, pearl },
-							);
-
-							// Check if the pearl was actually transitioned by the agent
-							const finalPearl = await this.pearls.get(ticket.pearl_id);
-
-							if (finalPearl.status === "in_progress") {
-								// Agent exited without calling submit_work - this is a failure
-								logger.warn(
-									`[Worker] Agent exited without submitting work for ${ticket.pearl_id}`,
+							const pearl = await this.pearls.get(ticket.pearl_id).catch(() => null);
+							if (!pearl) {
+								logger.error(
+									`[${role}] Failed to retrieve pearl ${ticket.pearl_id} for processing`,
 									{ pearlId: ticket.pearl_id },
 								);
+								this.queue.fail(ticket.id, true);
+								return;
+							}
+
+							// Ensure the pearl is in progress and assigned to this role
+							await this.pearls.update(ticket.pearl_id, {
+								status: "in_progress",
+								assignee: role,
+							});
+
+							logger.info(`[${role}] Instantiating agent for role: ${role}`, { pearlId: ticket.pearl_id });
+							const agent = new WorkerAgent(role);
+
+							try {
+								const result = await agent.run(
+									`Process this task: ${pearl.title}`,
+									{ pearlId: ticket.pearl_id, pearl },
+								);
+
+								// Check if the pearl was actually transitioned by the agent
+								const finalPearl = await this.pearls.get(ticket.pearl_id);
+
+								if (finalPearl.status === "in_progress") {
+									// Agent exited without calling submit_work - this is a failure
+									logger.warn(
+										`[${role}] Agent exited without submitting work for ${ticket.pearl_id}`,
+										{ pearlId: ticket.pearl_id },
+									);
+									await this.pearls.update(ticket.pearl_id, {
+										status: "open",
+										labels: [...(finalPearl.labels || []), "agent-incomplete"],
+									});
+								}
+								return result;
+							} catch (error) {
+								// Agent crashed - mark as failed
+								logger.error(
+									`[${role}] Agent failed for ${ticket.pearl_id}`,
+									error,
+								);
+								const currentLabels = pearl?.labels || [];
 								await this.pearls.update(ticket.pearl_id, {
 									status: "open",
-									labels: [...(finalPearl.labels || []), "agent-incomplete"],
+									labels: [...currentLabels, "failed", "agent-error"],
 								});
 							}
-							return result;
-						} catch (error) {
-							// Agent crashed - mark as failed
-							logger.error(
-								`[Worker] Agent failed for ${ticket.pearl_id}`,
-								error,
-							);
-							const currentLabels = pearl?.labels || [];
-							await this.pearls.update(ticket.pearl_id, {
-								status: "open",
-								labels: [...currentLabels, "failed", "agent-error"],
-							});
-						}
-					},
-					this.queue,
-					this.config.worker.maxRetries,
-				),
-			this.config.worker.min_workers,
-		);
+						},
+						this.queue,
+						this.config.worker.maxRetries,
+					),
+				this.config.worker.min_workers,
+			);
+			this.pools.set(role, pool);
+		}
 
 		// Initialize Gatekeeper Pool
 		this.gatekeeperPool = new PoolClass(
@@ -199,7 +201,9 @@ export class Conductor {
 		}
 
 		// Start Pools
-		this.workerPool.start();
+		for (const pool of this.pools.values()) {
+			pool.start();
+		}
 		this.gatekeeperPool.start();
 
 		// Start Router Loop
@@ -210,7 +214,9 @@ export class Conductor {
 		this.isRunning = false;
 		logger.info("[Conductor] Stopping...");
 
-		this.workerPool.stop();
+		for (const pool of this.pools.values()) {
+			pool.stop();
+		}
 		this.gatekeeperPool.stop();
 
 		if (this.routerTimer) {
@@ -448,12 +454,16 @@ export class Conductor {
 					continue;
 				}
 
-				logger.info(`[Router] Routing pearl ${pearl.id} to worker`, {
+				// Role-based routing
+				const targetRole = currentPearl.assignee || (currentPearl.context?.role as string) || (currentPearl.metadata?.role as string) || "worker";
+
+				logger.info(`[Router] Routing pearl ${pearl.id} to ${targetRole}`, {
 					pearlId: pearl.id,
+					targetRole,
 				});
 
-				// Deterministic routing: open -> worker
-				queue.enqueue(pearl.id, currentPearl.priority, "worker");
+				// Deterministic routing: open -> specific role pool
+				this.queue.enqueue(pearl.id, currentPearl.priority, targetRole);
 			}
 		}
 
@@ -512,18 +522,16 @@ export class Conductor {
 	}
 
 	private async scalePools() {
-		// Scale Workers
-		const workerPending = this.queue.getPendingCount("worker");
-		let targetWorkers = Math.ceil(
-			workerPending * this.config.worker.load_factor,
-		);
-		// Ensure bounds
-		targetWorkers = Math.max(
-			this.config.worker.min_workers,
-			Math.min(targetWorkers, this.config.worker.max_workers),
-		);
-
-		await this.workerPool.resize(targetWorkers);
+		// Scale Workers per pool
+		for (const [role, pool] of this.pools.entries()) {
+			const pending = this.queue.getPendingCount(role);
+			let target = Math.ceil(pending * this.config.worker.load_factor);
+			target = Math.max(
+				this.config.worker.min_workers,
+				Math.min(target, this.config.worker.max_workers),
+			);
+			await pool.resize(target);
+		}
 
 		// Scale Gatekeepers
 		const gatekeeperPending = this.queue.getPendingCount("gatekeeper");
