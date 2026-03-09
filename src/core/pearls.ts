@@ -587,6 +587,24 @@ export class PearlsClient {
     async addComment(id: string, comment: string): Promise<string> {
         return this.runCommand(["comments", "add", id, comment]);
     }
+
+    async listComments(id: string): Promise<Array<{ author: string; content: string; created_at: string }>> {
+        const output = await this.runCommand(["comments", "list", id, "--format", "json"]);
+        if (!output) return [];
+
+        try {
+            const json = JSON.parse(output);
+            const comments = json.comments || (Array.isArray(json) ? json : []);
+            return comments.map((c: any) => ({
+                author: c.author || "unknown",
+                content: c.content || c.body || "",
+                created_at: typeof c.created_at === "number" ? new Date(c.created_at * 1000).toISOString() : c.created_at,
+            }));
+        } catch (error) {
+            logger.error(`[Pearls] Failed to parse comments for ${id}:`, error);
+            return [];
+        }
+    }
 }
 
 // Singleton accessor

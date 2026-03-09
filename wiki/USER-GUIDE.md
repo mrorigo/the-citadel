@@ -203,7 +203,20 @@ When submitting your plan (via `submit_work`), you **MUST** include a `verificat
 
 Workers handling `tag:planning` tasks are thus "primed" to provide the structured output the Gatekeeper demands.
 
-### 8. Audit Logging & Observability
+### 8. MCP Integrations
+
+The Citadel is extended via **Model Context Protocol (MCP)** servers, which provide agents with specialized tools:
+
+#### `skills` — Domain expertise
+Agents call `list_skills` to discover available playbooks (e.g., SEO, DevOps, Coding) and `get_skill` to load domain-specific instructions on demand.
+
+#### `citadel` — Orchestration & HITL
+The "Command Center" MCP, used primarily by leadership agents:
+- **`list_formulas` / `get_formula`**: Tool-based discovery of the formula library.
+- **`escalate_to_human`**: Creates a tracked HITL Pearl for the operator.
+- **`get_hitl_response`**: Retrieves human feedback/comments from a Pearl.
+
+### 9. Audit Logging & Observability
 The Citadel ensures transparency by automatically logging critical agent actions directly to the Pearl's history.
 
 **What gets logged?**
