@@ -72,7 +72,7 @@ export abstract class CoreAgent {
 
         const config = getConfig();
         const roleConfig = config.agents[this.role];
-        const assignedTools = roleConfig.mcpTools;
+        const assignedTools = roleConfig?.mcpTools;
 
         if (assignedTools && assignedTools.length > 0) {
             const mcp = getMCPService();
@@ -89,29 +89,6 @@ export abstract class CoreAgent {
                     jsonSchema(tool.inputSchema) as any,
                     // biome-ignore lint/suspicious/noExplicitAny: arguments are generic for MCP
                     async (args: any) => {
-                        // Middleware: Inject .gitignore patterns for filesystem search
-                        if (
-                            ["search_files", "directory_tree"].includes(tool.name) &&
-                            tool.serverName === "filesystem"
-                        ) {
-                            const ignored = getIgnoredPatterns();
-                            const current = (args.excludePatterns as string[]) || [];
-                            const merged = Array.from(
-                                new Set([
-                                    ...current,
-                                    ...ignored,
-                                    ".pearls",
-                                    ".citadel",
-                                    ".codeflow",
-                                ]),
-                            );
-                            args.excludePatterns = merged;
-
-                            logger.info(
-                                `[${this.role}] Injected ${merged.length} ignore patterns into search_files`,
-                            );
-                        }
-
                         const result = await mcp.callTool(tool.serverName, tool.name, args);
                         return result;
                     },
@@ -186,9 +163,14 @@ export abstract class CoreAgent {
         const cwd = process.cwd();
         const projectContext = await getProjectContext().resolveContext(cwd, cwd);
 
-        if (!projectContext?.config.frontmatter) return { allowed: true };
+        // Backward compatibility: Fallback to sensible defaults if frontmatter is missing
+        const fm = projectContext?.config.frontmatter || {
+            ignore: [".git/**", "node_modules/**", ".env", ".DS_Store"],
+            forbidden: [".git/**", "node_modules/**"],
+            read_only: []
+        };
 
-        const { ignore, read_only, forbidden } = projectContext.config.frontmatter;
+        const { ignore, read_only, forbidden } = fm;
 
         // Helper to check globs
         const matches = (path: string, patterns: string[]) => {
@@ -536,24 +518,29 @@ If you are still working, continue with your next step.`,
                     // Inject Excludes for Search/Tree
                     if (
                         toolName.includes("search_files") ||
-                        toolName.includes("directory_tree")
+                        toolName.includes("directory_tree") ||
+                        toolName.includes("list_directory")
                     ) {
                         const projectContext = await getProjectContext().resolveContext(
                             process.cwd(),
                             process.cwd(),
                         );
-                        if (projectContext?.config.frontmatter) {
-                            const { forbidden, ignore } = projectContext.config.frontmatter;
-                            const excludes = [...(forbidden || []), ...(ignore || [])];
-                            if (excludes.length > 0) {
-                                // Assume tool supports 'exclude' or 'excludes' or 'excludePatterns'
-                                // Common convention for search/tree tools
-                                // biome-ignore lint/suspicious/noExplicitAny: Search tool input is dynamic
-                                const searchInput = validatedInput as any;
-                                searchInput.exclude = excludes;
-                                searchInput.excludes = excludes;
-                                searchInput.excludePatterns = excludes;
-                            }
+
+                        const ignored = getIgnoredPatterns();
+                        // Backward compatibility: If frontmatter is missing, use basic system patterns
+                        const frontmatterExcludes = projectContext?.config.frontmatter
+                            ? [...(projectContext.config.frontmatter.forbidden || []), ...(projectContext.config.frontmatter.ignore || [])]
+                            : [".git/**", "node_modules/**", ".env", ".DS_Store"];
+
+                        const excludes = Array.from(new Set([...ignored, ...frontmatterExcludes]));
+
+                        if (excludes.length > 0) {
+                            // biome-ignore lint/suspicious/noExplicitAny: Input is dynamic
+                            const input = validatedInput as any;
+                            // Inject into common parameter names for various search/tree tools
+                            input.exclude = excludes;
+                            input.excludes = excludes;
+                            input.excludePatterns = excludes;
                         }
                     }
                     // -------------------------

@@ -143,7 +143,44 @@ The Citadel provides a "Context-Aware" runtime for all agents.
 **Automatic Context Injection:**
 When an agent executes a tool (like `submit_work` or `report_progress`), the system automatically injects the current `pearlId` and execution environment. Operations are always strictly scoped to the active Pearl, preventing cross-task interference.
 
-### 7. Project Awareness & Custom Instructions
+### 7. Agent Permissions & Visibility (AGENTS.md)
+The Citadel provides a granular permission system controlled via YAML frontmatter in your project's `AGENTS.md` file. This allows you to restrict agent access to sensitive files and commands without modifying core code.
+
+Patterns are matched using `minimatch` (glob) and checked before any file-system or command tool is executed.
+
+#### Configuration Schema
+```yaml
+---
+# Patterns to hide from agents (treated as non-existent)
+# Hidden from search_files, directory_tree, list_directory, etc.
+ignore:
+  - ".pearls/**"
+  - ".qmd/**"
+
+# Patterns to block entirely (explicit error if accessed)
+forbidden:
+  - ".git/**"
+  - "node_modules/**"
+  - ".env"
+
+# Patterns that can be read but NOT modified (write_file, edit_file, etc. blocked)
+read_only:
+  - "company/personas.firm"
+---
+```
+
+#### Enforcement Behaviors
+- **Ignore**: Files matching these patterns are filtered out of directory listings and search results. If an agent attempts to read them directly, it receives a "File Ignored (hidden)" error.
+- **Forbidden**: Any attempt to read, write, or mention these patterns in a command string results in an immediate "Access Forbidden" error.
+- **Read Only**: Agents can read these files but attempts to modify, delete, or overwrite them are blocked with a "Modification Read-Only" error.
+- **Command Filtering**: For `run_command` tools, the system scans the command string for any `forbidden` or `read_only` (write) patterns and blocks execution if a violation is detected.
+
+#### Backward Compatibility
+If a project lacks `AGENTS.md` frontmatter, The Citadel falls back to **Sensible Defaults**:
+- **Ignore**: `.git/**`, `node_modules/**`, `.env`, `.DS_Store`
+- **Forbidden**: `.git/**`, `node_modules/**`
+
+### 8. Project Awareness & Custom Instructions
 You can "teach" agents about your specific project by placing rules in your repository. The Citadel uses a tiered **Instruction Discovery Service** to build agent prompts dynamically.
 
 #### The Instruction Hierarchy (Priority order)
