@@ -55,22 +55,23 @@ export class Conductor {
 							pearlId: ticket.pearl_id,
 						});
 
-						// Move pearl to in_progress when we start processing
-						await this.pearls.update(ticket.pearl_id, { status: "in_progress" });
-
 						const pearl = await this.pearls.get(ticket.pearl_id).catch(() => null);
-
 						if (!pearl) {
 							logger.error(
 								`[Worker] Failed to retrieve pearl ${ticket.pearl_id} for processing`,
 								{ pearlId: ticket.pearl_id },
 							);
-							// We should fail the ticket if the pearl is gone
 							this.queue.fail(ticket.id, true);
 							return;
 						}
 
+						// Move pearl to in_progress when we start processing
 						const role = (pearl.context?.role as string) || (pearl.metadata?.role as string) || "worker";
+						await this.pearls.update(ticket.pearl_id, {
+							status: "in_progress",
+							assignee: role,
+						});
+
 						logger.info(`[Worker] Instantiating agent for role: ${role}`, { pearlId: ticket.pearl_id });
 						const agent = new WorkerAgent(role);
 
@@ -127,6 +128,9 @@ export class Conductor {
 						});
 						const agent = new EvaluatorAgent();
 						const pearl = await this.pearls.get(ticket.pearl_id);
+
+						// Update assignee for gatekeeper work
+						await this.pearls.update(ticket.pearl_id, { assignee: "gatekeeper" });
 
 						const submittedWork = pearl.output || this.queue.getOutput(ticket.pearl_id);
 

@@ -4,6 +4,7 @@ import type { AgentContext } from "../core/agent";
 import { getPearls } from "../core/pearls";
 import { logger } from "../core/logger";
 import { getQueue } from "../core/queue";
+import { getConfig } from "../config";
 
 export const createSubmitWorkTool = (
     _context: AgentContext,
@@ -158,12 +159,25 @@ export const createReportProgressTool = (_context: AgentContext) => {
             const msg = args.message || args.reasoning || "Working on it...";
             logger.info(`[Worker] Progress on ${pearlId}: ${msg}`);
             await getPearls().update(pearlId, { status: "in_progress" });
+            await getPearls().addComment(pearlId, msg);
+
             return { success: true, message: msg };
         },
     });
 };
 
+
 export const createDelegateTaskTool = (_context: AgentContext) => {
+    let roles: string[] = ["worker"];
+    try {
+        const config = getConfig();
+        if (config.agents) {
+            roles = Object.keys(config.agents).filter((r) => r !== "gatekeeper");
+        }
+    } catch {
+        // Fallback if config not loaded
+    }
+
     const parameters = z.object({
         parentPearlId: z
             .string()
@@ -177,9 +191,11 @@ export const createDelegateTaskTool = (_context: AgentContext) => {
             .optional()
             .describe("Detailed description of the subtask"),
         role: z
-            .string()
+            .enum(roles as [string, ...string[]])
             .optional()
-            .describe("The specialized role required for this task (e.g., 'ceo', 'cto')"),
+            .describe(
+                `The specialized role required for this task. Available: ${roles.join(", ")}`,
+            ),
     });
 
     return tool({
@@ -218,6 +234,7 @@ export const createDelegateTaskTool = (_context: AgentContext) => {
                                     ? 2
                                     : 3,
                     parent: parentPearlId, // Note: 'parent', not 'parent_id' based on options interface
+                    assignee: args.role,
                 });
 
                 const metadata: Record<string, unknown> = {};

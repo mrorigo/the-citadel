@@ -328,10 +328,14 @@ export class PearlsClient {
         }
 
         // Pearls metadata
-        const acceptance_test = raw.metadata?.acceptance_test as string | undefined;
-        const type = (raw.metadata?.type || raw.metadata?.issue_type) as string | undefined;
-        let context = raw.metadata?.context as Record<string, unknown> | undefined;
-        const output = raw.metadata?.output;
+        const metadata = raw.metadata || {};
+        const acceptance_test = metadata.acceptance_test as string | undefined;
+        const type = (metadata.type || metadata.issue_type) as string | undefined;
+        let context = metadata.context as Record<string, unknown> | undefined;
+        const output = metadata.output;
+
+        // Prioritize metadata.assignee for explicit tracking
+        const assignee = (metadata.assignee as string) || raw.author;
 
         // Fallback for context from description frontmatter (backward compat)
         let description = raw.description || undefined;
@@ -353,7 +357,7 @@ export class PearlsClient {
             title: raw.title,
             status,
             priority: raw.priority as PearlPriority,
-            assignee: raw.author,
+            assignee,
             labels: raw.labels,
             blockers,
             acceptance_test,
@@ -361,7 +365,7 @@ export class PearlsClient {
             type,
             description,
             context,
-            metadata: raw.metadata,
+            metadata,
             output,
             created_at: typeof raw.created_at === "number" ? new Date(raw.created_at * 1000).toISOString() : raw.created_at,
             updated_at: typeof raw.updated_at === "number" ? new Date(raw.updated_at * 1000).toISOString() : raw.updated_at,
@@ -406,6 +410,10 @@ export class PearlsClient {
         if (options.description) {
             args.push("--description", options.description);
         }
+        // Support initial assignee in CLI if possible, though we primarily use metadata
+        if (options.assignee) {
+            args.push("--author", options.assignee);
+        }
         args.push("--format", "json");
 
         const output = await this.runCommand(args);
@@ -416,6 +424,7 @@ export class PearlsClient {
         if (options.acceptance_test) updates.acceptance_test = options.acceptance_test;
         if (options.type) updates.type = options.type;
         if (options.context) updates.context = options.context;
+        if (options.assignee) updates.assignee = options.assignee;
 
         for (const [key, val] of Object.entries(updates)) {
             const valStr = JSON.stringify(val);
@@ -464,6 +473,11 @@ export class PearlsClient {
         }
 
         const args = ["update", id];
+
+        if (changes.assignee) {
+            // We use metadata for assignee to bypass CLI limitations on 'author' updates
+            await this.runCommand(["meta", "set", id, "assignee", JSON.stringify(changes.assignee), "--format", "json"]);
+        }
 
         if (changes.status) {
             if (!current) current = await this.get(id);
