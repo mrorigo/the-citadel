@@ -22,21 +22,15 @@ export const ConfigSchema = z.object({
 			.optional(),
 	}),
 
-	agents: z.object({
-		worker: z.object({
+	agents: z.record(
+		z.string(),
+		z.object({
 			provider: z.enum(["openai", "anthropic", "ollama"]),
 			model: z.string(),
 			mcpTools: z.array(z.string()).optional(),
 			mcpResources: z.record(z.string(), z.array(z.string())).optional(),
 		}),
-
-		gatekeeper: z.object({
-			provider: z.enum(["openai", "anthropic", "ollama"]),
-			model: z.string(),
-			mcpTools: z.array(z.string()).optional(),
-			mcpResources: z.record(z.string(), z.array(z.string())).optional(),
-		}),
-	}),
+	),
 
 	mcpServers: z
 		.record(
@@ -108,7 +102,7 @@ export const ConfigSchema = z.object({
 
 export type CitadelConfig = z.infer<typeof ConfigSchema>;
 export type CitadelConfigInput = z.input<typeof ConfigSchema>;
-export type AgentRole = keyof CitadelConfig["agents"];
+export type AgentRole = string;
 
 export function defineConfig(config: CitadelConfigInput): CitadelConfigInput {
 	return config;

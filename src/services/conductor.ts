@@ -58,7 +58,6 @@ export class Conductor {
 						// Move pearl to in_progress when we start processing
 						await this.pearls.update(ticket.pearl_id, { status: "in_progress" });
 
-						const agent = new WorkerAgent();
 						const pearl = await this.pearls.get(ticket.pearl_id).catch(() => null);
 
 						if (!pearl) {
@@ -70,6 +69,10 @@ export class Conductor {
 							this.queue.fail(ticket.id, true);
 							return;
 						}
+
+						const role = (pearl.context?.role as string) || (pearl.metadata?.role as string) || "worker";
+						logger.info(`[Worker] Instantiating agent for role: ${role}`, { pearlId: ticket.pearl_id });
+						const agent = new WorkerAgent(role);
 
 						try {
 							const result = await agent.run(

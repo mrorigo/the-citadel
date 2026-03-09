@@ -1,6 +1,7 @@
 import type { LanguageModel } from "ai";
 import type { z } from "zod";
 import { type AgentContext, CoreAgent } from "../core/agent";
+import { type AgentRole } from "../config/schema";
 import { getPearls } from "../core/pearls";
 import { getFormulaRegistry } from "../core/formula";
 import { logger } from "../core/logger";
@@ -13,8 +14,8 @@ import {
 } from "../tools/worker";
 
 export class WorkerAgent extends CoreAgent {
-    constructor(model?: LanguageModel) {
-        super("worker", model);
+    constructor(role: AgentRole = "worker", model?: LanguageModel) {
+        super(role, model);
         this.requiresExplicitCompletion = true;
 
         // --- Shell Execution (Static) ---

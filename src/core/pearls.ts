@@ -66,6 +66,7 @@ export const PearlSchema = z.object({
     type: z.string().optional(), // Added type field
     description: z.string().optional(),
     context: z.record(z.string(), z.unknown()).optional(),
+    metadata: z.record(z.string(), z.unknown()).optional(),
     output: z.unknown().optional(), // New field
     created_at: z.string(),
     updated_at: z.string(),
@@ -102,7 +103,7 @@ export class PearlsClient {
         this.binary = binary || config?.pearls?.binary || "prl";
     }
 
-    protected async runCommand(args: string[]): Promise<string> {
+    async runCommand(args: string[]): Promise<string> {
         // Determine CWD: The folder containing .pearls folder, or the basePath itself if it is the root
         const cwd = this.basePath.endsWith(".pearls")
             ? resolve(this.basePath, "..")
@@ -360,6 +361,7 @@ export class PearlsClient {
             type,
             description,
             context,
+            metadata: raw.metadata,
             output,
             created_at: typeof raw.created_at === "number" ? new Date(raw.created_at * 1000).toISOString() : raw.created_at,
             updated_at: typeof raw.updated_at === "number" ? new Date(raw.updated_at * 1000).toISOString() : raw.updated_at,

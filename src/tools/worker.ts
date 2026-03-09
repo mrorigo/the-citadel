@@ -176,6 +176,10 @@ export const createDelegateTaskTool = (_context: AgentContext) => {
             .string()
             .optional()
             .describe("Detailed description of the subtask"),
+        role: z
+            .string()
+            .optional()
+            .describe("The specialized role required for this task (e.g., 'ceo', 'cto')"),
     });
 
     return tool({
@@ -216,21 +220,49 @@ export const createDelegateTaskTool = (_context: AgentContext) => {
                     parent: parentPearlId, // Note: 'parent', not 'parent_id' based on options interface
                 });
 
-                // Establish parent-child dependency (parent depends on child)
-                await getPearls().addDependency(parentPearlId, pearl.id);
+                const metadata: Record<string, unknown> = {};
+                if (args.role) {
+                    metadata.role = args.role;
+                    await getPearls().runCommand([
+                        "meta",
+                        "set",
+                        pearl.id,
+                        "role",
+                        args.role,
+                        "--format",
+                        "json",
+                    ]);
+                }
 
-                // Enqueue the child task
-                getQueue().enqueue(pearl.id, 2, "worker");
+                try {
+                    // Establish parent-child dependency (parent depends on child)
+                    await getPearls().addDependency(parentPearlId, pearl.id);
 
-                logger.info(
-                    `[Worker] Delegated subtask ${pearl.id} from ${parentPearlId}`,
-                );
+                    // Enqueue the child task
+                    getQueue().enqueue(pearl.id, 2, "worker");
 
-                return {
-                    success: true,
-                    pearlId: pearl.id,
-                    message: `Delegated subtask '${title}' (ID: ${pearl.id})`,
-                };
+                    logger.info(
+                        `[Worker] Delegated subtask ${pearl.id} (role: ${args.role || "worker"}) from ${parentPearlId}`,
+                    );
+
+                    return {
+                        success: true,
+                        pearlId: pearl.id,
+                        message: `Delegated subtask '${title}' (ID: ${pearl.id}, Role: ${args.role || "worker"})`,
+                    };
+                } catch (linkErr) {
+                    logger.error(
+                        `[Worker] Delegation linking/enqueuing failed for ${pearl.id}. Attempting rollback.`,
+                        linkErr,
+                    );
+                    // Rollback: try to cancel/delete the orphan pearl
+                    try {
+                        await getPearls().runCommand(["delete", pearl.id, "--yes"]);
+                    } catch (delErr) {
+                        logger.error(`[Worker] Failed to rollback orphan pearl ${pearl.id}`, delErr);
+                    }
+                    throw linkErr;
+                }
             } catch (err: unknown) {
                 const error = err as Error;
                 return {
