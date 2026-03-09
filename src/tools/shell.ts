@@ -117,22 +117,6 @@ export const runCommandTool = {
 			child.on("close", async (code) => {
 				clearTimeout(timer);
 
-				// Post-Git Sync
-				if (command?.trim().startsWith("git ")) {
-					let autoSync = true;
-					try {
-						const config = getConfig();
-						autoSync = config.pearls.autoSync !== false;
-					} catch {
-						/* ignore */
-					}
-
-					if (autoSync) {
-						logger.info(`[Shell] Git operation detected. Triggering Pearls sync.`);
-						await getPearls().sync();
-					}
-				}
-
 				if (code === 0) {
 					resolve({
 						success: true,
