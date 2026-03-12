@@ -297,7 +297,8 @@ export abstract class CoreAgent {
 
 
 
-        let didRemindForCompletion = false;
+        let completionRetryCount = 0;
+        const maxCompletionRetries = 3;
         let completionToolCalled = false;
 
         const totalUsage = {
@@ -397,25 +398,49 @@ export abstract class CoreAgent {
             // If no tools, we might be done
             if (!toolCalls || toolCalls.length === 0) {
                 // AGENT ENCOURAGEMENT: If the agent provides text but no tool calls,
-                // and we require explicit completion, remind them ONCE.
+                // and we require explicit completion, remind them up to maxCompletionRetries times.
                 if (
                     this.requiresExplicitCompletion &&
-                    !completionToolCalled &&
-                    !didRemindForCompletion
+                    !completionToolCalled
                 ) {
-                    logger.info(
-                        `[${this.role}] Agent exited without completion tool. Providing reminder.`,
-                    );
-                    messages.push({
-                        role: "user",
-                        content: `You provided a response but did not call a completion tool (e.g., submit_work, approve_work, reject_work, fail_work). 
+                    completionRetryCount++;
+                    if (completionRetryCount <= maxCompletionRetries) {
+                        logger.info(
+                            `[${this.role}] Agent exited without completion tool. Providing reminder ${completionRetryCount}/${maxCompletionRetries}.`,
+                        );
+
+                        let hint = `You provided a response but did not call a completion tool (e.g., submit_work, approve_work, reject_work, fail_work). 
 If you have finished your task, you MUST call the appropriate tool to finalize the workflow. 
-If you are still working, continue with your next step.`,
-                    });
-                    didRemindForCompletion = true;
-                    continue;
+If you are still working, continue with your next step.`;
+
+                        // On subsequent retries, inject tool documentation to help a "lost" agent
+                        if (completionRetryCount > 1) {
+                            const completionTools = Object.keys(this.tools).filter(t => 
+                                t.includes("submit_work") || t.includes("approve_work") || t.includes("reject_work")
+                            );
+                            const primaryTool = completionTools[0];
+                            if (primaryTool) {
+                                hint += `\n\nAvailable completion tools for your role: ${completionTools.join(", ")}. 
+Here is the schema for the primary completion tool:
+\`\`\`json
+${JSON.stringify(this.schemas[primaryTool], null, 2)}
+\`\`\``;
+                            }
+                        }
+
+                        messages.push({
+                            role: "user",
+                            content: hint,
+                        });
+                        continue;
+                    }
                 }
                 break;
+            }
+
+            // RESET Completion Retry Count: If the agent actually called tools, they are working.
+            if (toolCalls && toolCalls.length > 0) {
+                completionRetryCount = 0;
             }
 
             // Execute tools

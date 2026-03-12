@@ -52,6 +52,7 @@ export class EvaluatorAgent extends CoreAgent {
         - CRITICAL: When using 'reject_work', you MUST provide a clear 'reason' explaining why the work was rejected so the worker can fix it.
         - CRITICAL: When approving work, you MUST provide 'acceptance_test'. This must be a string describing the verification performed. DO NOT pass null.
         - If the work is a plan, extract the acceptance criteria from the plan text.
+        - # CRITICAL: You MUST finalize your decision using approve_work, reject_work, or fail_work. Your task is NOT complete until one of these tools is successfully called.
         `;
     }
 }

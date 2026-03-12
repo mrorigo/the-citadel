@@ -87,7 +87,7 @@ export class WorkerAgent extends CoreAgent {
         - Use filesystem tools to explore and write code.
         - Run tests with run_command if available.
         - Keep the user informed with report_progress.
-        - Submit your work when done with submit_work.
+        - # CRITICAL: You MUST submit your work when done with the submit_work tool. DO NOT simply state that you are finished in text. You are only considered finished once submit_work is successfully called.
         `;
     }
 }
