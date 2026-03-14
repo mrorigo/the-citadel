@@ -23,6 +23,28 @@ export interface InstructionProvider {
 }
 
 /**
+ * Loads project-specific top-level protocol from .citadel/instructions/protocol.md
+ * This has the lowest priority value (5), meaning it appears at the very top.
+ */
+export class CustomProtocolProvider implements InstructionProvider {
+	name = "custom-protocol";
+	priority = 5;
+
+	async getInstructions(_ctx: InstructionContext): Promise<string | null> {
+		const path = resolve(process.cwd(), ".citadel/instructions/protocol.md");
+		if (existsSync(path)) {
+			try {
+				const content = await readFile(path, "utf-8");
+				return `# ⚠️ PROTOCOL (Highest Priority)\n${content}`;
+			} catch (err) {
+				logger.error(`[CustomProtocolProvider] Failed to read ${path}:`, err);
+			}
+		}
+		return null;
+	}
+}
+
+/**
  * Loads AGENTS.md from project root.
  */
 export class GlobalProvider implements InstructionProvider {
@@ -93,9 +115,7 @@ export class BuiltinProvider implements InstructionProvider {
 
 		// --- Universal System Integrity Block (all roles) ---
 		parts.push(`## System Integrity
-- **Never modify** \`.pearls/issues.jsonl\` directly. Use the \`prl\` CLI or \`citadel\` MCP tools to manage tasks.
-- **Trust the Context Block**: The user message contains a pre-fetched Business Context Block. Do NOT burn tool calls re-fetching data that is already provided.
-- **Atomic Completion**: You are only considered "done" once you have called the appropriate completion tool (\`submit_work\`, \`approve_work\`, or \`reject_work\`).`);
+- **Atomic Completion**: You are only considered "done" once you have called the appropriate completion tool matching your role (\`submit_work\`, \`approve_work\`, \`reject_work\`, or \`fail_work\`).`);
 
 		// --- Worker Base Protocol (all worker-type roles) ---
 		if (BuiltinProvider.WORKER_TYPE_ROLES.includes(ctx.role)) {
@@ -234,6 +254,7 @@ export class InstructionService {
 
 	constructor() {
 		this.providers = [
+			new CustomProtocolProvider(),
 			new GlobalProvider(),
 			new BuiltinProvider(),
 			new RoleProvider(),

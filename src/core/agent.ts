@@ -302,14 +302,7 @@ export abstract class CoreAgent {
         `,
         );
 
-        const universalHeader = `# ⚠️ OPERATIONAL CONSTRAINTS (Highest Priority — Read Before Anything Else)
-1. **You MUST call a completion tool** to finish your task — \`submit_work\`, \`approve_work\`, \`reject_work\`, or \`fail_work\`. Never end by text alone.
-2. **Never modify \`.pearls/issues.jsonl\` directly.** Use \`prl\` CLI or \`citadel\` MCP tools.
-3. **Trust the Business Context Block** in the user message. Do NOT re-fetch data already provided.
-
-`;
-
-        const system = this.getSystemPrompt(universalHeader + baseSystem);
+        const system = this.getSystemPrompt(baseSystem);
 
         const messages: ModelMessage[] = [
             { role: "system", content: system },
