@@ -317,7 +317,7 @@ export abstract class CoreAgent {
 
 
         let completionRetryCount = 0;
-        const maxCompletionRetries = 3;
+        const maxCompletionRetries = 5;
         let completionToolCalled = false;
 
         const totalUsage = {
@@ -467,9 +467,12 @@ export abstract class CoreAgent {
                             `[${this.role}] Agent exited without completion tool. Providing reminder ${completionRetryCount}/${maxCompletionRetries}.`,
                         );
 
-                        let hint = `You provided a response but did not call a completion tool (e.g., submit_work, approve_work, reject_work, fail_work). 
-If you have finished your task, you MUST call the appropriate tool to finalize the workflow. 
-If you are still working, continue with your next step.`;
+                        let hint = `# MANDATORY COMPLETION PROTOCOL
+You provided a response but did not call a completion tool. 
+To finalize your work, you MUST call exactly one of: \`submit_work\`, \`approve_work\`, \`reject_work\`, or \`fail_work\`.
+
+**Text-only responses are NOT accepted as task completion.** 
+If you are finished, submit your work now. If you are still working, continue with your next tool call.`;
 
                         // On subsequent retries, inject tool documentation to help a "lost" agent
                         if (completionRetryCount > 1) {
@@ -478,8 +481,7 @@ If you are still working, continue with your next step.`;
                             );
                             const primaryTool = completionTools[0];
                             if (primaryTool) {
-                                hint += `\n\nAvailable completion tools for your role: ${completionTools.join(", ")}. 
-Here is the schema for the primary completion tool:
+                                hint += `\n\n### Tool Schema Reference: ${primaryTool}
 \`\`\`json
 ${JSON.stringify(this.schemas[primaryTool], null, 2)}
 \`\`\``;

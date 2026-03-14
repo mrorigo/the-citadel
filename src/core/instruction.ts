@@ -113,10 +113,6 @@ export class BuiltinProvider implements InstructionProvider {
 	async getInstructions(ctx: InstructionContext): Promise<string | null> {
 		const parts: string[] = [];
 
-		// --- Universal System Integrity Block (all roles) ---
-		parts.push(`## System Integrity
-- **Atomic Completion**: You are only considered "done" once you have called the appropriate completion tool matching your role (\`submit_work\`, \`approve_work\`, \`reject_work\`, or \`fail_work\`).`);
-
 		// --- Worker Base Protocol (all worker-type roles) ---
 		if (BuiltinProvider.WORKER_TYPE_ROLES.includes(ctx.role)) {
 			parts.push(`## Worker Base Protocol
@@ -249,6 +245,24 @@ export class ContextProvider implements InstructionProvider {
 	}
 }
 
+/**
+ * Enforcement of Completion Protocol.
+ * This is the HIGHEST priority (priority=100) and appears at the bottom.
+ */
+export class EnforcementProvider implements InstructionProvider {
+	name = "enforcement";
+	priority = 100;
+
+	async getInstructions(_ctx: InstructionContext): Promise<string | null> {
+		return `# MANDATORY COMPLETION PROTOCOL
+You are strictly prohibited from ending your response with text alone. 
+To finalize your work, you MUST call exactly one of the completion tools: \`submit_work\`, \`approve_work\`, \`reject_work\`, or \`fail_work\`.
+
+**Failure to call a completion tool will result in the task being discarded as incomplete.** 
+Text-only summaries are NOT submissions. You must trigger the framework catalyst tools.`;
+	}
+}
+
 export class InstructionService {
 	private providers: InstructionProvider[] = [];
 
@@ -262,6 +276,7 @@ export class InstructionService {
 			new FormulaProvider(),
 			new TagProvider(),
 			new ContextProvider(),
+			new EnforcementProvider(),
 		].sort((a, b) => a.priority - b.priority);
 	}
 

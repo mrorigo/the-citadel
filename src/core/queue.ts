@@ -371,7 +371,13 @@ export class WorkQueue {
 	/**
 	 * Get tickets currently being processed
 	 */
-	listActive(): Ticket[] {
+	listActive(timeoutMs?: number): Ticket[] {
+		if (timeoutMs) {
+			const cutoff = Date.now() - timeoutMs;
+			return this.db
+				.query("SELECT * FROM tickets WHERE status = 'processing' AND heartbeat_at > ?")
+				.all(cutoff) as Ticket[];
+		}
 		return this.db
 			.query("SELECT * FROM tickets WHERE status = 'processing'")
 			.all() as Ticket[];
