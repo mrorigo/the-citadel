@@ -72,6 +72,16 @@ export class Conductor {
 							});
 
 							logger.info(`[${role}] Instantiating agent for role: ${role}`, { pearlId: ticket.pearl_id });
+
+							// Execute onPearlStart lifecycle hook
+							if (this.config.hooks?.onPearlStart) {
+								try {
+									await this.config.hooks.onPearlStart(pearl);
+								} catch (err) {
+									logger.error(`[${role}] Error in onPearlStart hook:`, err);
+								}
+							}
+
 							const agent = new WorkerAgent(role);
 
 							try {
@@ -140,6 +150,15 @@ export class Conductor {
 								`[Gatekeeper] No submitted work found for ${ticket.pearl_id} (retrieved 'null' from queue). Evaluator may reject.`,
 								{ pearlId: ticket.pearl_id },
 							);
+						}
+
+						// Execute onPearlStart lifecycle hook
+						if (this.config.hooks?.onPearlStart) {
+							try {
+								await this.config.hooks.onPearlStart(pearl);
+							} catch (err) {
+								logger.error(`[Gatekeeper] Error in onPearlStart hook:`, err);
+							}
 						}
 
 						try {

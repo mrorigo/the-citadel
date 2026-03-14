@@ -96,7 +96,8 @@ export const ConfigSchema = z.object({
 	}),
 
 	hooks: z.object({
-		onPearlDone: z.any().optional(), // typed as (pearl: Pearl) => Promise<void> in intersection or usage
+		onPearlStart: z.any().optional(),
+		onPearlDone: z.any().optional(),
 	}).optional(),
 	
 	logging: z.object({
