@@ -2,14 +2,13 @@ import { EvaluatorAgent } from "../agents/evaluator";
 import { WorkerAgent } from "../agents/worker";
 import { getConfig } from "../config";
 import type { CitadelConfig } from "../config/schema";
-import { type PearlsClient, getPearls } from "../core/pearls";
+import { type PearlsClient, getPearls, type Pearl } from "../core/pearls";
 import { Hook } from "../core/hooks";
 import { logger } from "../core/logger";
 import { WorkerPool } from "../core/pool";
 import { getQueue, type WorkQueue } from "../core/queue";
 import { getMCPService } from "./mcp";
 import { getPiper } from "./piper";
-import { APICallError } from "ai";
 
 export class Conductor {
 	private isRunning = false;
@@ -276,6 +275,16 @@ export class Conductor {
 		const pearlsClient = this.pearls;
 		const queue = this.queue;
 
+		// 0. Zombie Cleanup: Release tickets that haven't pulsed a heartbeat in 15m
+		try {
+			const released = queue.releaseStalled(15 * 60 * 1000);
+			if (released > 0) {
+				logger.info(`[Router] Released ${released} stalled/zombie tickets`);
+			}
+		} catch (e) {
+			logger.error("[Router] Failed to release stalled tickets", e);
+		}
+
 		// 1. Fetch Candidates (Ready or Verify)
 		// We fetch 'ready' (open pearls with all blockers closed) for workers
 		// and 'verify' (for gatekeepers)
@@ -314,6 +323,11 @@ export class Conductor {
 					continue;
 				}
 
+				// HITL Protection: NEVER auto-reset HITL tasks
+				if (pearl.labels?.includes("hitl") || pearl.labels?.includes("escalation")) {
+					continue;
+				}
+
 				logger.warn(
 					`[Router] Resetting stuck pearl ${pearl.id} (in_progress with no active ticket)`,
 					{ pearlId: pearl.id },
@@ -325,6 +339,11 @@ export class Conductor {
 						"auto-recovered",
 					],
 				});
+			} else if (pearl.labels?.includes("agent-error") || pearl.labels?.includes("failed")) {
+				// We have an active ticket, but the pearl is flagged with an error.
+				// This usually means a previous run failed, but the current run is retrying.
+				// WE DO NOTHING HERE. Let the active ticket finish or fail.
+				logger.debug(`[Router] Skipping reset of failed pearl ${pearl.id} - active ticket exists.`, { pearlId: pearl.id });
 			}
 		}
 
@@ -345,19 +364,32 @@ export class Conductor {
 				if (fresh.type === "epic") {
 					// Check for Auto-Close
 					if (this.config.gatekeeper.auto_close_epics) {
-						if (fresh.blockers && fresh.blockers.length > 0) {
-							const blockers = await Promise.all(
-								fresh.blockers.map((id) => pearlsClient.get(id))
+						// 1. Get explicit blockers
+						const blockers = fresh.blockers || [];
+
+						// 2. Get implicit children (parent_child links) from the database
+						// This is expensive but necessary because the CLI doesn't yet provide 'children' in the 'show' output
+						const allPearls = await pearlsClient.getAll();
+						const children = allPearls.filter(p => p.parent === pearl.id);
+						const childrenIds = children.map(c => c.id);
+
+						const combinedBlockers = [...new Set([...blockers, ...childrenIds])];
+
+						if (combinedBlockers.length > 0) {
+							const blockerPearls = await Promise.all(
+								combinedBlockers.map((id) => pearlsClient.get(id).catch(() => null))
 							);
-							const allDone = blockers.every((b) => b.status === "done");
-							if (allDone) {
+							const validBlockers = blockerPearls.filter(b => b !== null) as Pearl[];
+
+							const allDone = validBlockers.every((b) => b.status === "done");
+							if (allDone && validBlockers.length > 0) {
 								logger.info(
-									`[Router] Auto-closing Epic ${pearl.id} (all subtasks completed)`,
+									`[Router] Auto-closing Epic ${pearl.id} (all blockers and children completed)`,
 									{ pearlId: pearl.id }
 								);
 								await pearlsClient.update(pearl.id, {
 									status: "done",
-									acceptance_test: "Auto-closed: All subtasks completed.",
+									acceptance_test: "Auto-closed: All subtasks and children completed.",
 								});
 								continue;
 							}
@@ -423,6 +455,14 @@ export class Conductor {
 					}
 				}
 
+				// --- HITL Protection ---
+				if (fresh.labels?.includes("hitl") || fresh.labels?.includes("escalation")) {
+					logger.info(`[Router] Skipping HITL/Escalation pearl ${pearl.id} (awaiting human action)`, {
+						pearlId: pearl.id,
+					});
+					continue;
+				}
+
 				// --- Data Piping ---
 				// Try to resolve dynamic context dependencies
 				// If context still has unresolved references, we wait.
@@ -455,7 +495,13 @@ export class Conductor {
 				}
 
 				// Role-based routing
-				const targetRole = currentPearl.assignee || (currentPearl.context?.role as string) || (currentPearl.metadata?.role as string) || "worker";
+				let targetRole = currentPearl.assignee || (currentPearl.context?.role as string) || (currentPearl.metadata?.role as string) || "worker";
+
+				// Fail-safe: Fallback to 'worker' if role doesn't exist in config
+				if (!this.config.agents[targetRole as keyof typeof this.config.agents]) {
+					logger.warn(`[Router] Role '${targetRole}' not found in config. Falling back to 'worker' for ${pearl.id}`);
+					targetRole = "worker";
+				}
 
 				logger.info(`[Router] Routing pearl ${pearl.id} to ${targetRole}`, {
 					pearlId: pearl.id,

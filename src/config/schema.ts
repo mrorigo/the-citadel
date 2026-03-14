@@ -98,6 +98,13 @@ export const ConfigSchema = z.object({
 	hooks: z.object({
 		onPearlDone: z.any().optional(), // typed as (pearl: Pearl) => Promise<void> in intersection or usage
 	}).optional(),
+	
+	logging: z.object({
+		path: z.string().optional(),
+		level: z.enum(["debug", "info", "warn", "error"]).default("info"),
+		fileEnabled: z.boolean().default(false),
+		rotation: z.enum(["daily", "none"]).default("none"),
+	}).optional(),
 });
 
 export type CitadelConfig = z.infer<typeof ConfigSchema>;

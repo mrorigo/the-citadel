@@ -20,6 +20,25 @@ import { getInstructionService } from "./instruction";
 import { getAgentModel } from "./llm";
 import { logger } from "./logger";
 import { getPearls, type PearlsClient } from "./pearls";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+
+function smartTruncate(obj: any, limit: number = 500): any {
+    if (typeof obj === "string") {
+        return obj.length > limit ? `${obj.substring(0, limit)}... (truncated)` : obj;
+    }
+    if (Array.isArray(obj)) {
+        return obj.map((item) => smartTruncate(item, limit));
+    }
+    if (obj !== null && typeof obj === "object") {
+        const result: any = {};
+        for (const key in obj) {
+            result[key] = smartTruncate(obj[key], limit);
+        }
+        return result;
+    }
+    return obj;
+}
 
 export interface AgentContext {
     pearlId?: string;
@@ -347,7 +366,46 @@ export abstract class CoreAgent {
                 messages.push(...lastN);
             }
 
-            const result = await this.executeGenerateText(messages);
+            let result;
+            try {
+                result = await this.executeGenerateText(messages);
+            } catch (error: any) {
+                // LLM Traceability Enhancement
+                const traceId = `trace_${Date.now()}_${context?.pearlId || "unknown"}`;
+                const traceDir = join(process.cwd(), ".citadel", "traces");
+                const tracePath = join(traceDir, `${traceId}.json`);
+
+                const traceContent = {
+                    timestamp: new Date().toISOString(),
+                    role: this.role,
+                    pearlId: context?.pearlId,
+                    error: error instanceof Error ? {
+                        name: error.name,
+                        message: error.message,
+                        stack: error.stack,
+                        // @ts-ignore - capture raw response if available from SDK
+                        cause: error.cause
+                    } : error,
+                    messages: messages.map(m => ({
+                        role: m.role,
+                        content: typeof m.content === 'string' ? m.content : '[Object Content]'
+                    })),
+                    tools: Object.keys(this.tools).map(t => ({
+                        name: t,
+                        description: (this.tools[t] as any).description
+                    }))
+                };
+
+                try {
+                    mkdirSync(traceDir, { recursive: true });
+                    writeFileSync(tracePath, JSON.stringify(traceContent, null, 2));
+                    logger.error(`[${this.role}] LLM execution failed. Detailed trace written to: ${tracePath}`, error);
+                } catch (logErr) {
+                    logger.error(`[${this.role}] Failed to write trace file`, logErr);
+                }
+
+                throw new Error(`LLM Error (${error.message}). Trace: ${tracePath}`);
+            }
 
             console.log('DEBUG: result.usage', JSON.stringify(result.usage));
 
@@ -646,6 +704,12 @@ ${JSON.stringify(this.schemas[primaryTool], null, 2)}
                         logger.warn(`[${this.role}] Tool ${toolName} output truncated from ${toolOutputValue.length} to ${maxToolResponseSize}`);
                     }
                     // ------------------------
+                    logger.info(`[${this.role}] Tool ${toolName} finished`, {
+                        tool: toolName,
+                        input: tc.input,
+                        output: smartTruncate(output, 500),
+                        size: toolOutputValue.length
+                    });
 
                     const toolOutput = { type: "text" as const, value: toolOutputValue };
 

@@ -126,6 +126,8 @@ export class WorkQueue {
 
 			if (!candidate) return null;
 
+			logger.info(`[Queue] Claiming ticket ${candidate.id} for ${assigneeId} (role: ${role})`);
+
 			this.db.run(
 				`
             UPDATE tickets 
@@ -165,6 +167,8 @@ export class WorkQueue {
 	 * Mark ticket as complete with optional output
 	 */
 	complete(ticketId: string, output?: unknown): void {
+		logger.info(`[Queue] Completing ticket ${ticketId}`);
+
 		const now = Date.now();
 		let result: { changes: number };
 
@@ -195,12 +199,24 @@ export class WorkQueue {
 			const current = this.db
 				.query(`SELECT status FROM tickets WHERE id = ?`)
 				.get(ticketId) as { status: string } | null;
+			
 			if (current && current.status === "completed") {
-				// Already done, safe to ignore
+				logger.debug(`[Queue] Ticket ${ticketId} already completed (idempotent).`);
 				return;
 			}
+
+			const status = current?.status || "unknown";
+			logger.warn(`[Queue] Failed to complete ticket ${ticketId}: Expected 'processing', found '${status}'.`);
+			
+			// If it's queued, maybe someone reset it. We should probably NOT throw to avoid Hook retries 
+			// that would just keep failing if the ticket is truly misaligned.
+			if (status === "queued") {
+				logger.warn(`[Queue] Ticket ${ticketId} was reset to 'queued' while active. Ignoring completion to avoid state corruption.`);
+				return;
+			}
+
 			throw new Error(
-				`Failed to complete ticket ${ticketId}: Ticket is not in 'processing' state (current: ${current?.status || "unknown"}).`,
+				`Failed to complete ticket ${ticketId}: Ticket is not in 'processing' state (current: ${status}).`,
 			);
 		}
 	}
@@ -266,6 +282,8 @@ export class WorkQueue {
 
 			// Exponential delay
 			const nextAttempt = now + Math.min(1000 * 2 ** nextRetry, 300000);
+
+			logger.info(`[Queue] Failing ticket ${ticketId} (retry ${nextRetry}/${maxRetries}, next attempt at ${new Date(nextAttempt).toISOString()})`);
 
 			this.db.run(
 				`
@@ -348,6 +366,15 @@ export class WorkQueue {
 	 */
 	resetPearl(pearlId: string): void {
 		this.db.run("DELETE FROM tickets WHERE pearl_id = ?", [pearlId]);
+	}
+
+	/**
+	 * Get tickets currently being processed
+	 */
+	listActive(): Ticket[] {
+		return this.db
+			.query("SELECT * FROM tickets WHERE status = 'processing'")
+			.all() as Ticket[];
 	}
 
 	/**
