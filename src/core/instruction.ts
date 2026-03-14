@@ -30,7 +30,24 @@ export class GlobalProvider implements InstructionProvider {
 	priority = 10;
 
 	async getInstructions(ctx: InstructionContext): Promise<string | null> {
-		// 1. Attempt to read specific agent file based on assignee
+		const parts: string[] = [];
+
+		// 1. Always load project-wide AGENTS.md as the foundation
+		const projectContext = await getProjectContext().resolveContext(
+			process.cwd(),
+			process.cwd(),
+		);
+		if (projectContext) {
+			parts.push(`# PROJECT RULES (AGENTS.md)
+You must follow these rules from the project configuration:
+
+## Raw Configuration
+${projectContext.config.raw}
+
+Always prioritize these project-specific instructions over general knowledge.`);
+		}
+
+		// 2. Additionally, load persona/assignee file if one exists (stacks on top of AGENTS.md)
 		if (ctx.pearlId) {
 			try {
 				const pearl = await getPearls().get(ctx.pearlId);
@@ -38,73 +55,78 @@ export class GlobalProvider implements InstructionProvider {
 					const agentPath = resolve(process.cwd(), `agents/${pearl.assignee}.md`);
 					if (existsSync(agentPath)) {
 						const content = await readFile(agentPath, "utf-8");
-						return `
-# AGENT ROLE: ${pearl.assignee.toUpperCase()}
-You are acting as ${pearl.assignee}. Follow these specific instructions and style guidelines:
+						parts.push(`# AGENT PERSONA: ${pearl.assignee.toUpperCase()}
+You are embodying the persona of ${pearl.assignee}. Adopt the following style and voice, while still adhering to the project rules above:
 
-## Role Configuration
-${content}
-`;
+${content}`);
 					}
 				}
 			} catch (err) {
-				logger.warn(`[GlobalProvider] Error fetching assignee prompt for ${ctx.pearlId}: ${err}`);
+				logger.warn(`[GlobalProvider] Error fetching assignee persona for ${ctx.pearlId}: ${err}`);
 			}
 		}
 
-		// 2. Fallback to Project-wide AGENTS.md
-		const projectContext = await getProjectContext().resolveContext(
-			process.cwd(),
-			process.cwd(),
-		);
-		if (!projectContext) return null;
-
-		return `
-# PROJECT RULES (AGENTS.md)
-You must follow these rules from the project configuration:
-
-## Raw Configuration
-${projectContext.config.raw}
-
-Always prioritize these project-specific instructions over general knowledge.
-`;
+		return parts.length > 0 ? parts.join("\n\n---\n\n") : null;
 	}
 }
 
 /**
  * Hardcoded defaults for Citadel roles.
+ * Provides a universal System Integrity block for all roles,
+ * and a Worker base protocol for worker-type roles.
  */
 export class BuiltinProvider implements InstructionProvider {
 	name = "builtin";
 	priority = 15;
 
+	// Roles that derive from the worker base protocol
+	private static readonly WORKER_TYPE_ROLES = [
+		"worker",
+		"software_developer",
+		"qa",
+		"product",
+		"research",
+	];
+
 	async getInstructions(ctx: InstructionContext): Promise<string | null> {
-		if (ctx.role === "worker") {
-			return `
-# Implementation Mode
-You are the Worker. Your primary goal is to write code and fix issues.
+		const parts: string[] = [];
 
-# Filesystem Tools
-You have access to the \`filesystem\` MCP server tools.
-- Use \`filesystem_list_directory\` and \`filesystem_read_text_file\` to explore.
-- Use \`filesystem_write_file\` to create or overwrite files.
-- Use \`filesystem_edit_file\` for precise modifications.
+		// --- Universal System Integrity Block (all roles) ---
+		parts.push(`## System Integrity
+- **Never modify** \`.pearls/issues.jsonl\` directly. Use the \`prl\` CLI or \`citadel\` MCP tools to manage tasks.
+- **Trust the Context Block**: The user message contains a pre-fetched Business Context Block. Do NOT burn tool calls re-fetching data that is already provided.
+- **Atomic Completion**: You are only considered "done" once you have called the appropriate completion tool (\`submit_work\`, \`approve_work\`, or \`reject_work\`).`);
 
-# Persistence Rules
-- **Persistence is Mandatory**: You MUST use \`filesystem_write_file\` or \`filesystem_edit_file\` to apply your changes to the disk. 
-- **No Fake Completion**: Do NOT call \`submit_work\` and say "I have fixed it" unless you have successfully called the filesystem tools in this turn.
-- **Verify Before Submission**: Always run tests or list the directory after your changes to confirm they were successful.
-`;
+		// --- Worker Base Protocol (all worker-type roles) ---
+		if (BuiltinProvider.WORKER_TYPE_ROLES.includes(ctx.role)) {
+			parts.push(`## Worker Base Protocol
+
+### Skills-First Workflow
+Before reasoning from scratch, you MUST leverage the company's specialized skills library:
+- **Discovery**: Use \`skills:list_skills\` to see available methodologies.
+- **Utilization**: Use \`skills:get_skill\` to read the instructions for a relevant skill and follow them.
+
+### Memory Retrieval
+If no skill exists, use the QMD system:
+- \`qmd:search\` for keyword lookup in \`memories/\` or \`docs/\`.
+- \`qmd:vector_search\` for conceptual / semantic search.
+- \`qmd:deep_search\` for highest quality historical context.
+
+### Persistence & Git
+- Every successful task must result in an atomic Git commit.
+- Use descriptive messages: \`feat(role): summary [pearlId]\`.
+
+### Escalation & Delegation
+- You are NOT authorized to call \`escalate_to_human\` directly.
+- Delegate to a C-level role (\`ceo\`, \`cto\`, or \`cfo\`) via \`delegate_task\` if human input is required.`);
 		}
 
 		if (ctx.role === "gatekeeper") {
-			return `
-# Verification Mode
-You are the Gatekeeper (Evaluator). Your purpose is to verify that the work meets the requirements.
-`;
+			parts.push(`## Verification Mode
+You are the Gatekeeper (Evaluator). Your purpose is to verify that the work meets the requirements. You MUST finalize with \`approve_work\`, \`reject_work\`, or \`fail_work\`.`);
 		}
 
-		return null;
+		return parts.length > 0 ? parts.join("\n\n") : null;
 	}
 }
 
