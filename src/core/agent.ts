@@ -45,6 +45,13 @@ export interface AgentContext {
     [key: string]: unknown;
 }
 
+export class AgentStepLimitReachedError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "AgentStepLimitReachedError";
+    }
+}
+
 export interface ToolContext extends AgentContext {
     toolCallId: string;
     messages: ModelMessage[];
@@ -756,6 +763,11 @@ ${JSON.stringify(this.schemas[primaryTool], null, 2)}
             if (finished) {
                 logger.info(`[${this.role}] Task finished explicitly via tool.`);
                 break;
+            }
+
+            if (i === 49) {
+                logger.warn(`[${this.role}] Agent reached maximum step limit (50 steps) for ${context?.pearlId || "unknown"}`);
+                throw new AgentStepLimitReachedError(`Agent reached maximum step limit (50 steps) without explicit completion.`);
             }
         }
 

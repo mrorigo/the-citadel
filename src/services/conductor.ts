@@ -2,6 +2,8 @@ import { EvaluatorAgent } from "../agents/evaluator";
 import { WorkerAgent } from "../agents/worker";
 import { getConfig } from "../config";
 import type { CitadelConfig } from "../config/schema";
+import { type AgentContext, CoreAgent, AgentStepLimitReachedError } from "../core/agent";
+import { type AgentRole } from "../config/schema";
 import { type PearlsClient, getPearls, type Pearl } from "../core/pearls";
 import { Hook } from "../core/hooks";
 import { logger } from "../core/logger";
@@ -85,8 +87,15 @@ export class Conductor {
 							const agent = new WorkerAgent(role);
 
 							try {
+								let prompt = `Process this task: ${pearl.title}`;
+
+								// Injection: Retry Reminder
+								if (ticket.retry_count > 0) {
+									prompt = `# RETRY ATTEMPT #${ticket.retry_count}\n\n${prompt}\n\n**IMPORTANT**: Your previous attempt for this task was interrupted (possibly due to step limits or unexpected exit). Please resume where you left off and ensure you use 'submit_work' once finished. Check the logs and current state to avoid repeating work.`;
+								}
+
 								const result = await agent.run(
-									`Process this task: ${pearl.title}`,
+									prompt,
 									{ pearlId: ticket.pearl_id, pearl },
 								);
 
@@ -94,18 +103,22 @@ export class Conductor {
 								const finalPearl = await this.pearls.get(ticket.pearl_id);
 
 								if (finalPearl.status === "in_progress") {
-									// Agent exited without calling submit_work - this is a failure
+									// Agent exited without calling submit_work
 									logger.warn(
-										`[${role}] Agent exited without submitting work for ${ticket.pearl_id}`,
+										`[${role}] Agent exited without submitting work for ${ticket.pearl_id}. Force-throwing error to trigger queue retry.`,
 										{ pearlId: ticket.pearl_id },
 									);
-									await this.pearls.update(ticket.pearl_id, {
-										status: "open",
-										labels: [...(finalPearl.labels || []), "agent-incomplete"],
-									});
+									// Throwing here instead of completing ensures Hook calls queue.fail()
+									throw new Error(`Agent finished execution but did not submit work (pearl remains 'in_progress').`);
 								}
 								return result;
-							} catch (error) {
+							} catch (error: any) {
+								if (error instanceof AgentStepLimitReachedError) {
+									logger.error(`[${role}] Agent hit step limit for ${ticket.pearl_id}. Failing for retry.`, error);
+									// Rethrow to let Hook handle queue failure/retry
+									throw error;
+								}
+
 								// Agent crashed - mark as failed
 								logger.error(
 									`[${role}] Agent failed for ${ticket.pearl_id}`,
@@ -116,6 +129,8 @@ export class Conductor {
 									status: "open",
 									labels: [...currentLabels, "failed", "agent-error"],
 								});
+								// Rethrow to ensure ticket is failed in queue
+								throw error;
 							}
 						},
 						this.queue,

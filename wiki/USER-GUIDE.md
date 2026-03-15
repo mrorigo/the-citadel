@@ -426,10 +426,13 @@ mcpServers: {
     },
     weather: {
         url: 'https://api.weather-mcp.com/sse',
-        headers: { 'Authorization': 'Bearer ...' }
+        headers: { 'Authorization': `Bearer ${process.env.WEATHER_API_KEY}` }
     }
 }
 ```
+
+> [!TIP]
+> Since `citadel.config.ts` is a native TypeScript file, you can use **template literals** (backticks) and `process.env` to securely inject environment variables into your headers or arguments. The system does not perform automatic string interpolation on plain strings.
 
 ### 5. Pearls Integration
 Configure the underlying state engine.
