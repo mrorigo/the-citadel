@@ -476,7 +476,7 @@ If you are finished, submit your work now. If you are still working, continue wi
 
                         // On subsequent retries, inject tool documentation to help a "lost" agent
                         if (completionRetryCount > 1) {
-                            const completionTools = Object.keys(this.tools).filter(t => 
+                            const completionTools = Object.keys(this.tools).filter(t =>
                                 t.includes("submit_work") || t.includes("approve_work") || t.includes("reject_work")
                             );
                             const primaryTool = completionTools[0];
@@ -622,9 +622,6 @@ ${JSON.stringify(this.schemas[primaryTool], null, 2)}
                         if (excludes.length > 0) {
                             // biome-ignore lint/suspicious/noExplicitAny: Input is dynamic
                             const input = validatedInput as any;
-                            // Inject into common parameter names for various search/tree tools
-                            input.exclude = excludes;
-                            input.excludes = excludes;
                             input.excludePatterns = excludes;
                         }
                     }
