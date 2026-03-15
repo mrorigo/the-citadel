@@ -155,8 +155,6 @@ export class Conductor {
 						const agent = new EvaluatorAgent();
 						const pearl = await this.pearls.get(ticket.pearl_id);
 
-						// Update assignee for gatekeeper work
-						await this.pearls.update(ticket.pearl_id, { assignee: "gatekeeper" });
 
 						const submittedWork = pearl.output || this.queue.getOutput(ticket.pearl_id);
 
