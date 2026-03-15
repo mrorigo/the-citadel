@@ -177,7 +177,15 @@ export class Conductor {
 						}
 
 						try {
-							await agent.run(`Verify this work: ${pearl.title}`, {
+							const verifyPrompt = [
+								`# Verify submitted work: ${pearl.title}`,
+								pearl.acceptance_test ? `\n## Acceptance Test\nYou MUST evaluate against this criterion:\n${pearl.acceptance_test}` : "",
+								pearl.labels?.some((l) => l.startsWith("step:"))
+									? `\n## Step Context\nThis is a "${pearl.labels.find((l) => l.startsWith("step:"))}" type task.`
+									: "",
+							].join("\n");
+
+							await agent.run(verifyPrompt, {
 								pearlId: ticket.pearl_id,
 								pearl,
 								submitted_work: submittedWork,

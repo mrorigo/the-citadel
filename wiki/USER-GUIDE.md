@@ -58,7 +58,7 @@ A **Convoy** is a long-lived context (Meta-Epic) used to group unrelated Molecul
 ### 3. Agents (The Workforce)
 - **RouterAgent**: The foreman. Analyzes requests, instantiates Formulas, and assigns tasks.
 - **WorkerAgent**: The executor. Picks up `Open` Pearls, executes tasks (research, writing, coding, analysis) and can **recursively breakdown work** (Dynamic Bonding).
-- **EvaluatorAgent**: The editor/verifier. Verifies `verify` Pearls against acceptance criteria (accuracy, style, functionality) before closing them. **Requires explicit `acceptance_test` details for every approval.**
+- **EvaluatorAgent**: The editor/verifier. Verifies `verify` Pearls against acceptance criteria (accuracy, style, functionality) before closing them. Its prompt is automatically enriched with the Pearl's `acceptance_test` and `step` context.
 
 ---
 
@@ -141,7 +141,7 @@ The system automatically manages the parent-child relationships based on the exe
 The Citadel provides a "Context-Aware" runtime for all agents.
 
 **Automatic Context Injection:**
-When an agent executes a tool (like `submit_work` or `report_progress`), the system automatically injects the current `pearlId` and execution environment. Operations are always strictly scoped to the active Pearl, preventing cross-task interference.
+When an agent executes a tool (like `submit_work` or `report_progress`), the system automatically injects the current `pearlId` and execution environment. For **EvaluatorAgents**, the base prompt is structured to prominently surface the **Acceptance Test** criteria and the **Step Type** (e.g., `step:impl`).
 
 ### 7. Agent Permissions & Visibility (AGENTS.md)
 The Citadel provides a granular permission system controlled via YAML frontmatter in your project's `AGENTS.md` file. This allows you to restrict agent access to sensitive files and commands without modifying core code.
@@ -201,6 +201,9 @@ Resources are aggregated from three levels:
 2.  **Formula Level**: Declared in `.toml` formula files via `mcp_resources`.
 3.  **Pearl Level**: Specified dynamically in the pearl's JSON context.
 
+> [!TIP]
+> Use this to auto-inject **Business Context** from the `firm` MCP server (e.g., `firm://source/company/company_info.firm`) so agents have read-only access to company state without needing to call `firm:query`.
+
 **Example Formula Property:**
 ```toml
 [mcp_resources]
@@ -216,7 +219,11 @@ To customize a specific agent role project-wide, create a file in `.citadel/inst
 ```
 
 #### Tag-based Specialization
-If you have specific tools or domains (like Git, Research, or SQL), you can create tag-based instruction files. Any pearl with a `tag:NAME` label will automatically pull in `.citadel/instructions/tag-NAME.md`.
+Any pearl with a `tag:NAME` label will automatically pull in `.citadel/instructions/tag-NAME.md`.
+
+#### Normalization & Scoping
+1.  **Label Normalization**: Labels containing colons (e.g., `step:impl`) are sanitized to dashes (e.g., `tag-step-impl.md`) for safe filenaming.
+2.  **Role Scoping**: You can target specific roles with `tag-NAME--ROLE.md`. For example, `tag-step-impl--gatekeeper.md` provides verification playbooks only to the Evaluator, without polluting the Worker's context.
 
 **Example 1: Specialized Git Instructions**
 ```markdown

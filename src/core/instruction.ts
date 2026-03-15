@@ -214,14 +214,22 @@ export class TagProvider implements InstructionProvider {
 
 		const results: string[] = [];
 		for (const label of ctx.labels) {
-			const tagName = label.startsWith("tag:") ? label.split(":")[1] : label;
-			const path = join(baseDir, `tag-${tagName}.md`);
-			if (existsSync(path)) {
-				try {
-					const content = await readFile(path, "utf-8");
-					results.push(`## TAG: ${tagName}\n${content}`);
-				} catch (err) {
-					logger.error(`[TagProvider] Failed to read ${path}:`, err);
+			const tagName = (label.startsWith("tag:") ? label.split(":")[1] : label) || label;
+			const normalizedName = tagName.replace(/:/g, "-");
+
+			const paths = [
+				{ path: join(baseDir, `tag-${normalizedName}.md`), label: `## TAG: ${tagName}` },
+				{ path: join(baseDir, `tag-${normalizedName}--${ctx.role}.md`), label: `## TAG: ${tagName} (Role: ${ctx.role})` },
+			];
+
+			for (const p of paths) {
+				if (existsSync(p.path)) {
+					try {
+						const content = await readFile(p.path, "utf-8");
+						results.push(`${p.label}\n${content}`);
+					} catch (err) {
+						logger.error(`[TagProvider] Failed to read ${p.path}:`, err);
+					}
 				}
 			}
 		}

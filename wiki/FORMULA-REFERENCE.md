@@ -155,6 +155,18 @@ title = "Write Report"
 context = { topic = "AI Trends", depth = "deep" }
 ```
 
+### Automatic Resource Injection (`mcp_resources`)
+Automatically inject context from MCP servers into all steps of a formula.
+
+```toml
+[mcp_resources]
+firm = [
+    "firm://source/company/company_info.firm",
+    "firm://source/company/strategy.firm"
+]
+```
+This is the preferred way to provide **Business Context** (authoritative company state) to agents without requiring explicit `firm:query` tool calls.
+
 ### Piping (`{{steps...}}`)
 Reference outputs from previous steps in the `context` of downstream steps.
 
