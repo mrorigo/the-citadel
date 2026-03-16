@@ -1,5 +1,6 @@
 import { getPearls } from "../core/pearls";
 import { type FormulaRegistry, getFormulaRegistry } from "../core/formula";
+import { getConfig } from "../config";
 
 export class WorkflowEngine {
 	private registry: FormulaRegistry;
@@ -234,6 +235,17 @@ export class WorkflowEngine {
 		console.log(
 			`[WorkflowEngine] Cooking complete. Molecule ID: ${rootPearl.id}`,
 		);
+
+		// Execute onMoleculeStart lifecycle hook
+		const config = getConfig();
+		if (config.hooks?.onMoleculeStart) {
+			try {
+				await config.hooks.onMoleculeStart(rootPearl, formula, variables);
+			} catch (err) {
+				console.error("[WorkflowEngine] Error in onMoleculeStart hook:", err);
+			}
+		}
+
 		return rootPearl.id;
 	}
 }
