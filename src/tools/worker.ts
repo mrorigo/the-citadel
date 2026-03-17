@@ -168,7 +168,7 @@ export const createReportProgressTool = (_context: AgentContext) => {
 
 
 export const createDelegateTaskTool = (_context: AgentContext) => {
-    let roles: string[] = ["worker"];
+    let roles: string[] = ["worker", "author", "editor", "research"];
     try {
         const config = getConfig();
         if (config.agents) {

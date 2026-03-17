@@ -100,7 +100,7 @@ export const ConfigSchema = z.object({
 		onPearlDone: z.any().optional(),
 		onMoleculeStart: z.any().optional(),
 	}).optional(),
-	
+
 	logging: z.object({
 		path: z.string().optional(),
 		level: z.enum(["debug", "info", "warn", "error"]).default("info"),

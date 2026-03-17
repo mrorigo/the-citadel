@@ -414,6 +414,13 @@ export class PearlsClient {
         if (options.assignee) {
             args.push("--author", options.assignee);
         }
+
+        if (options.labels?.length) {
+            for (const label of options.labels) {
+                args.push("--label", label);
+            }
+        }
+
         args.push("--format", "json");
 
         const output = await this.runCommand(args);
@@ -429,12 +436,6 @@ export class PearlsClient {
         for (const [key, val] of Object.entries(updates)) {
             const valStr = JSON.stringify(val);
             await this.runCommand(["meta", "set", pearl.id, key, valStr, "--format", "json"]);
-        }
-
-        if (options.labels?.length) {
-            for (const label of options.labels) {
-                await this.runCommand(["update", pearl.id, "--add-label", label, "--format", "json"]);
-            }
         }
 
         if (options.blockers?.length) {
