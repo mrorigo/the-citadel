@@ -86,9 +86,20 @@ export abstract class CoreAgent {
     protected async executeGenerateText(
         messages: ModelMessage[],
     ): Promise<Awaited<ReturnType<typeof generateText>>> {
+        // SANITIZATION: We must remove the 'execute' property before passing tools to the AI SDK.
+        // If 'execute' is present, the SDK will auto-call the tool immediately on the provider's response.
+        // We handle tool execution manually in our loop to manage logging, approval, and state.
+        const sanitizedTools: Record<string, Tool> = {};
+        const allTools = { ...this.tools, ...this.dynamicTools };
+
+        for (const [name, tool] of Object.entries(allTools)) {
+            const { execute, ...rest } = tool as any;
+            sanitizedTools[name] = rest as Tool;
+        }
+
         return generateText({
             model: this.model,
-            tools: { ...this.tools, ...this.dynamicTools }, // Merge static and dynamic
+            tools: sanitizedTools,
             messages: messages,
         });
     }
