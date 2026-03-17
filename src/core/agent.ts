@@ -404,7 +404,8 @@ export abstract class CoreAgent {
                     })),
                     tools: Object.keys(this.tools).map(t => ({
                         name: t,
-                        description: (this.tools[t] as any).description
+                        description: (this.tools[t] as any).description,
+                        inputSchema: (this.tools[t] as any).inputSchema
                     }))
                 };
 
