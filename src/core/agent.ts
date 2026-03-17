@@ -382,8 +382,7 @@ export abstract class CoreAgent {
                 const traceDir = join(process.cwd(), ".citadel", "traces");
                 const tracePath = join(traceDir, `${traceId}.json`);
 
-                // Capture AI SDK specific properties if they exist
-                const errorMetadata: Record<string, any> = {
+                const errorMetadata = {
                     name: error.name,
                     message: error.message,
                     stack: error.stack,
@@ -392,6 +391,21 @@ export abstract class CoreAgent {
                     data: error.data,
                     cause: error.cause
                 };
+
+                // Try to extract a more useful message from responseBody if it exists
+                let detailedMessage = error.message;
+                if (error.responseBody) {
+                    try {
+                        const body = JSON.parse(error.responseBody);
+                        const bodyError = body.error || body;
+                        const msg = bodyError.message || bodyError.error?.message;
+                        if (msg && msg !== "Provider returned error") {
+                            detailedMessage = `${error.message} (${msg})`;
+                        }
+                    } catch (e) {
+                        // Ignore parse errors
+                    }
+                }
 
                 const traceContent = {
                     timestamp: new Date().toISOString(),
@@ -402,11 +416,15 @@ export abstract class CoreAgent {
                         role: m.role,
                         content: typeof m.content === 'string' ? m.content : '[Object Content]'
                     })),
-                    tools: Object.keys(this.tools).map(t => ({
-                        name: t,
-                        description: (this.tools[t] as any).description,
-                        inputSchema: (this.tools[t] as any).inputSchema
-                    }))
+                    tools: Object.keys(this.tools).map(t => {
+                        const toolObj = this.tools[t] as any;
+                        return {
+                            name: t,
+                            description: toolObj.description,
+                            inputSchema: toolObj.inputSchema,
+                            parameters: toolObj.parameters
+                        };
+                    })
                 };
 
                 try {
@@ -417,7 +435,7 @@ export abstract class CoreAgent {
                     logger.error(`[${this.role}] Failed to write trace file`, logErr);
                 }
 
-                throw new Error(`LLM Error (${error.name}: ${error.message}${error.statusCode ? ` | Status: ${error.statusCode}` : ''}). Trace: ${tracePath}`);
+                throw new Error(`LLM Error (${error.name}: ${detailedMessage}${error.statusCode ? ` | Status: ${error.statusCode}` : ''}). Trace: ${tracePath}`);
             }
 
             console.log('DEBUG: result.usage', JSON.stringify(result.usage));
