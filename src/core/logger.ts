@@ -56,11 +56,18 @@ export class CitadelLogger extends EventEmitter {
 		this.log("warn", message, meta);
 	}
 
-	error(message: string, error?: unknown, meta?: Record<string, unknown>) {
+	error(message: string, error?: any, meta?: Record<string, unknown>) {
 		const errMeta =
 			error instanceof Error
-				? { error: error.message, stack: error.stack }
-				: { error };
+				? {
+						error: error.message,
+						stack: error.stack,
+						statusCode: (error as any).statusCode,
+						name: error.name,
+					}
+				: typeof error === "object" && error !== null
+					? { ...error }
+					: { error };
 		this.log("error", message, { ...meta, ...errMeta });
 	}
 

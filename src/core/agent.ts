@@ -382,17 +382,22 @@ export abstract class CoreAgent {
                 const traceDir = join(process.cwd(), ".citadel", "traces");
                 const tracePath = join(traceDir, `${traceId}.json`);
 
+                // Capture AI SDK specific properties if they exist
+                const errorMetadata: Record<string, any> = {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack,
+                    statusCode: error.statusCode,
+                    responseBody: error.responseBody,
+                    data: error.data,
+                    cause: error.cause
+                };
+
                 const traceContent = {
                     timestamp: new Date().toISOString(),
                     role: this.role,
                     pearlId: context?.pearlId,
-                    error: error instanceof Error ? {
-                        name: error.name,
-                        message: error.message,
-                        stack: error.stack,
-                        // @ts-ignore - capture raw response if available from SDK
-                        cause: error.cause
-                    } : error,
+                    error: errorMetadata,
                     messages: messages.map(m => ({
                         role: m.role,
                         content: typeof m.content === 'string' ? m.content : '[Object Content]'
@@ -406,12 +411,12 @@ export abstract class CoreAgent {
                 try {
                     mkdirSync(traceDir, { recursive: true });
                     writeFileSync(tracePath, JSON.stringify(traceContent, null, 2));
-                    logger.error(`[${this.role}] LLM execution failed. Detailed trace written to: ${tracePath}`, error);
+                    logger.error(`[${this.role}] LLM execution failed (Status: ${error.statusCode || 'N/A'}). Detailed trace written to: ${tracePath}`, error);
                 } catch (logErr) {
                     logger.error(`[${this.role}] Failed to write trace file`, logErr);
                 }
 
-                throw new Error(`LLM Error (${error.message}). Trace: ${tracePath}`);
+                throw new Error(`LLM Error (${error.name}: ${error.message}${error.statusCode ? ` | Status: ${error.statusCode}` : ''}). Trace: ${tracePath}`);
             }
 
             console.log('DEBUG: result.usage', JSON.stringify(result.usage));
