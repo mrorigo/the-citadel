@@ -148,12 +148,12 @@ export class WorkflowEngine {
 				const title = resolveTemplate(step.title, iterContext);
 				const description = resolveTemplate(step.description, iterContext);
 
-				const finalContext = { ...(step.context || {}), ...iterContext };
+				const finalContext = { ...variables, ...(step.context || {}), ...iterContext };
 
 				const pearl = await pearls.create(title, {
 					parent: rootPearl.id,
 					description: description,
-					context: finalContext, // Merged context
+					context: finalContext, // Merged context (now including formula-level variables)
 					labels: [
 						...(step.labels || []),
 						`step:${step.id}`,
