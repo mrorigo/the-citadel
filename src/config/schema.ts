@@ -99,6 +99,7 @@ export const ConfigSchema = z.object({
 		onPearlStart: z.any().optional(),
 		onPearlDone: z.any().optional(),
 		onMoleculeStart: z.any().optional(),
+		onMoleculeDone: z.any().optional(),
 	}).optional(),
 
 	logging: z.object({

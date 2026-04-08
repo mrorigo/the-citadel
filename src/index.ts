@@ -6,3 +6,4 @@ export { getFormulaRegistry, type Formula } from "./core/formula";
 export { startBridge } from "./bridge/index";
 export { type Pearl, getPearls } from "./core/pearls";
 export { logger, type LogEntry, type LogLevel } from "./core/logger";
+export { getMCPService, type MCPService, type MCPTool } from "./services/mcp";
