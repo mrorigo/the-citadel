@@ -2,14 +2,15 @@ import { EvaluatorAgent } from "../agents/evaluator";
 import { WorkerAgent } from "../agents/worker";
 import { getConfig } from "../config";
 import type { CitadelConfig } from "../config/schema";
-import { type PearlsClient, getPearls } from "../core/pearls";
+import { type AgentContext, CoreAgent, AgentStepLimitReachedError } from "../core/agent";
+import { type AgentRole } from "../config/schema";
+import { type PearlsClient, getPearls, type Pearl } from "../core/pearls";
 import { Hook } from "../core/hooks";
 import { logger } from "../core/logger";
 import { WorkerPool } from "../core/pool";
 import { getQueue, type WorkQueue } from "../core/queue";
 import { getMCPService } from "./mcp";
 import { getPiper } from "./piper";
-import { APICallError } from "ai";
 
 export class Conductor {
 	private isRunning = false;
@@ -18,7 +19,7 @@ export class Conductor {
 	private config: CitadelConfig;
 
 	// Pools
-	private workerPool: WorkerPool;
+	private pools: Map<string, WorkerPool> = new Map();
 	private gatekeeperPool: WorkerPool;
 
 	private pearls: PearlsClient;
@@ -41,75 +42,104 @@ export class Conductor {
 			`[Conductor] Config: min_workers=${this.config.worker.min_workers}`,
 		);
 
-		// Initialize Worker Pool
-		// We use the injected PoolClass (defaulting to WorkerPool) to allow tests to override the implementation
-		// while preserving the internal factory logic (which binds agent execution).
-		this.workerPool = new PoolClass(
-			"worker",
-			(id: string) =>
-				new Hook(
-					id,
-					"worker",
-					async (ticket) => {
-						logger.info(`[Worker] Processing ${ticket.pearl_id}`, {
-							pearlId: ticket.pearl_id,
-						});
+		// Initialize Specialized Worker Pools
+		// We create a pool for every agent role defined in the configuration (except gatekeeper)
+		const roles = Object.keys(this.config.agents).filter(r => r !== 'gatekeeper');
+		for (const role of roles) {
+			const pool = new PoolClass(
+				role,
+				(id: string) =>
+					new Hook(
+						id,
+						role,
+						async (ticket) => {
+							logger.info(`[${role}] Processing ${ticket.pearl_id}`, {
+								pearlId: ticket.pearl_id,
+							});
 
-						// Move pearl to in_progress when we start processing
-						await this.pearls.update(ticket.pearl_id, { status: "in_progress" });
-
-						const agent = new WorkerAgent(undefined, this.pearls);
-						const pearl = await this.pearls.get(ticket.pearl_id).catch(() => null);
-
-						if (!pearl) {
-							logger.error(
-								`[Worker] Failed to retrieve pearl ${ticket.pearl_id} for processing`,
-								{ pearlId: ticket.pearl_id },
-							);
-							// We should fail the ticket if the pearl is gone
-							this.queue.fail(ticket.id, true);
-							return;
-						}
-
-						try {
-							const result = await agent.run(
-								`Process this task: ${pearl.title}`,
-								{ pearlId: ticket.pearl_id, pearl },
-							);
-
-							// Check if the pearl was actually transitioned by the agent
-							const finalPearl = await this.pearls.get(ticket.pearl_id);
-
-							if (finalPearl.status === "in_progress") {
-								// Agent exited without calling submit_work - this is a failure
-								logger.warn(
-									`[Worker] Agent exited without submitting work for ${ticket.pearl_id}`,
+							const pearl = await this.pearls.get(ticket.pearl_id).catch(() => null);
+							if (!pearl) {
+								logger.error(
+									`[${role}] Failed to retrieve pearl ${ticket.pearl_id} for processing`,
 									{ pearlId: ticket.pearl_id },
 								);
+								this.queue.fail(ticket.id, true);
+								return;
+							}
+
+							// Ensure the pearl is in progress and assigned to this role
+							await this.pearls.update(ticket.pearl_id, {
+								status: "in_progress",
+								assignee: role,
+							});
+
+							logger.info(`[${role}] Instantiating agent for role: ${role}`, { pearlId: ticket.pearl_id });
+
+							// Execute onPearlStart lifecycle hook
+							if (this.config.hooks?.onPearlStart) {
+								try {
+									await this.config.hooks.onPearlStart(pearl);
+								} catch (err) {
+									logger.error(`[${role}] Error in onPearlStart hook:`, err);
+								}
+							}
+
+							const agent = new WorkerAgent(role);
+
+							try {
+								let prompt = `Process this task: ${pearl.title}`;
+
+								// Injection: Retry Reminder
+								if (ticket.retry_count > 0) {
+									prompt = `# RETRY ATTEMPT #${ticket.retry_count}\n\n${prompt}\n\n**IMPORTANT**: Your previous attempt for this task was interrupted (possibly due to step limits or unexpected exit). Please resume where you left off and ensure you use 'submit_work' once finished. Check the logs and current state to avoid repeating work.`;
+								}
+
+								const result = await agent.run(
+									prompt,
+									{ pearlId: ticket.pearl_id, pearl },
+								);
+
+								// Check if the pearl was actually transitioned by the agent
+								const finalPearl = await this.pearls.get(ticket.pearl_id);
+
+								if (finalPearl.status === "in_progress") {
+									// Agent exited without calling submit_work
+									logger.warn(
+										`[${role}] Agent exited without submitting work for ${ticket.pearl_id}. Force-throwing error to trigger queue retry.`,
+										{ pearlId: ticket.pearl_id },
+									);
+									// Throwing here instead of completing ensures Hook calls queue.fail()
+									throw new Error(`Agent finished execution but did not submit work (pearl remains 'in_progress').`);
+								}
+								return result;
+							} catch (error: any) {
+								if (error instanceof AgentStepLimitReachedError) {
+									logger.error(`[${role}] Agent hit step limit for ${ticket.pearl_id}. Failing for retry.`, error);
+									// Rethrow to let Hook handle queue failure/retry
+									throw error;
+								}
+
+								// Agent crashed - mark as failed
+								logger.error(
+									`[${role}] Agent failed for ${ticket.pearl_id}`,
+									error,
+								);
+								const currentLabels = pearl?.labels || [];
 								await this.pearls.update(ticket.pearl_id, {
 									status: "open",
-									labels: [...(finalPearl.labels || []), "agent-incomplete"],
+									labels: [...currentLabels, "failed", "agent-error"],
 								});
+								// Rethrow to ensure ticket is failed in queue
+								throw error;
 							}
-							return result;
-						} catch (error) {
-							// Agent crashed - mark as failed
-							logger.error(
-								`[Worker] Agent failed for ${ticket.pearl_id}`,
-								error,
-							);
-							const currentLabels = pearl?.labels || [];
-							await this.pearls.update(ticket.pearl_id, {
-								status: "open",
-								labels: [...currentLabels, "failed", "agent-error"],
-							});
-						}
-					},
-					this.queue,
-					this.config.worker.maxRetries,
-				),
-			this.config.worker.min_workers,
-		);
+						},
+						this.queue,
+						this.config.worker.maxRetries,
+					),
+				this.config.worker.min_workers,
+			);
+			this.pools.set(role, pool);
+		}
 
 		// Initialize Gatekeeper Pool
 		this.gatekeeperPool = new PoolClass(
@@ -122,8 +152,9 @@ export class Conductor {
 						logger.info(`[Gatekeeper] Verifying ${ticket.pearl_id}`, {
 							pearlId: ticket.pearl_id,
 						});
-						const agent = new EvaluatorAgent(undefined, this.pearls);
+						const agent = new EvaluatorAgent();
 						const pearl = await this.pearls.get(ticket.pearl_id);
+
 
 						const submittedWork = pearl.output || this.queue.getOutput(ticket.pearl_id);
 
@@ -134,8 +165,25 @@ export class Conductor {
 							);
 						}
 
+						// Execute onPearlStart lifecycle hook
+						if (this.config.hooks?.onPearlStart) {
+							try {
+								await this.config.hooks.onPearlStart(pearl);
+							} catch (err) {
+								logger.error(`[Gatekeeper] Error in onPearlStart hook:`, err);
+							}
+						}
+
 						try {
-							await agent.run(`Verify this work: ${pearl.title}`, {
+							const verifyPrompt = [
+								`# Verify submitted work: ${pearl.title}`,
+								pearl.acceptance_test ? `\n## Acceptance Test\nYou MUST evaluate against this criterion:\n${pearl.acceptance_test}` : "",
+								pearl.labels?.some((l) => l.startsWith("step:"))
+									? `\n## Step Context\nThis is a "${pearl.labels.find((l) => l.startsWith("step:"))}" type task.`
+									: "",
+							].join("\n");
+
+							await agent.run(verifyPrompt, {
 								pearlId: ticket.pearl_id,
 								pearl,
 								submitted_work: submittedWork,
@@ -192,7 +240,9 @@ export class Conductor {
 		}
 
 		// Start Pools
-		this.workerPool.start();
+		for (const pool of this.pools.values()) {
+			pool.start();
+		}
 		this.gatekeeperPool.start();
 
 		// Start Router Loop
@@ -203,7 +253,9 @@ export class Conductor {
 		this.isRunning = false;
 		logger.info("[Conductor] Stopping...");
 
-		this.workerPool.stop();
+		for (const pool of this.pools.values()) {
+			pool.stop();
+		}
 		this.gatekeeperPool.stop();
 
 		if (this.routerTimer) {
@@ -263,6 +315,16 @@ export class Conductor {
 		const pearlsClient = this.pearls;
 		const queue = this.queue;
 
+		// 0. Zombie Cleanup: Release tickets that haven't pulsed a heartbeat in 15m
+		try {
+			const released = queue.releaseStalled(15 * 60 * 1000);
+			if (released > 0) {
+				logger.info(`[Router] Released ${released} stalled/zombie tickets`);
+			}
+		} catch (e) {
+			logger.error("[Router] Failed to release stalled tickets", e);
+		}
+
 		// 1. Fetch Candidates (Ready or Verify)
 		// We fetch 'ready' (open pearls with all blockers closed) for workers
 		// and 'verify' (for gatekeepers)
@@ -301,6 +363,11 @@ export class Conductor {
 					continue;
 				}
 
+				// HITL Protection: NEVER auto-reset HITL tasks
+				if (pearl.labels?.includes("hitl") || pearl.labels?.includes("escalation")) {
+					continue;
+				}
+
 				logger.warn(
 					`[Router] Resetting stuck pearl ${pearl.id} (in_progress with no active ticket)`,
 					{ pearlId: pearl.id },
@@ -312,6 +379,11 @@ export class Conductor {
 						"auto-recovered",
 					],
 				});
+			} else if (pearl.labels?.includes("agent-error") || pearl.labels?.includes("failed")) {
+				// We have an active ticket, but the pearl is flagged with an error.
+				// This usually means a previous run failed, but the current run is retrying.
+				// WE DO NOTHING HERE. Let the active ticket finish or fail.
+				logger.debug(`[Router] Skipping reset of failed pearl ${pearl.id} - active ticket exists.`, { pearlId: pearl.id });
 			}
 		}
 
@@ -332,19 +404,32 @@ export class Conductor {
 				if (fresh.type === "epic") {
 					// Check for Auto-Close
 					if (this.config.gatekeeper.auto_close_epics) {
-						if (fresh.blockers && fresh.blockers.length > 0) {
-							const blockers = await Promise.all(
-								fresh.blockers.map((id) => pearlsClient.get(id))
+						// 1. Get explicit blockers
+						const blockers = fresh.blockers || [];
+
+						// 2. Get implicit children (parent_child links) from the database
+						// This is expensive but necessary because the CLI doesn't yet provide 'children' in the 'show' output
+						const allPearls = await pearlsClient.getAll();
+						const children = allPearls.filter(p => p.parent === pearl.id);
+						const childrenIds = children.map(c => c.id);
+
+						const combinedBlockers = [...new Set([...blockers, ...childrenIds])];
+
+						if (combinedBlockers.length > 0) {
+							const blockerPearls = await Promise.all(
+								combinedBlockers.map((id) => pearlsClient.get(id).catch(() => null))
 							);
-							const allDone = blockers.every((b) => b.status === "done");
-							if (allDone) {
+							const validBlockers = blockerPearls.filter(b => b !== null) as Pearl[];
+
+							const allDone = validBlockers.every((b) => b.status === "done");
+							if (allDone && validBlockers.length > 0) {
 								logger.info(
-									`[Router] Auto-closing Epic ${pearl.id} (all subtasks completed)`,
+									`[Router] Auto-closing Epic ${pearl.id} (all blockers and children completed)`,
 									{ pearlId: pearl.id }
 								);
 								await pearlsClient.update(pearl.id, {
 									status: "done",
-									acceptance_test: "Auto-closed: All subtasks completed.",
+									acceptance_test: "Auto-closed: All subtasks and children completed.",
 								});
 								continue;
 							}
@@ -410,10 +495,18 @@ export class Conductor {
 					}
 				}
 
+				// --- HITL Protection ---
+				if (fresh.labels?.includes("hitl") || fresh.labels?.includes("escalation")) {
+					logger.info(`[Router] Skipping HITL/Escalation pearl ${pearl.id} (awaiting human action)`, {
+						pearlId: pearl.id,
+					});
+					continue;
+				}
+
 				// --- Data Piping ---
 				// Try to resolve dynamic context dependencies
 				// If context still has unresolved references, we wait.
-				const piped = await getPiper(this.pearls).pipeData(pearl.id);
+				const piped = await getPiper().pipeData(pearl.id);
 				if (piped) {
 					logger.info(`[Router] Piped data for ${pearl.id}`);
 				}
@@ -441,12 +534,22 @@ export class Conductor {
 					continue;
 				}
 
-				logger.info(`[Router] Routing pearl ${pearl.id} to worker`, {
+				// Role-based routing
+				let targetRole = currentPearl.assignee || (currentPearl.context?.role as string) || (currentPearl.metadata?.role as string) || "worker";
+
+				// Fail-safe: Fallback to 'worker' if role doesn't exist in config
+				if (!this.config.agents[targetRole as keyof typeof this.config.agents]) {
+					logger.warn(`[Router] Role '${targetRole}' not found in config. Falling back to 'worker' for ${pearl.id}`);
+					targetRole = "worker";
+				}
+
+				logger.info(`[Router] Routing pearl ${pearl.id} to ${targetRole}`, {
 					pearlId: pearl.id,
+					targetRole,
 				});
 
-				// Deterministic routing: open -> worker
-				queue.enqueue(pearl.id, currentPearl.priority, "worker");
+				// Deterministic routing: open -> specific role pool
+				this.queue.enqueue(pearl.id, currentPearl.priority, targetRole);
 			}
 		}
 
@@ -505,18 +608,16 @@ export class Conductor {
 	}
 
 	private async scalePools() {
-		// Scale Workers
-		const workerPending = this.queue.getPendingCount("worker");
-		let targetWorkers = Math.ceil(
-			workerPending * this.config.worker.load_factor,
-		);
-		// Ensure bounds
-		targetWorkers = Math.max(
-			this.config.worker.min_workers,
-			Math.min(targetWorkers, this.config.worker.max_workers),
-		);
-
-		await this.workerPool.resize(targetWorkers);
+		// Scale Workers per pool
+		for (const [role, pool] of this.pools.entries()) {
+			const pending = this.queue.getPendingCount(role);
+			let target = Math.ceil(pending * this.config.worker.load_factor);
+			target = Math.max(
+				this.config.worker.min_workers,
+				Math.min(target, this.config.worker.max_workers),
+			);
+			await pool.resize(target);
+		}
 
 		// Scale Gatekeepers
 		const gatekeeperPending = this.queue.getPendingCount("gatekeeper");

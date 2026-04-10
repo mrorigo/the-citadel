@@ -20,28 +20,51 @@ import { getInstructionService } from "./instruction";
 import { getAgentModel } from "./llm";
 import { logger } from "./logger";
 import { getPearls, type PearlsClient } from "./pearls";
-import { getToolResultMemory } from "./memory";
-import { createInspectResultTool } from "../tools/inspection";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+
+function smartTruncate(obj: any, limit: number = 500): any {
+    if (typeof obj === "string") {
+        return obj.length > limit ? `${obj.substring(0, limit)}... (truncated)` : obj;
+    }
+    if (Array.isArray(obj)) {
+        return obj.map((item) => smartTruncate(item, limit));
+    }
+    if (obj !== null && typeof obj === "object") {
+        const result: any = {};
+        for (const key in obj) {
+            result[key] = smartTruncate(obj[key], limit);
+        }
+        return result;
+    }
+    return obj;
+}
 
 export interface AgentContext {
-	pearlId?: string;
-	[key: string]: unknown;
+    pearlId?: string;
+    [key: string]: unknown;
+}
+
+export class AgentStepLimitReachedError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "AgentStepLimitReachedError";
+    }
 }
 
 export interface ToolContext extends AgentContext {
-	toolCallId: string;
-	messages: ModelMessage[];
+    toolCallId: string;
+    messages: ModelMessage[];
 }
 
 export abstract class CoreAgent {
-	protected role: AgentRole;
-	protected model: LanguageModel;
-	protected tools: Record<string, Tool> = {};
-	protected dynamicTools: Record<string, Tool> = {};
-	protected schemas: Record<string, z.ZodTypeAny> = {};
-	protected toolMetadata: Record<string, { server?: string; name: string }> = {};
-	protected requiresExplicitCompletion = false;
-	protected pearlsClient?: PearlsClient;
+    protected role: AgentRole;
+    protected model: LanguageModel;
+    protected tools: Record<string, Tool> = {};
+    protected dynamicTools: Record<string, Tool> = {};
+    protected schemas: Record<string, z.ZodTypeAny> = {};
+    protected requiresExplicitCompletion = false;
+    protected pearlsClient?: PearlsClient;
 
     constructor(role: AgentRole, model?: LanguageModel, pearlsClient?: PearlsClient) {
         this.role = role;
@@ -63,9 +86,20 @@ export abstract class CoreAgent {
     protected async executeGenerateText(
         messages: ModelMessage[],
     ): Promise<Awaited<ReturnType<typeof generateText>>> {
+        // SANITIZATION: We must remove the 'execute' property before passing tools to the AI SDK.
+        // If 'execute' is present, the SDK will auto-call the tool immediately on the provider's response.
+        // We handle tool execution manually in our loop to manage logging, approval, and state.
+        const sanitizedTools: Record<string, Tool> = {};
+        const allTools = { ...this.tools, ...this.dynamicTools };
+
+        for (const [name, tool] of Object.entries(allTools)) {
+            const { execute, ...rest } = tool as any;
+            sanitizedTools[name] = rest as Tool;
+        }
+
         return generateText({
             model: this.model,
-            tools: { ...this.tools, ...this.dynamicTools }, // Merge static and dynamic
+            tools: sanitizedTools,
             messages: messages,
         });
     }
@@ -75,7 +109,7 @@ export abstract class CoreAgent {
 
         const config = getConfig();
         const roleConfig = config.agents[this.role];
-        const assignedTools = roleConfig.mcpTools;
+        const assignedTools = roleConfig?.mcpTools;
 
         if (assignedTools && assignedTools.length > 0) {
             const mcp = getMCPService();
@@ -92,73 +126,42 @@ export abstract class CoreAgent {
                     jsonSchema(tool.inputSchema) as any,
                     // biome-ignore lint/suspicious/noExplicitAny: arguments are generic for MCP
                     async (args: any) => {
-                        // Middleware: Inject .gitignore patterns for filesystem search
-                        if (
-                            ["search_files", "directory_tree"].includes(tool.name) &&
-                            tool.serverName === "filesystem"
-                        ) {
-                            const ignored = getIgnoredPatterns();
-                            const current = (args.excludePatterns as string[]) || [];
-                            const merged = Array.from(
-                                new Set([
-                                    ...current,
-                                    ...ignored,
-                                    ".pearls",
-                                    ".citadel",
-                                    ".codeflow",
-                                ]),
-                            );
-                            args.excludePatterns = merged;
+                        const result = await mcp.callTool(tool.serverName, tool.name, args);
+                        return result;
+                    },
+                );
+            }
+        }
+        this.mcpLoaded = true;
+    }
 
-                            logger.info(
-                                `[${this.role}] Injected ${merged.length} ignore patterns into search_files`,
-                            );
-                        }
+    protected registerTool<T extends z.ZodTypeAny, R>(
+        name: string,
+        description: string,
+        schema: T,
+        execute: (args: z.infer<T>) => Promise<R>,
+    ) {
+        const options = {
+            description,
+            inputSchema: schema,
+            execute,
+        };
+        // We use unknown cast as a way to bridge the gap between our generic T and the SDK internal expectations
+        this.tools[name] = tool(
+            options as unknown as Parameters<typeof tool>[0],
+        ) as Tool;
+        this.schemas[name] = schema;
+    }
 
-						const result = await mcp.callTool(tool.serverName, tool.name, args);
-						return result;
-					},
-					tool.serverName,
-				);
-			}
-		}
-
-		// Register built-in inspection tool
-		this.registerSdkTool("inspect_result", createInspectResultTool(), "builtin");
-
-		this.mcpLoaded = true;
-	}
-
-	protected registerTool<T extends z.ZodTypeAny, R>(
-		name: string,
-		description: string,
-		schema: T,
-		execute: (args: z.infer<T>, pearls?: PearlsClient, toolContext?: any) => Promise<R>,
-		server = "builtin",
-	) {
-		const options = {
-			description,
-			inputSchema: schema,
-			execute: (args: z.infer<T>, toolContext: any) => execute(args, this.pearlsClient, toolContext),
-		};
-		// We use unknown cast as a way to bridge the gap between our generic T and the SDK internal expectations
-		this.tools[name] = tool(
-			options as unknown as Parameters<typeof tool>[0],
-		) as Tool;
-		this.schemas[name] = schema;
-		this.toolMetadata[name] = { server, name };
-	}
-
-	/**
-	 * Registers an AI SDK Tool directly, ensuring its schema is discoverable.
-	 */
-	protected registerSdkTool(name: string, sdkTool: Tool, server = "builtin") {
-		this.tools[name] = sdkTool;
-		// In AI SDK v6, the schema is stored in inputSchema
-		// biome-ignore lint/suspicious/noExplicitAny: SDK property access
-		this.schemas[name] = (sdkTool as any).inputSchema;
-		this.toolMetadata[name] = { server, name };
-	}
+    /**
+     * Registers an AI SDK Tool directly, ensuring its schema is discoverable.
+     */
+    protected registerSdkTool(name: string, sdkTool: Tool) {
+        this.tools[name] = sdkTool;
+        // In AI SDK v6, the schema is stored in inputSchema
+        // biome-ignore lint/suspicious/noExplicitAny: SDK property access
+        this.schemas[name] = (sdkTool as any).inputSchema;
+    }
 
     /**
      * Override this to provide the system prompt.
@@ -197,9 +200,14 @@ export abstract class CoreAgent {
         const cwd = process.cwd();
         const projectContext = await getProjectContext().resolveContext(cwd, cwd);
 
-        if (!projectContext?.config.frontmatter) return { allowed: true };
+        // Backward compatibility: Fallback to sensible defaults if frontmatter is missing
+        const fm = projectContext?.config.frontmatter || {
+            ignore: [".git/**", "node_modules/**", ".env", ".DS_Store"],
+            forbidden: [".git/**", "node_modules/**"],
+            read_only: []
+        };
 
-        const { ignore, read_only, forbidden } = projectContext.config.frontmatter;
+        const { ignore, read_only, forbidden } = fm;
 
         // Helper to check globs
         const matches = (path: string, patterns: string[]) => {
@@ -297,7 +305,7 @@ export abstract class CoreAgent {
         this.dynamicTools = await this.getDynamicTools(context);
 
         // 1. Resolve Context and Build Prompt using InstructionService
-        const instructionService = getInstructionService(this.pearlsClient);
+        const instructionService = getInstructionService();
         const baseSystem = await instructionService.buildPrompt(
             {
                 role: this.role,
@@ -326,7 +334,8 @@ export abstract class CoreAgent {
 
 
 
-        let didRemindForCompletion = false;
+        let completionRetryCount = 0;
+        const maxCompletionRetries = 5;
         let completionToolCalled = false;
 
         const totalUsage = {
@@ -375,7 +384,70 @@ export abstract class CoreAgent {
                 messages.push(...lastN);
             }
 
-            const result = await this.executeGenerateText(messages);
+            let result;
+            try {
+                result = await this.executeGenerateText(messages);
+            } catch (error: any) {
+                // LLM Traceability Enhancement
+                const traceId = `trace_${Date.now()}_${context?.pearlId || "unknown"}`;
+                const traceDir = join(process.cwd(), ".citadel", "traces");
+                const tracePath = join(traceDir, `${traceId}.json`);
+
+                const errorMetadata = {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack,
+                    statusCode: error.statusCode,
+                    responseBody: error.responseBody,
+                    data: error.data,
+                    cause: error.cause
+                };
+
+                // Try to extract a more useful message from responseBody if it exists
+                let detailedMessage = error.message;
+                if (error.responseBody) {
+                    try {
+                        const body = JSON.parse(error.responseBody);
+                        const bodyError = body.error || body;
+                        const msg = bodyError.message || bodyError.error?.message;
+                        if (msg && msg !== "Provider returned error") {
+                            detailedMessage = `${error.message} (${msg})`;
+                        }
+                    } catch (e) {
+                        // Ignore parse errors
+                    }
+                }
+
+                const traceContent = {
+                    timestamp: new Date().toISOString(),
+                    role: this.role,
+                    pearlId: context?.pearlId,
+                    error: errorMetadata,
+                    messages: messages.map(m => ({
+                        role: m.role,
+                        content: typeof m.content === 'string' ? m.content : '[Object Content]'
+                    })),
+                    tools: Object.keys(this.tools).map(t => {
+                        const toolObj = this.tools[t] as any;
+                        return {
+                            name: t,
+                            description: toolObj.description,
+                            inputSchema: toolObj.inputSchema,
+                            parameters: toolObj.parameters
+                        };
+                    })
+                };
+
+                try {
+                    mkdirSync(traceDir, { recursive: true });
+                    writeFileSync(tracePath, JSON.stringify(traceContent, null, 2));
+                    logger.error(`[${this.role}] LLM execution failed (Status: ${error.statusCode || 'N/A'}). Detailed trace written to: ${tracePath}`, error);
+                } catch (logErr) {
+                    logger.error(`[${this.role}] Failed to write trace file`, logErr);
+                }
+
+                throw new Error(`LLM Error (${error.name}: ${detailedMessage}${error.statusCode ? ` | Status: ${error.statusCode}` : ''}). Trace: ${tracePath}`);
+            }
 
             console.log('DEBUG: result.usage', JSON.stringify(result.usage));
 
@@ -426,25 +498,51 @@ export abstract class CoreAgent {
             // If no tools, we might be done
             if (!toolCalls || toolCalls.length === 0) {
                 // AGENT ENCOURAGEMENT: If the agent provides text but no tool calls,
-                // and we require explicit completion, remind them ONCE.
+                // and we require explicit completion, remind them up to maxCompletionRetries times.
                 if (
                     this.requiresExplicitCompletion &&
-                    !completionToolCalled &&
-                    !didRemindForCompletion
+                    !completionToolCalled
                 ) {
-                    logger.info(
-                        `[${this.role}] Agent exited without completion tool. Providing reminder.`,
-                    );
-                    messages.push({
-                        role: "user",
-                        content: `You provided a response but did not call a completion tool (e.g., submit_work, approve_work, reject_work, fail_work). 
-If you have finished your task, you MUST call the appropriate tool to finalize the workflow. 
-If you are still working, continue with your next step.`,
-                    });
-                    didRemindForCompletion = true;
-                    continue;
+                    completionRetryCount++;
+                    if (completionRetryCount <= maxCompletionRetries) {
+                        logger.info(
+                            `[${this.role}] Agent exited without completion tool. Providing reminder ${completionRetryCount}/${maxCompletionRetries}.`,
+                        );
+
+                        let hint = `# MANDATORY COMPLETION PROTOCOL
+You provided a response but did not call a completion tool. 
+To finalize your work, you MUST call exactly one of: \`submit_work\`, \`approve_work\`, \`reject_work\`, or \`fail_work\`.
+
+**Text-only responses are NOT accepted as task completion.** 
+If you are finished, submit your work now. If you are still working, continue with your next tool call.`;
+
+                        // On subsequent retries, inject tool documentation to help a "lost" agent
+                        if (completionRetryCount > 1) {
+                            const completionTools = Object.keys(this.tools).filter(t =>
+                                t.includes("submit_work") || t.includes("approve_work") || t.includes("reject_work")
+                            );
+                            const primaryTool = completionTools[0];
+                            if (primaryTool) {
+                                hint += `\n\n### Tool Schema Reference: ${primaryTool}
+\`\`\`json
+${JSON.stringify(this.schemas[primaryTool], null, 2)}
+\`\`\``;
+                            }
+                        }
+
+                        messages.push({
+                            role: "user",
+                            content: hint,
+                        });
+                        continue;
+                    }
                 }
                 break;
+            }
+
+            // RESET Completion Retry Count: If the agent actually called tools, they are working.
+            if (toolCalls && toolCalls.length > 0) {
+                completionRetryCount = 0;
             }
 
             // Execute tools
@@ -547,24 +645,26 @@ If you are still working, continue with your next step.`,
                     // Inject Excludes for Search/Tree
                     if (
                         toolName.includes("search_files") ||
-                        toolName.includes("directory_tree")
+                        toolName.includes("directory_tree") ||
+                        toolName.includes("list_directory")
                     ) {
                         const projectContext = await getProjectContext().resolveContext(
                             process.cwd(),
                             process.cwd(),
                         );
-                        if (projectContext?.config.frontmatter) {
-                            const { forbidden, ignore } = projectContext.config.frontmatter;
-                            const excludes = [...(forbidden || []), ...(ignore || [])];
-                            if (excludes.length > 0) {
-                                // Assume tool supports 'exclude' or 'excludes' or 'excludePatterns'
-                                // Common convention for search/tree tools
-                                // biome-ignore lint/suspicious/noExplicitAny: Search tool input is dynamic
-                                const searchInput = validatedInput as any;
-                                searchInput.exclude = excludes;
-                                searchInput.excludes = excludes;
-                                searchInput.excludePatterns = excludes;
-                            }
+
+                        const ignored = getIgnoredPatterns();
+                        // Backward compatibility: If frontmatter is missing, use basic system patterns
+                        const frontmatterExcludes = projectContext?.config.frontmatter
+                            ? [...(projectContext.config.frontmatter.forbidden || []), ...(projectContext.config.frontmatter.ignore || [])]
+                            : [".git/**", "node_modules/**", ".env", ".DS_Store"];
+
+                        const excludes = Array.from(new Set([...ignored, ...frontmatterExcludes]));
+
+                        if (excludes.length > 0) {
+                            // biome-ignore lint/suspicious/noExplicitAny: Input is dynamic
+                            const input = validatedInput as any;
+                            input.excludePatterns = excludes;
                         }
                     }
                     // -------------------------
@@ -636,61 +736,21 @@ If you are still working, continue with your next step.`,
                     }
                     // ---------------------
 
-					// --- OFFLOADING LOGIC ---
-					let toolOutputValue = typeof output === "string" ? output : JSON.stringify(output);
+                    // --- TRUNCATION LOGIC ---
+                    let toolOutputValue = typeof output === "string" ? output : JSON.stringify(output);
 
-					const toolMeta = this.toolMetadata[toolName];
-					const serverLimit = toolMeta?.server 
-						? (config.context?.offloadThresholds as Record<string, number>)?.[toolMeta.server] 
-						: undefined;
-					const threshold = serverLimit !== undefined ? serverLimit : maxToolResponseSize;
-
-					const criticalTools = [
-						"submit_work",
-						"report_progress",
-						"approve_work",
-						"reject_work",
-						"fail_work",
-						"delegate_task",
-						"inspect_result",
-					];
-
-					if (
-						threshold > 0 &&
-						toolOutputValue.length > threshold &&
-						!criticalTools.includes(toolName)
-					) {
-						const memory = getToolResultMemory();
-						const pearlId = context?.pearlId || "default";
-						const resultId = await memory.store(pearlId, toolOutputValue);
-						const excerpt = toolOutputValue.substring(0, 1000);
-
-						toolOutputValue = `--- TOOL RESULT OFFLOADED ---
-ID: ${resultId}
-Server: ${toolMeta?.server || "unknown"}
-Tool: ${toolMeta?.name || toolName}
-Size: ${toolOutputValue.length} characters
-
-The output of this tool was too large for the current context. A short excerpt is provided below:
----
-${excerpt}...
----
-
-ACTION REQUIRED: To reason over the full content, use the 'inspect_result' tool with resultId '${resultId}'.
-Example: inspect_result(resultId: "${resultId}", query: "Analyze the log for database errors.")`;
-
-						logger.info(
-							`[${this.role}] Tool ${toolName} output offloaded to memory ID ${resultId} (${toolOutputValue.length} chars)`,
-						);
-					} else if (toolOutputValue.length > maxToolResponseSize) {
-						// Simple truncation as fallback if offloading is skipped/disabled but still exceeds max limit
-						const truncated = toolOutputValue.substring(0, maxToolResponseSize);
-						toolOutputValue = `${truncated}\n... [Output truncated. Total size: ${toolOutputValue.length} characters (Limit: ${maxToolResponseSize})]`;
-						logger.warn(
-							`[${this.role}] Tool ${toolName} output truncated from ${toolOutputValue.length} to ${maxToolResponseSize}`,
-						);
-					}
-					// ------------------------
+                    if (toolOutputValue.length > maxToolResponseSize) {
+                        const truncated = toolOutputValue.substring(0, maxToolResponseSize);
+                        toolOutputValue = `${truncated}\n... [Output truncated. Total size: ${toolOutputValue.length} characters (Limit: ${maxToolResponseSize})]`;
+                        logger.warn(`[${this.role}] Tool ${toolName} output truncated from ${toolOutputValue.length} to ${maxToolResponseSize}`);
+                    }
+                    // ------------------------
+                    logger.info(`[${this.role}] Tool ${toolName} finished`, {
+                        tool: toolName,
+                        input: tc.input,
+                        output: smartTruncate(output, 500),
+                        size: toolOutputValue.length
+                    });
 
                     const toolOutput = { type: "text" as const, value: toolOutputValue };
 
@@ -738,6 +798,11 @@ Example: inspect_result(resultId: "${resultId}", query: "Analyze the log for dat
             if (finished) {
                 logger.info(`[${this.role}] Task finished explicitly via tool.`);
                 break;
+            }
+
+            if (i === 49) {
+                logger.warn(`[${this.role}] Agent reached maximum step limit (50 steps) for ${context?.pearlId || "unknown"}`);
+                throw new AgentStepLimitReachedError(`Agent reached maximum step limit (50 steps) without explicit completion.`);
             }
         }
 

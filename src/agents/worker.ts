@@ -1,6 +1,7 @@
 import type { LanguageModel } from "ai";
 import type { z } from "zod";
 import { type AgentContext, CoreAgent } from "../core/agent";
+import { type AgentRole } from "../config/schema";
 import { getPearls } from "../core/pearls";
 import { getFormulaRegistry } from "../core/formula";
 import { logger } from "../core/logger";
@@ -11,11 +12,10 @@ import {
     createReportProgressTool,
     createSubmitWorkTool,
 } from "../tools/worker";
-import type { PearlsClient } from "../core/pearls";
 
 export class WorkerAgent extends CoreAgent {
-    constructor(model?: LanguageModel, pearlsClient?: PearlsClient) {
-        super("worker", model, pearlsClient);
+    constructor(role: AgentRole = "worker", model?: LanguageModel) {
+        super(role, model);
         this.requiresExplicitCompletion = true;
 
         // --- Shell Execution (Static) ---
@@ -27,9 +27,9 @@ export class WorkerAgent extends CoreAgent {
         );
 
         // Register default tools for easy access/discovery
-        this.registerSdkTool("submit_work", createSubmitWorkTool({}, undefined, this.pearlsClient));
-        this.registerSdkTool("report_progress", createReportProgressTool({}, this.pearlsClient));
-        this.registerSdkTool("delegate_task", createDelegateTaskTool({}, this.pearlsClient));
+        this.registerSdkTool("submit_work", createSubmitWorkTool({}));
+        this.registerSdkTool("report_progress", createReportProgressTool({}));
+        this.registerSdkTool("delegate_task", createDelegateTaskTool({}));
     }
 
     protected override async getDynamicTools(
@@ -40,8 +40,7 @@ export class WorkerAgent extends CoreAgent {
 
         if (ctx.pearlId) {
             try {
-                const pearls = this.pearlsClient || getPearls();
-                const pearl = await pearls.get(ctx.pearlId);
+                const pearl = await getPearls().get(ctx.pearlId);
                 const stepIdx = pearl.labels
                     ?.find((l) => l.startsWith("step:"))
                     ?.split(":")[1];
@@ -67,9 +66,9 @@ export class WorkerAgent extends CoreAgent {
         }
 
         return {
-            submit_work: createSubmitWorkTool(ctx, outputSchema, this.pearlsClient),
-            report_progress: createReportProgressTool(ctx, this.pearlsClient),
-            delegate_task: createDelegateTaskTool(ctx, this.pearlsClient),
+            submit_work: createSubmitWorkTool(ctx, outputSchema),
+            report_progress: createReportProgressTool(ctx),
+            delegate_task: createDelegateTaskTool(ctx),
         };
     }
 
@@ -81,14 +80,6 @@ export class WorkerAgent extends CoreAgent {
     }
 
     protected override getSystemPrompt(defaultPrompt: string): string {
-        return `
-        ${defaultPrompt}
-        
-        # Guidelines
-        - Use filesystem tools to explore and write code.
-        - Run tests with run_command if available.
-        - Keep the user informed with report_progress.
-        - Submit your work when done with submit_work.
-        `;
+        return defaultPrompt;
     }
 }

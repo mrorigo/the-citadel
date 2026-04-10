@@ -1,5 +1,6 @@
 import { getPearls, type PearlsClient } from "../core/pearls";
 import { type FormulaRegistry, getFormulaRegistry } from "../core/formula";
+import { getConfig } from "../config";
 
 export class WorkflowEngine {
 	private registry: FormulaRegistry;
@@ -137,22 +138,19 @@ export class WorkflowEngine {
 				const title = resolveTemplate(step.title, iterContext);
 				const description = resolveTemplate(step.description, iterContext);
 
-				const finalContext = { ...(step.context || {}), ...iterContext };
+				const finalContext = { ...variables, ...(step.context || {}), ...iterContext };
 
 				const pearl = await pearls.create(title, {
 					parent: rootPearl.id,
 					description: description,
-					context: finalContext, // Merged context
-					labels: step.labels, // Pass formula-defined labels
-				});
-
-				// tag with step ID for piping AND 'molecule:cooking' to prevent premature routing
-				await pearls.update(pearl.id, {
+					context: finalContext, // Merged context (now including formula-level variables)
 					labels: [
+						...(step.labels || []),
 						`step:${step.id}`,
 						`formula:${formulaName}`,
 						"molecule:cooking",
 					],
+					assignee: step.agent, // Assign specific agent role if defined
 				});
 
 				createdIds.push(pearl.id);
@@ -223,6 +221,17 @@ export class WorkflowEngine {
 		console.log(
 			`[WorkflowEngine] Cooking complete. Molecule ID: ${rootPearl.id}`,
 		);
+
+		// Execute onMoleculeStart lifecycle hook
+		const config = getConfig();
+		if (config.hooks?.onMoleculeStart) {
+			try {
+				await config.hooks.onMoleculeStart(rootPearl, formula, variables);
+			} catch (err) {
+				console.error("[WorkflowEngine] Error in onMoleculeStart hook:", err);
+			}
+		}
+
 		return rootPearl.id;
 	}
 }

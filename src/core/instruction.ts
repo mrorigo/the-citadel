@@ -24,65 +24,126 @@ export interface InstructionProvider {
 }
 
 /**
+ * Loads project-specific top-level protocol from .citadel/instructions/protocol.md
+ * This has the lowest priority value (5), meaning it appears at the very top.
+ */
+export class CustomProtocolProvider implements InstructionProvider {
+	name = "custom-protocol";
+	priority = 5;
+
+	async getInstructions(_ctx: InstructionContext): Promise<string | null> {
+		const path = resolve(process.cwd(), ".citadel/instructions/protocol.md");
+		if (existsSync(path)) {
+			try {
+				const content = await readFile(path, "utf-8");
+				return `# ⚠️ PROTOCOL (Highest Priority)\n${content}`;
+			} catch (err) {
+				logger.error(`[CustomProtocolProvider] Failed to read ${path}:`, err);
+			}
+		}
+		return null;
+	}
+}
+
+/**
  * Loads AGENTS.md from project root.
  */
 export class GlobalProvider implements InstructionProvider {
 	name = "global";
 	priority = 10;
 
-	async getInstructions(_ctx: InstructionContext): Promise<string | null> {
+	async getInstructions(ctx: InstructionContext): Promise<string | null> {
+		const parts: string[] = [];
+
+		// 1. Always load project-wide AGENTS.md as the foundation
 		const projectContext = await getProjectContext().resolveContext(
 			process.cwd(),
 			process.cwd(),
 		);
-		if (!projectContext) return null;
-
-		return `
-# PROJECT RULES (AGENTS.md)
+		if (projectContext) {
+			parts.push(`# PROJECT RULES (AGENTS.md)
 You must follow these rules from the project configuration:
 
 ## Raw Configuration
 ${projectContext.config.raw}
 
-Always prioritize these project-specific instructions over general knowledge.
-`;
+Always prioritize these project-specific instructions over general knowledge.`);
+		}
+
+		// 2. Additionally, load persona/assignee file if one exists (stacks on top of AGENTS.md)
+		if (ctx.pearlId) {
+			try {
+				const pearl = await getPearls().get(ctx.pearlId);
+				if (pearl.assignee) {
+					const agentPath = resolve(process.cwd(), `agents/${pearl.assignee}.md`);
+					if (existsSync(agentPath)) {
+						const content = await readFile(agentPath, "utf-8");
+						parts.push(`# AGENT PERSONA: ${pearl.assignee.toUpperCase()}
+You are embodying the persona of ${pearl.assignee}. Adopt the following style and voice, while still adhering to the project rules above:
+
+${content}`);
+					}
+				}
+			} catch (err) {
+				logger.warn(`[GlobalProvider] Error fetching assignee persona for ${ctx.pearlId}: ${err}`);
+			}
+		}
+
+		return parts.length > 0 ? parts.join("\n\n---\n\n") : null;
 	}
 }
 
 /**
  * Hardcoded defaults for Citadel roles.
+ * Provides a universal System Integrity block for all roles,
+ * and a Worker base protocol for worker-type roles.
  */
 export class BuiltinProvider implements InstructionProvider {
 	name = "builtin";
 	priority = 15;
 
+	// Roles that derive from the worker base protocol
+	private static readonly WORKER_TYPE_ROLES = [
+		"worker",
+		"software_developer",
+		"qa",
+		"product",
+		"research",
+	];
+
 	async getInstructions(ctx: InstructionContext): Promise<string | null> {
-		if (ctx.role === "worker") {
-			return `
-# Implementation Mode
-You are the Worker. Your primary goal is to write code and fix issues.
+		const parts: string[] = [];
 
-# Filesystem Tools
-You have access to the \`filesystem\` MCP server tools.
-- Use \`filesystem_list_directory\` and \`filesystem_read_text_file\` to explore.
-- Use \`filesystem_write_file\` to create or overwrite files.
-- Use \`filesystem_edit_file\` for precise modifications.
+		// --- Worker Base Protocol (all worker-type roles) ---
+		if (BuiltinProvider.WORKER_TYPE_ROLES.includes(ctx.role)) {
+			parts.push(`## Worker Base Protocol
 
-# Persistence Rules
-- **Persistence is Mandatory**: You MUST use \`filesystem_write_file\` or \`filesystem_edit_file\` to apply your changes to the disk. 
-- **No Fake Completion**: Do NOT call \`submit_work\` and say "I have fixed it" unless you have successfully called the filesystem tools in this turn.
-- **Verify Before Submission**: Always run tests or list the directory after your changes to confirm they were successful.
-`;
+### Skills-First Workflow
+Before reasoning from scratch, you MUST leverage the company's specialized skills library:
+- **Discovery**: Use \`skills:list_skills\` to see available methodologies.
+- **Utilization**: Use \`skills:get_skill\` to read the instructions for a relevant skill and follow them.
+
+### Memory Retrieval
+If no skill exists, use the QMD system:
+- \`qmd:search\` for keyword lookup in \`memories/\` or \`docs/\`.
+- \`qmd:vector_search\` for conceptual / semantic search.
+- \`qmd:deep_search\` for highest quality historical context.
+
+### Persistence & Git
+- Every successful task must result in an atomic Git commit.
+- Use descriptive messages: \`feat(role): summary [pearlId]\`.
+
+### Escalation & Delegation
+- You are NOT authorized to call \`escalate_to_human\` directly.
+- Delegate to a C-level role (\`ceo\`, \`cto\`, or \`cfo\`) via \`delegate_task\` if human input is required.`);
 		}
 
 		if (ctx.role === "gatekeeper") {
-			return `
-# Verification Mode
-You are the Gatekeeper (Evaluator). Your purpose is to verify that the work meets the requirements.
-`;
+			parts.push(`## Verification Mode
+You are the Gatekeeper (Evaluator). Your purpose is to verify that the work meets the requirements. You MUST finalize with \`approve_work\`, \`reject_work\`, or \`fail_work\`.`);
 		}
 
-		return null;
+		return parts.length > 0 ? parts.join("\n\n") : null;
 	}
 }
 
@@ -164,14 +225,22 @@ export class TagProvider implements InstructionProvider {
 
 		const results: string[] = [];
 		for (const label of ctx.labels) {
-			const tagName = label.startsWith("tag:") ? label.split(":")[1] : label;
-			const path = join(baseDir, `tag-${tagName}.md`);
-			if (existsSync(path)) {
-				try {
-					const content = await readFile(path, "utf-8");
-					results.push(`## TAG: ${tagName}\n${content}`);
-				} catch (err) {
-					logger.error(`[TagProvider] Failed to read ${path}:`, err);
+			const tagName = (label.startsWith("tag:") ? label.split(":")[1] : label) || label;
+			const normalizedName = tagName.replace(/:/g, "-");
+
+			const paths = [
+				{ path: join(baseDir, `tag-${normalizedName}.md`), label: `## TAG: ${tagName}` },
+				{ path: join(baseDir, `tag-${normalizedName}--${ctx.role}.md`), label: `## TAG: ${tagName} (Role: ${ctx.role})` },
+			];
+
+			for (const p of paths) {
+				if (existsSync(p.path)) {
+					try {
+						const content = await readFile(p.path, "utf-8");
+						results.push(`${p.label}\n${content}`);
+					} catch (err) {
+						logger.error(`[TagProvider] Failed to read ${p.path}:`, err);
+					}
 				}
 			}
 		}
@@ -195,6 +264,24 @@ export class ContextProvider implements InstructionProvider {
 	}
 }
 
+/**
+ * Enforcement of Completion Protocol.
+ * This is the HIGHEST priority (priority=100) and appears at the bottom.
+ */
+export class EnforcementProvider implements InstructionProvider {
+	name = "enforcement";
+	priority = 100;
+
+	async getInstructions(_ctx: InstructionContext): Promise<string | null> {
+		return `# MANDATORY COMPLETION PROTOCOL
+You are strictly prohibited from ending your response with text alone. 
+To finalize your work, you MUST call exactly one of the completion tools: \`submit_work\`, \`approve_work\`, \`reject_work\`, or \`fail_work\`.
+
+**Failure to call a completion tool will result in the task being discarded as incomplete.** 
+Text-only summaries are NOT submissions. You must trigger the framework catalyst tools.`;
+	}
+}
+
 export class InstructionService {
 	private providers: InstructionProvider[] = [];
 
@@ -204,6 +291,7 @@ export class InstructionService {
 		formulaRegistry?: FormulaRegistry,
 	) {
 		this.providers = [
+			new CustomProtocolProvider(),
 			new GlobalProvider(),
 			new BuiltinProvider(),
 			new RoleProvider(),
@@ -211,6 +299,7 @@ export class InstructionService {
 			new FormulaProvider(pearls, formulaRegistry),
 			new TagProvider(),
 			new ContextProvider(),
+			new EnforcementProvider(),
 		].sort((a, b) => a.priority - b.priority);
 	}
 

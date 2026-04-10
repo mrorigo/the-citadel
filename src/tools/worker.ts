@@ -4,12 +4,11 @@ import type { AgentContext } from "../core/agent";
 import { getPearls } from "../core/pearls";
 import { logger } from "../core/logger";
 import { getQueue } from "../core/queue";
-import type { PearlsClient } from "../core/pearls";
+import { getConfig } from "../config";
 
 export const createSubmitWorkTool = (
     _context: AgentContext,
     outputSchema?: z.ZodTypeAny,
-    pearls?: PearlsClient,
 ) => {
     const parameters = z.object({
         summary: z
@@ -73,8 +72,7 @@ export const createSubmitWorkTool = (
             const ticket = getQueue().getActiveTicket(pearlId);
             if (!ticket) {
                 try {
-                    const client = pearls || getPearls();
-                    const pearl = await client.get(pearlId);
+                    const pearl = await getPearls().get(pearlId);
                     if (pearl.status === "verify" || pearl.status === "done") {
                         logger.info(
                             `[Worker] Idempotency: Work for ${pearlId} already submitted. Returning success.`,
@@ -91,7 +89,7 @@ export const createSubmitWorkTool = (
                         logger.warn(
                             `[Worker] Recovery: Pearl ${pearlId} stuck in '${pearl.status}' despite completed ticket. Forcing transition to 'verify'.`,
                         );
-                        await (pearls || getPearls()).update(pearlId, { status: "verify" });
+                        await getPearls().update(pearlId, { status: "verify" });
                         const recoveredSummary =
                             (savedOutput as Record<string, unknown>)?.summary ||
                             "Recovered summary";
@@ -116,7 +114,7 @@ export const createSubmitWorkTool = (
                 hasOutput: !!output,
             });
 
-            await (pearls || getPearls()).update(pearlId, {
+            await getPearls().update(pearlId, {
                 status: "verify",
                 output: output || { summary },
             });
@@ -135,7 +133,7 @@ export const createSubmitWorkTool = (
 };
 
 // NOTE: This tool should perhaps add history to the pearl?
-export const createReportProgressTool = (_context: AgentContext, pearls?: PearlsClient) => {
+export const createReportProgressTool = (_context: AgentContext) => {
     const parameters = z
         .object({
             message: z.string().optional().describe("Progress message"),
@@ -160,13 +158,26 @@ export const createReportProgressTool = (_context: AgentContext, pearls?: Pearls
 
             const msg = args.message || args.reasoning || "Working on it...";
             logger.info(`[Worker] Progress on ${pearlId}: ${msg}`);
-            await (pearls || getPearls()).update(pearlId, { status: "in_progress" });
+            await getPearls().update(pearlId, { status: "in_progress" });
+            await getPearls().addComment(pearlId, msg);
+
             return { success: true, message: msg };
         },
     });
 };
 
-export const createDelegateTaskTool = (_context: AgentContext, pearls?: PearlsClient) => {
+
+export const createDelegateTaskTool = (_context: AgentContext) => {
+    let roles: string[] = ["worker", "author", "editor", "research"];
+    try {
+        const config = getConfig();
+        if (config.agents) {
+            roles = Object.keys(config.agents).filter((r) => r !== "gatekeeper");
+        }
+    } catch {
+        // Fallback if config not loaded
+    }
+
     const parameters = z.object({
         parentPearlId: z
             .string()
@@ -179,6 +190,12 @@ export const createDelegateTaskTool = (_context: AgentContext, pearls?: PearlsCl
             .string()
             .optional()
             .describe("Detailed description of the subtask"),
+        role: z
+            .enum(roles as [string, ...string[]])
+            .optional()
+            .describe(
+                `The specialized role required for this task. Available: ${roles.join(", ")}`,
+            ),
     });
 
     return tool({
@@ -204,9 +221,8 @@ export const createDelegateTaskTool = (_context: AgentContext, pearls?: PearlsCl
             }
 
             try {
-                const client = pearls || getPearls();
                 // Fix: Call create(title, options) correctly
-                const pearl = await client.create(title, {
+                const pearl = await getPearls().create(title, {
                     description: description,
                     labels: [...(tags || []), "delegated"],
                     priority:
@@ -218,23 +234,52 @@ export const createDelegateTaskTool = (_context: AgentContext, pearls?: PearlsCl
                                     ? 2
                                     : 3,
                     parent: parentPearlId, // Note: 'parent', not 'parent_id' based on options interface
+                    assignee: args.role,
                 });
 
-                // Establish parent-child dependency (parent depends on child)
-                await (pearls || getPearls()).addDependency(parentPearlId, pearl.id);
+                const metadata: Record<string, unknown> = {};
+                if (args.role) {
+                    metadata.role = args.role;
+                    await getPearls().runCommand([
+                        "meta",
+                        "set",
+                        pearl.id,
+                        "role",
+                        args.role,
+                        "--format",
+                        "json",
+                    ]);
+                }
 
-                // Enqueue the child task
-                getQueue().enqueue(pearl.id, 2, "worker");
+                try {
+                    // Establish parent-child dependency (parent depends on child)
+                    await getPearls().addDependency(parentPearlId, pearl.id);
 
-                logger.info(
-                    `[Worker] Delegated subtask ${pearl.id} from ${parentPearlId}`,
-                );
+                    // Enqueue the child task
+                    getQueue().enqueue(pearl.id, 2, "worker");
 
-                return {
-                    success: true,
-                    pearlId: pearl.id,
-                    message: `Delegated subtask '${title}' (ID: ${pearl.id})`,
-                };
+                    logger.info(
+                        `[Worker] Delegated subtask ${pearl.id} (role: ${args.role || "worker"}) from ${parentPearlId}`,
+                    );
+
+                    return {
+                        success: true,
+                        pearlId: pearl.id,
+                        message: `Delegated subtask '${title}' (ID: ${pearl.id}, Role: ${args.role || "worker"})`,
+                    };
+                } catch (linkErr) {
+                    logger.error(
+                        `[Worker] Delegation linking/enqueuing failed for ${pearl.id}. Attempting rollback.`,
+                        linkErr,
+                    );
+                    // Rollback: try to cancel/delete the orphan pearl
+                    try {
+                        await getPearls().runCommand(["delete", pearl.id, "--yes"]);
+                    } catch (delErr) {
+                        logger.error(`[Worker] Failed to rollback orphan pearl ${pearl.id}`, delErr);
+                    }
+                    throw linkErr;
+                }
             } catch (err: unknown) {
                 const error = err as Error;
                 return {
