@@ -20,25 +20,28 @@ import { getInstructionService } from "./instruction";
 import { getAgentModel } from "./llm";
 import { logger } from "./logger";
 import { getPearls, type PearlsClient } from "./pearls";
+import { getToolResultMemory } from "./memory";
+import { createInspectResultTool } from "../tools/inspection";
 
 export interface AgentContext {
-    pearlId?: string;
-    [key: string]: unknown;
+	pearlId?: string;
+	[key: string]: unknown;
 }
 
 export interface ToolContext extends AgentContext {
-    toolCallId: string;
-    messages: ModelMessage[];
+	toolCallId: string;
+	messages: ModelMessage[];
 }
 
 export abstract class CoreAgent {
-    protected role: AgentRole;
-    protected model: LanguageModel;
-    protected tools: Record<string, Tool> = {};
-    protected dynamicTools: Record<string, Tool> = {};
-    protected schemas: Record<string, z.ZodTypeAny> = {};
-    protected requiresExplicitCompletion = false;
-    protected pearlsClient?: PearlsClient;
+	protected role: AgentRole;
+	protected model: LanguageModel;
+	protected tools: Record<string, Tool> = {};
+	protected dynamicTools: Record<string, Tool> = {};
+	protected schemas: Record<string, z.ZodTypeAny> = {};
+	protected toolMetadata: Record<string, { server?: string; name: string }> = {};
+	protected requiresExplicitCompletion = false;
+	protected pearlsClient?: PearlsClient;
 
     constructor(role: AgentRole, model?: LanguageModel, pearlsClient?: PearlsClient) {
         this.role = role;
@@ -112,42 +115,50 @@ export abstract class CoreAgent {
                             );
                         }
 
-                        const result = await mcp.callTool(tool.serverName, tool.name, args);
-                        return result;
-                    },
-                );
-            }
-        }
-        this.mcpLoaded = true;
-    }
+						const result = await mcp.callTool(tool.serverName, tool.name, args);
+						return result;
+					},
+					tool.serverName,
+				);
+			}
+		}
 
-    protected registerTool<T extends z.ZodTypeAny, R>(
-        name: string,
-        description: string,
-        schema: T,
-        execute: (args: z.infer<T>) => Promise<R>,
-    ) {
-        const options = {
-            description,
-            inputSchema: schema,
-            execute,
-        };
-        // We use unknown cast as a way to bridge the gap between our generic T and the SDK internal expectations
-        this.tools[name] = tool(
-            options as unknown as Parameters<typeof tool>[0],
-        ) as Tool;
-        this.schemas[name] = schema;
-    }
+		// Register built-in inspection tool
+		this.registerSdkTool("inspect_result", createInspectResultTool(), "builtin");
 
-    /**
-     * Registers an AI SDK Tool directly, ensuring its schema is discoverable.
-     */
-    protected registerSdkTool(name: string, sdkTool: Tool) {
-        this.tools[name] = sdkTool;
-        // In AI SDK v6, the schema is stored in inputSchema
-        // biome-ignore lint/suspicious/noExplicitAny: SDK property access
-        this.schemas[name] = (sdkTool as any).inputSchema;
-    }
+		this.mcpLoaded = true;
+	}
+
+	protected registerTool<T extends z.ZodTypeAny, R>(
+		name: string,
+		description: string,
+		schema: T,
+		execute: (args: z.infer<T>) => Promise<R>,
+		server = "builtin",
+	) {
+		const options = {
+			description,
+			inputSchema: schema,
+			execute,
+		};
+		// We use unknown cast as a way to bridge the gap between our generic T and the SDK internal expectations
+		this.tools[name] = tool(
+			options as unknown as Parameters<typeof tool>[0],
+		) as Tool;
+		this.schemas[name] = schema;
+		this.toolMetadata[name] = { server, name };
+	}
+
+	/**
+	 * Registers an AI SDK Tool directly, ensuring its schema is discoverable.
+	 */
+	protected registerSdkTool(name: string, sdkTool: Tool, server = "builtin") {
+		this.tools[name] = sdkTool;
+		// In AI SDK v6, the schema is stored in inputSchema
+		// biome-ignore lint/suspicious/noExplicitAny: SDK property access
+		this.schemas[name] = (sdkTool as any).inputSchema;
+		this.toolMetadata[name] = { server, name };
+	}
 
     /**
      * Override this to provide the system prompt.
@@ -625,15 +636,47 @@ If you are still working, continue with your next step.`,
                     }
                     // ---------------------
 
-                    // --- TRUNCATION LOGIC ---
-                    let toolOutputValue = typeof output === "string" ? output : JSON.stringify(output);
+					// --- OFFLOADING LOGIC ---
+					let toolOutputValue = typeof output === "string" ? output : JSON.stringify(output);
 
-                    if (toolOutputValue.length > maxToolResponseSize) {
-                        const truncated = toolOutputValue.substring(0, maxToolResponseSize);
-                        toolOutputValue = `${truncated}\n... [Output truncated. Total size: ${toolOutputValue.length} characters (Limit: ${maxToolResponseSize})]`;
-                        logger.warn(`[${this.role}] Tool ${toolName} output truncated from ${toolOutputValue.length} to ${maxToolResponseSize}`);
-                    }
-                    // ------------------------
+					const toolMeta = this.toolMetadata[toolName];
+					const serverLimit = toolMeta?.server 
+						? (config.context?.offloadThresholds as Record<string, number>)?.[toolMeta.server] 
+						: undefined;
+					const threshold = serverLimit !== undefined ? serverLimit : maxToolResponseSize;
+
+					if (threshold > 0 && toolOutputValue.length > threshold) {
+						const memory = getToolResultMemory();
+						const pearlId = context?.pearlId || "default";
+						const resultId = await memory.store(pearlId, toolOutputValue);
+						const excerpt = toolOutputValue.substring(0, 1000);
+
+						toolOutputValue = `--- TOOL RESULT OFFLOADED ---
+ID: ${resultId}
+Server: ${toolMeta?.server || "unknown"}
+Tool: ${toolMeta?.name || toolName}
+Size: ${toolOutputValue.length} characters
+
+The output of this tool was too large for the current context. A short excerpt is provided below:
+---
+${excerpt}...
+---
+
+ACTION REQUIRED: To reason over the full content, use the 'inspect_result' tool with resultId '${resultId}'.
+Example: inspect_result(resultId: "${resultId}", query: "Analyze the log for database errors.")`;
+
+						logger.info(
+							`[${this.role}] Tool ${toolName} output offloaded to memory ID ${resultId} (${toolOutputValue.length} chars)`,
+						);
+					} else if (toolOutputValue.length > maxToolResponseSize) {
+						// Simple truncation as fallback if offloading is skipped/disabled but still exceeds max limit
+						const truncated = toolOutputValue.substring(0, maxToolResponseSize);
+						toolOutputValue = `${truncated}\n... [Output truncated. Total size: ${toolOutputValue.length} characters (Limit: ${maxToolResponseSize})]`;
+						logger.warn(
+							`[${this.role}] Tool ${toolName} output truncated from ${toolOutputValue.length} to ${maxToolResponseSize}`,
+						);
+					}
+					// ------------------------
 
                     const toolOutput = { type: "text" as const, value: toolOutputValue };
 
