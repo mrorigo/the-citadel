@@ -8,8 +8,8 @@ import {
 import { runCommandTool } from "../tools/shell";
 
 export class EvaluatorAgent extends CoreAgent {
-    constructor(model?: LanguageModel) {
-        super("gatekeeper", model);
+    constructor(model?: LanguageModel, pearlsClient?: import("../core/pearls").PearlsClient) {
+        super("gatekeeper", model, pearlsClient);
         this.requiresExplicitCompletion = true;
 
         // --- Shell Execution (Static) ---
@@ -21,9 +21,9 @@ export class EvaluatorAgent extends CoreAgent {
         );
 
         // Register default tools for easy access/discovery
-        this.registerSdkTool("approve_work", createApproveWorkTool({}));
-        this.registerSdkTool("reject_work", createRejectWorkTool({}));
-        this.registerSdkTool("fail_work", createFailWorkTool({}));
+        this.registerSdkTool("approve_work", createApproveWorkTool({}, this.pearlsClient));
+        this.registerSdkTool("reject_work", createRejectWorkTool({}, this.pearlsClient));
+        this.registerSdkTool("fail_work", createFailWorkTool({}, this.pearlsClient));
     }
 
     protected override async getDynamicTools(
@@ -31,9 +31,9 @@ export class EvaluatorAgent extends CoreAgent {
     ): Promise<Record<string, import("ai").Tool>> {
         const ctx = context || {};
         return {
-            approve_work: createApproveWorkTool(ctx),
-            reject_work: createRejectWorkTool(ctx),
-            fail_work: createFailWorkTool(ctx),
+            approve_work: createApproveWorkTool(ctx, this.pearlsClient),
+            reject_work: createRejectWorkTool(ctx, this.pearlsClient),
+            fail_work: createFailWorkTool(ctx, this.pearlsClient),
         };
     }
     protected override getSystemPrompt(defaultPrompt: string): string {

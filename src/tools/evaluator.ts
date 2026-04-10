@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { AgentContext } from "../core/agent";
 import { getPearls } from "../core/pearls";
 
-export const createApproveWorkTool = (_context: AgentContext) => {
+export const createApproveWorkTool = (_context: AgentContext, pearls?: import("../core/pearls").PearlsClient) => {
     const parameters = z.object({
         acceptance_test: z
             .union([z.string(), z.array(z.string())])
@@ -27,7 +27,7 @@ export const createApproveWorkTool = (_context: AgentContext) => {
             const finalTest = feedback
                 ? `${testStr}\nFeedback: ${feedback}`
                 : testStr;
-            await getPearls().update(pearlId, {
+            await (pearls || getPearls()).update(pearlId, {
                 status: "done",
                 acceptance_test: finalTest,
             });
@@ -41,7 +41,7 @@ export const createApproveWorkTool = (_context: AgentContext) => {
     });
 };
 
-export const createRejectWorkTool = (_context: AgentContext) => {
+export const createRejectWorkTool = (_context: AgentContext, pearls?: import("../core/pearls").PearlsClient) => {
     const parameters = z.object({
         reason: z.string().describe("Reason for rejection"),
         feedback: z
@@ -59,11 +59,12 @@ export const createRejectWorkTool = (_context: AgentContext) => {
             if (!pearlId)
                 throw new Error("No pearlId found in context");
 
-            const pearl = await getPearls().get(pearlId);
+            const pearlsClient = pearls || getPearls();
+            const pearl = await pearlsClient.get(pearlId);
             const labels = new Set(pearl.labels || []);
             labels.add("rejected");
 
-            await getPearls().update(pearlId, {
+            await (pearls || getPearls()).update(pearlId, {
                 status: "open",
                 labels: Array.from(labels),
             });
@@ -79,7 +80,7 @@ export const createRejectWorkTool = (_context: AgentContext) => {
     });
 };
 
-export const createFailWorkTool = (_context: AgentContext) => {
+export const createFailWorkTool = (_context: AgentContext, pearls?: import("../core/pearls").PearlsClient) => {
     const parameters = z.object({
         reason: z.string().describe("Reason for failure"),
     });
@@ -94,11 +95,12 @@ export const createFailWorkTool = (_context: AgentContext) => {
             if (!pearlId)
                 throw new Error("No pearlId found in context");
 
-            const pearl = await getPearls().get(pearlId);
+            const pearlsClient = pearls || getPearls();
+            const pearl = await pearlsClient.get(pearlId);
             const labels = new Set(pearl.labels || []);
             labels.add("failed");
 
-            await getPearls().update(pearlId, {
+            await (pearls || getPearls()).update(pearlId, {
                 status: "done",
                 labels: Array.from(labels),
             });

@@ -13,8 +13,8 @@ import {
 } from "../tools/worker";
 
 export class WorkerAgent extends CoreAgent {
-    constructor(model?: LanguageModel) {
-        super("worker", model);
+    constructor(model?: LanguageModel, pearlsClient?: import("../core/pearls").PearlsClient) {
+        super("worker", model, pearlsClient);
         this.requiresExplicitCompletion = true;
 
         // --- Shell Execution (Static) ---
@@ -26,9 +26,9 @@ export class WorkerAgent extends CoreAgent {
         );
 
         // Register default tools for easy access/discovery
-        this.registerSdkTool("submit_work", createSubmitWorkTool({}));
-        this.registerSdkTool("report_progress", createReportProgressTool({}));
-        this.registerSdkTool("delegate_task", createDelegateTaskTool({}));
+        this.registerSdkTool("submit_work", createSubmitWorkTool({}, undefined, this.pearlsClient));
+        this.registerSdkTool("report_progress", createReportProgressTool({}, this.pearlsClient));
+        this.registerSdkTool("delegate_task", createDelegateTaskTool({}, this.pearlsClient));
     }
 
     protected override async getDynamicTools(
@@ -39,7 +39,8 @@ export class WorkerAgent extends CoreAgent {
 
         if (ctx.pearlId) {
             try {
-                const pearl = await getPearls().get(ctx.pearlId);
+                const pearls = this.pearlsClient || getPearls();
+                const pearl = await pearls.get(ctx.pearlId);
                 const stepIdx = pearl.labels
                     ?.find((l) => l.startsWith("step:"))
                     ?.split(":")[1];
@@ -65,9 +66,9 @@ export class WorkerAgent extends CoreAgent {
         }
 
         return {
-            submit_work: createSubmitWorkTool(ctx, outputSchema),
-            report_progress: createReportProgressTool(ctx),
-            delegate_task: createDelegateTaskTool(ctx),
+            submit_work: createSubmitWorkTool(ctx, outputSchema, this.pearlsClient),
+            report_progress: createReportProgressTool(ctx, this.pearlsClient),
+            delegate_task: createDelegateTaskTool(ctx, this.pearlsClient),
         };
     }
 

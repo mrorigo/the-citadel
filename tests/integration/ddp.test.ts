@@ -23,18 +23,21 @@ const MOCK_CONFIG: CitadelConfig = {
     },
     agents: {
         worker: { model: 'mock', provider: 'openai' },
-        router: { model: 'mock', provider: 'openai' },
         gatekeeper: { model: 'mock', provider: 'openai' }
     },
     pearls: { path: '.pearls', binary: 'prl', autoSync: false },
     worker: { min_workers: 1, max_workers: 1, load_factor: 1, timeout: 300, maxRetries: 1, costLimit: 1 },
-    gatekeeper: { min_workers: 1, max_workers: 1, load_factor: 1 },
+    gatekeeper: {
+        min_workers: 1, max_workers: 1, load_factor: 1,
+        auto_close_epics: true
+    },
     bridge: { maxLogs: 100 },
     mcpServers: {},
     context: {
         maxHistoryMessages: 20,
         maxToolResponseSize: 50000,
-        maxMessageSize: 100000
+        maxMessageSize: 100000,
+        offloadThresholds: {}
     }
 };
 
@@ -154,7 +157,6 @@ describe('Dynamic Data Piping', () => {
 
         pearls = new MockPearlsClient(TEST_DIR);
         await pearls.init();
-        setPearlsInstance(pearls);
 
         queue = new WorkQueue(DB_PATH);
         setQueueInstance(queue);
@@ -163,8 +165,8 @@ describe('Dynamic Data Piping', () => {
         // Important: set global singleton so WorkerAgent picks it up
         setFormulaRegistry(registry);
 
-        engine = new WorkflowEngine(registry);
-        piper = new DataPiper(); // Uses getPearls(), getQueue()
+        engine = new WorkflowEngine(registry, pearls);
+        piper = new DataPiper(pearls); // Uses getPearls(), getQueue()
     });
 
     afterEach(() => {
@@ -204,7 +206,7 @@ context = { input_num = "{{steps.producer.output.magic_number}}" }
         const registry = new FormulaRegistry(FORMULAS_DIR);
         await registry.loadAll();
         setFormulaRegistry(registry);
-        engine = new WorkflowEngine(registry);
+        engine = new WorkflowEngine(registry, pearls);
 
         // 2. Instantiate Molecule
         const rootId = await engine.instantiateFormula('ddp_test', {});
@@ -234,7 +236,7 @@ context = { input_num = "{{steps.producer.output.magic_number}}" }
 
         // Use cache-busting dynamic import to bypass potential mock leaks
         const { WorkerAgent } = await import('../../src/agents/worker');
-        const worker = new WorkerAgent();
+        const worker = new WorkerAgent(undefined, pearls);
 
         // Mock Model to return a Tool Call
         const mockModel = {

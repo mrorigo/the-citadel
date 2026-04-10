@@ -8,6 +8,7 @@ import { getQueue } from "../core/queue";
 export const createSubmitWorkTool = (
     _context: AgentContext,
     outputSchema?: z.ZodTypeAny,
+    pearls?: import("../core/pearls").PearlsClient,
 ) => {
     const parameters = z.object({
         summary: z
@@ -71,7 +72,8 @@ export const createSubmitWorkTool = (
             const ticket = getQueue().getActiveTicket(pearlId);
             if (!ticket) {
                 try {
-                    const pearl = await getPearls().get(pearlId);
+                    const client = pearls || getPearls();
+                    const pearl = await client.get(pearlId);
                     if (pearl.status === "verify" || pearl.status === "done") {
                         logger.info(
                             `[Worker] Idempotency: Work for ${pearlId} already submitted. Returning success.`,
@@ -88,7 +90,7 @@ export const createSubmitWorkTool = (
                         logger.warn(
                             `[Worker] Recovery: Pearl ${pearlId} stuck in '${pearl.status}' despite completed ticket. Forcing transition to 'verify'.`,
                         );
-                        await getPearls().update(pearlId, { status: "verify" });
+                        await (pearls || getPearls()).update(pearlId, { status: "verify" });
                         const recoveredSummary =
                             (savedOutput as Record<string, unknown>)?.summary ||
                             "Recovered summary";
@@ -113,7 +115,7 @@ export const createSubmitWorkTool = (
                 hasOutput: !!output,
             });
 
-            await getPearls().update(pearlId, {
+            await (pearls || getPearls()).update(pearlId, {
                 status: "verify",
                 output: output || { summary },
             });
@@ -132,7 +134,7 @@ export const createSubmitWorkTool = (
 };
 
 // NOTE: This tool should perhaps add history to the pearl?
-export const createReportProgressTool = (_context: AgentContext) => {
+export const createReportProgressTool = (_context: AgentContext, pearls?: import("../core/pearls").PearlsClient) => {
     const parameters = z
         .object({
             message: z.string().optional().describe("Progress message"),
@@ -154,16 +156,16 @@ export const createReportProgressTool = (_context: AgentContext) => {
                     success: false,
                     message: "No pearlId found in context",
                 };
-
+ 
             const msg = args.message || args.reasoning || "Working on it...";
             logger.info(`[Worker] Progress on ${pearlId}: ${msg}`);
-            await getPearls().update(pearlId, { status: "in_progress" });
+            await (pearls || getPearls()).update(pearlId, { status: "in_progress" });
             return { success: true, message: msg };
         },
     });
 };
 
-export const createDelegateTaskTool = (_context: AgentContext) => {
+export const createDelegateTaskTool = (_context: AgentContext, pearls?: import("../core/pearls").PearlsClient) => {
     const parameters = z.object({
         parentPearlId: z
             .string()
@@ -199,10 +201,11 @@ export const createDelegateTaskTool = (_context: AgentContext) => {
                         "Cannot delegate: No active parent pearl (missing context and argument)",
                 };
             }
-
+ 
             try {
+                const client = pearls || getPearls();
                 // Fix: Call create(title, options) correctly
-                const pearl = await getPearls().create(title, {
+                const pearl = await client.create(title, {
                     description: description,
                     labels: [...(tags || []), "delegated"],
                     priority:
@@ -215,9 +218,9 @@ export const createDelegateTaskTool = (_context: AgentContext) => {
                                     : 3,
                     parent: parentPearlId, // Note: 'parent', not 'parent_id' based on options interface
                 });
-
+ 
                 // Establish parent-child dependency (parent depends on child)
-                await getPearls().addDependency(parentPearlId, pearl.id);
+                await (pearls || getPearls()).addDependency(parentPearlId, pearl.id);
 
                 // Enqueue the child task
                 getQueue().enqueue(pearl.id, 2, "worker");

@@ -58,7 +58,7 @@ export class Conductor {
 						// Move pearl to in_progress when we start processing
 						await this.pearls.update(ticket.pearl_id, { status: "in_progress" });
 
-						const agent = new WorkerAgent();
+						const agent = new WorkerAgent(undefined, this.pearls);
 						const pearl = await this.pearls.get(ticket.pearl_id).catch(() => null);
 
 						if (!pearl) {
@@ -122,7 +122,7 @@ export class Conductor {
 						logger.info(`[Gatekeeper] Verifying ${ticket.pearl_id}`, {
 							pearlId: ticket.pearl_id,
 						});
-						const agent = new EvaluatorAgent();
+						const agent = new EvaluatorAgent(undefined, this.pearls);
 						const pearl = await this.pearls.get(ticket.pearl_id);
 
 						const submittedWork = pearl.output || this.queue.getOutput(ticket.pearl_id);
@@ -413,7 +413,7 @@ export class Conductor {
 				// --- Data Piping ---
 				// Try to resolve dynamic context dependencies
 				// If context still has unresolved references, we wait.
-				const piped = await getPiper().pipeData(pearl.id);
+				const piped = await getPiper(this.pearls).pipeData(pearl.id);
 				if (piped) {
 					logger.info(`[Router] Piped data for ${pearl.id}`);
 				}

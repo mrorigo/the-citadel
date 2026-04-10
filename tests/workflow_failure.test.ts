@@ -120,7 +120,6 @@ description = "Cleaning up after main failure"
                 });
             })
         };
-        setPearlsInstance(pearlsMock);
 
         registry = new FormulaRegistry(formulasDir);
         await registry.loadAll();
@@ -135,6 +134,7 @@ description = "Cleaning up after main failure"
         clearGlobalSingleton('pearls_client');
         clearGlobalSingleton('work_queue');
         clearGlobalSingleton('formula_registry');
+        clearGlobalSingleton('piper');
         resetConfig();
     });
 
@@ -162,6 +162,7 @@ description = "Cleaning up after main failure"
         const conductor = new Conductor(pearlsMock);
         // @ts-expect-error - access private for test
         await conductor.cycleRouter();
+        await conductor.stop();
 
         // Check if recovery pearl is now done
         const finalRecovery = store.get(recoveryPearl.id);
@@ -181,6 +182,7 @@ description = "Cleaning up after main failure"
         const conductor = new Conductor(pearlsMock);
         // @ts-expect-error - access private for test
         await conductor.cycleRouter();
+        await conductor.stop();
 
         // Check if recovery pearl is STILL open (ready for worker)
         const finalRecovery = store.get(recoveryPearl.id);
@@ -188,7 +190,7 @@ description = "Cleaning up after main failure"
     });
 
     it('should correctly mark work as failed via EvaluatorAgent tool', async () => {
-        const agent = new EvaluatorAgent();
+        const agent = new EvaluatorAgent(undefined, pearlsMock);
         const pearlId = 'bd-test1';
         store.set(pearlId, { id: pearlId, title: 'Test Task', status: 'verify', labels: [] });
 

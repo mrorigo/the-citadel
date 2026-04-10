@@ -114,12 +114,17 @@ export class RoleProvider implements InstructionProvider {
 export class FormulaProvider implements InstructionProvider {
 	name = "formula";
 	priority = 30;
+	private pearls: import("./pearls").PearlsClient;
+
+	constructor(pearls?: import("./pearls").PearlsClient) {
+		this.pearls = pearls || getPearls();
+	}
 
 	async getInstructions(ctx: InstructionContext): Promise<string | null> {
 		if (!ctx.pearlId) return null;
 
 		try {
-			const pearl = await getPearls().get(ctx.pearlId);
+			const pearl = await this.pearls.get(ctx.pearlId);
 			const formulaLabel = pearl.labels?.find((l) => l.startsWith("formula:"));
 			if (!formulaLabel) return null;
 
@@ -187,13 +192,13 @@ export class ContextProvider implements InstructionProvider {
 export class InstructionService {
 	private providers: InstructionProvider[] = [];
 
-	constructor() {
+	constructor(pearls?: import("./pearls").PearlsClient) {
 		this.providers = [
 			new GlobalProvider(),
 			new BuiltinProvider(),
 			new RoleProvider(),
-			new MCPResourceProvider(),
-			new FormulaProvider(),
+			new MCPResourceProvider(undefined, pearls),
+			new FormulaProvider(pearls),
 			new TagProvider(),
 			new ContextProvider(),
 		].sort((a, b) => a.priority - b.priority);
@@ -234,6 +239,6 @@ ${additions.join("\n\n---\n\n")}
 	}
 }
 
-export function getInstructionService(): InstructionService {
-	return getGlobalSingleton("instruction_service", () => new InstructionService());
+export function getInstructionService(pearls?: import("./pearls").PearlsClient): InstructionService {
+	return getGlobalSingleton("instruction_service", () => new InstructionService(pearls));
 }

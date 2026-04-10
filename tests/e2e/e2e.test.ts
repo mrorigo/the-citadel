@@ -14,41 +14,17 @@ const TEST_QUEUE_PATH = join(TEST_ENV, 'queue.sqlite');
 import { clearGlobalSingleton } from '../../src/core/registry';
 import { resetConfig } from '../../src/config';
 
-// 2. Mock Agents
-mock.module('../../src/agents/router', () => ({
-    RouterAgent: class MockRouter {
-        static testQueue: any = null;
-        // biome-ignore lint/suspicious/noExplicitAny: Mocking context
-        async run(_prompt: string, context: any) {
-            const { pearlId, status } = context || {};
-            console.log(`[MockRouter] Analyze ${pearlId} (${status})`);
-
-            // Use injected test queue (with fallback if needed, but we expect injection)
-            // @ts-ignore
-            const { getQueue } = await import('../../src/core/queue');
-            // @ts-ignore
-            const q = globalThis.__TEST_QUEUE__ || MockRouter.testQueue || getQueue();
-
-            if (status === 'open') {
-                console.log(`[MockRouter] Enqueuing ${pearlId} for worker`);
-                q.enqueue(pearlId, 0, 'worker');
-                return "Routed to worker";
-            } else if (status === 'verify') {
-                console.log(`[MockRouter] Enqueuing ${pearlId} for gatekeeper`);
-                q.enqueue(pearlId, 0, 'gatekeeper');
-                return "Routed to gatekeeper";
-            }
-            return "No action";
-        }
-    }
-}));
+// 2. Mock Agent Setup
 
 mock.module('../../src/agents/worker', () => ({
     WorkerAgent: class MockWorker {
-        static pearlsClient: any = null;
+        pearlsClient: any;
+        constructor(_model: any, pearlsClient: any) {
+            this.pearlsClient = pearlsClient;
+        }
         // biome-ignore lint/suspicious/noExplicitAny: Mocking context
         async run(_prompt: string, context: any) {
-            const client = MockWorker.pearlsClient;
+            const client = this.pearlsClient;
             if (!client) throw new Error("MockWorker: pearlsClient not injected");
 
             console.log(`[Worker] Moving ${context.pearlId} to in_progress...`);
@@ -62,10 +38,13 @@ mock.module('../../src/agents/worker', () => ({
 
 mock.module('../../src/agents/evaluator', () => ({
     EvaluatorAgent: class MockEvaluator {
-        static pearlsClient: any = null;
+        pearlsClient: any;
+        constructor(_model: any, pearlsClient: any) {
+            this.pearlsClient = pearlsClient;
+        }
         // biome-ignore lint/suspicious/noExplicitAny: Mocking context
         async run(_prompt: string, context: any) {
-            const client = MockEvaluator.pearlsClient;
+            const client = this.pearlsClient;
             if (!client) throw new Error("MockEvaluator: pearlsClient not injected");
 
             console.log(`[Gatekeeper] Approving ${context.pearlId}...`);
@@ -100,27 +79,17 @@ describe('E2E Lifecycle', () => {
         queueInstance = new WorkQueue(TEST_QUEUE_PATH);
         setQueueInstance(queueInstance);
 
-        // Inject into MockRouter
-        const { RouterAgent } = await import('../../src/agents/router');
-        // @ts-ignore
-        RouterAgent.testQueue = queueInstance;
         // @ts-ignore
         globalThis.__TEST_QUEUE__ = queueInstance;
 
         pearlsClient = new PearlsClient(TEST_PEARLS_PATH);
         // FORCE doctor to pass in E2E tests (ignores git dirty state)
         pearlsClient.doctor = async () => true;
-        setPearlsInstance(pearlsClient);
         await pearlsClient.init();
 
         // Inject into MockWorker/Evaluator
         const { WorkerAgent } = await import('../../src/agents/worker');
-        // @ts-ignore
-        WorkerAgent.pearlsClient = pearlsClient;
-
         const { EvaluatorAgent } = await import('../../src/agents/evaluator');
-        // @ts-ignore
-        EvaluatorAgent.pearlsClient = pearlsClient;
 
         // 0. Test Worker Pool (Guaranteed Real Implementation)
         // We define this inline to avoid any mock leakage from src/core/pool
@@ -171,7 +140,6 @@ describe('E2E Lifecycle', () => {
                 ollama: { baseURL: 'http://localhost:11434/v1', apiKey: 'ollama' }
             },
             agents: {
-                router: { provider: 'ollama', model: 'mock' },
                 worker: { provider: 'ollama', model: 'mock' },
                 gatekeeper: { provider: 'ollama', model: 'mock' },
                 supervisor: { provider: 'ollama', model: 'mock' }

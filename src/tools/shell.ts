@@ -37,7 +37,7 @@ export const runCommandTool = {
 		timeout?: number;
 		background?: boolean;
 		[key: string]: unknown;
-	}) => {
+	}, pearls?: import("../core/pearls").PearlsClient, _toolContext?: any) => {
 		// Normalize: accept both 'command' and 'cmd', convert arrays to strings
 		let command: string | undefined;
 		if (args.command) {
@@ -129,7 +129,7 @@ export const runCommandTool = {
 
 					if (autoSync) {
 						logger.info(`[Shell] Git operation detected. Triggering Pearls sync.`);
-						await getPearls().sync();
+						await (pearls || getPearls()).sync();
 					}
 				}
 

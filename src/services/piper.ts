@@ -4,9 +4,11 @@ import { logger } from "../core/logger";
 import { getQueue } from "../core/queue";
 
 export class DataPiper {
-	// No longer caching in constructor to avoid singleton leak in tests
-	// private pearls = getPearls();
-	// private queue = getQueue();
+	private pearls: import("../core/pearls").PearlsClient;
+
+	constructor(pearls?: import("../core/pearls").PearlsClient) {
+		this.pearls = pearls || getPearls();
+	}
 
 	/**
 	 * Attempts to pipe data into a Pearl's context from its dependencies.
@@ -21,7 +23,7 @@ export class DataPiper {
 	 */
 	async pipeData(pearlId: string): Promise<boolean> {
 		try {
-			const pearls = getPearls();
+			const pearls = this.pearls;
 			const pearl = await pearls.get(pearlId);
 			if (!pearl || !pearl.context) return false;
 
@@ -55,7 +57,7 @@ export class DataPiper {
 
 			if (hasChanges) {
 				logger.info(`[Piper] Resolved data for pearl ${pearlId}`, { newContext });
-				await getPearls().update(pearlId, { context: newContext });
+				await this.pearls.update(pearlId, { context: newContext });
 				return true;
 			}
 
@@ -132,7 +134,7 @@ export class DataPiper {
 		// Try getting output from Pearl metadata first (Canonical Source)
 		// This avoids the issue where Gatekeeper tickets (which return null output)
 		// shadow the actual Worker ticket output in the Queue.
-		const targetPearl = await getPearls().get(dependencyId);
+		const targetPearl = await this.pearls.get(dependencyId);
 		let output = targetPearl.output;
 
 		// Fallback to Queue (Legacy/Retry support)
@@ -158,7 +160,7 @@ export class DataPiper {
 		currentPearl: Pearl,
 		stepId: string,
 	): Promise<string | undefined> {
-		const pearls = getPearls();
+		const pearls = this.pearls;
 		const candidateIds = currentPearl.blockers || [];
 
 		// 1. Check immediate blockers
@@ -186,9 +188,9 @@ export class DataPiper {
 	}
 }
 
+import { getGlobalSingleton } from "../core/registry";
+
 // Singleton
-let _piper: DataPiper | null = null;
-export function getPiper(): DataPiper {
-	if (!_piper) _piper = new DataPiper();
-	return _piper;
+export function getPiper(pearls?: import("../core/pearls").PearlsClient): DataPiper {
+	return getGlobalSingleton("piper", () => new DataPiper(pearls));
 }

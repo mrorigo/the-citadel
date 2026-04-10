@@ -9,7 +9,6 @@ import { clearGlobalSingleton } from '../../src/core/registry';
 import { setConfig, resetConfig } from '../../src/config';
 
 // Import real agents to patch prototypes
-import { RouterAgent } from '../../src/agents/router';
 import { WorkerAgent } from '../../src/agents/worker';
 
 const mockPearls = {
@@ -23,21 +22,20 @@ const mockPearls = {
 
 const mockQueue = {
     getActiveTicket: mock(() => null),
-    claim: mock(() => ({ id: 'ticket-1', pearl_id: 'pearl-C' })),
+    claim: mock((_id: string) => ({ id: 'ticket-1', pearl_id: 'pearl-C' })),
     list_active: mock(() => []),
     reschedule: mock(() => { }),
     getLatestTicket: mock(() => null),
+    enqueue: mock(() => { }),
+    getPendingCount: mock(() => 0),
 };
 
 describe('Conductor Race Condition', () => {
     let conductor: Conductor;
 
     // Store originals
-    const originalRouterRun = RouterAgent.prototype.run;
     const originalWorkerRun = WorkerAgent.prototype.run;
 
-    // Spies
-    let mockRouterRun: any;
 
     beforeEach(() => {
         setupMocks();
@@ -55,16 +53,12 @@ describe('Conductor Race Condition', () => {
             worker: { min_workers: 0, max_workers: 1, load_factor: 1 },
             gatekeeper: { min_workers: 0, max_workers: 1, load_factor: 1 },
             agents: {
-                router: { provider: 'ollama', model: 'mock' },
                 worker: { provider: 'ollama', model: 'mock' },
-                gatekeeper: { provider: 'ollama', model: 'mock' },
-                supervisor: { provider: 'ollama', model: 'mock' }
+                gatekeeper: { provider: 'ollama', model: 'mock' }
             }
         });
 
         // Patch Agent Prototypes (Avoids mock.module leak)
-        mockRouterRun = mock(async () => 'mock-response');
-        RouterAgent.prototype.run = mockRouterRun;
         WorkerAgent.prototype.run = mock(async () => 'mock-response');
 
         // Mock Piper by patching global singleton if possible, or using mock.module locally?
@@ -99,7 +93,6 @@ describe('Conductor Race Condition', () => {
         resetConfig();
 
         // Restore Prototypes
-        RouterAgent.prototype.run = originalRouterRun;
         WorkerAgent.prototype.run = originalWorkerRun;
 
         mock.restore();
@@ -131,12 +124,12 @@ describe('Conductor Race Condition', () => {
                 id: 'pearl-C',
                 status: 'open',
                 blockers: ['pearl-B']
-            };
+            } as any;
             if (id === 'pearl-B') return {
                 id: 'pearl-B',
                 status: 'in_progress'
-            };
-            return { id };
+            } as any;
+            return { id } as any;
         });
 
         (conductor as any).isRunning = true;
@@ -155,9 +148,7 @@ describe('Conductor Race Condition', () => {
         }
 
         // Assertions
-        const calls = mockRouterRun.mock.calls;
-        const pearlCCall = calls.find(call => (call[1] as any)?.pearlId === 'pearl-C');
-
-        expect(pearlCCall).toBeUndefined();
+        // In deterministic router, 'enqueue' should NOT be called if double check fails
+        expect(mockQueue.enqueue).not.toHaveBeenCalled();
     });
 });

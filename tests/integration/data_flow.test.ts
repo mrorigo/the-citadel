@@ -21,7 +21,6 @@ const MOCK_CONFIG: CitadelConfig = {
     },
     agents: {
         worker: { model: 'mock-model', provider: 'openai' },
-        router: { model: 'mock-model', provider: 'openai' },
         gatekeeper: { model: 'mock-model', provider: 'openai' }
     },
     pearls: {
@@ -34,14 +33,16 @@ const MOCK_CONFIG: CitadelConfig = {
         timeout: 300, maxRetries: 3, costLimit: 1
     },
     gatekeeper: {
-        min_workers: 1, max_workers: 2, load_factor: 1
+        min_workers: 1, max_workers: 2, load_factor: 1,
+        auto_close_epics: true
     },
     bridge: { maxLogs: 1000 },
     mcpServers: {},
     context: {
         maxHistoryMessages: 20,
         maxToolResponseSize: 50000,
-        maxMessageSize: 100000
+        maxMessageSize: 100000,
+        offloadThresholds: {}
     }
 };
 
@@ -155,7 +156,6 @@ describe('Data Flow Integration', () => {
 
         pearls = new MockPearlsClient(TEST_DIR);
         await pearls.init();
-        setPearlsInstance(pearls);
 
         queue = new WorkQueue(DB_PATH);
         setQueueInstance(queue);
@@ -210,7 +210,7 @@ describe('Data Flow Integration', () => {
         // 4. Run Worker Agent Tool (submit_work)
         // Use cache-busting dynamic import to bypass potential mock leaks
         const { WorkerAgent } = await import('../../src/agents/worker');
-        const agent = new WorkerAgent();
+        const agent = new WorkerAgent(undefined, pearls);
         // Access protected tools via any cast
         const tools = (agent as any).tools;
         const submitTool = tools['submit_work'];

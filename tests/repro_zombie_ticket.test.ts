@@ -23,16 +23,6 @@ class MockPool {
 class TestConductor extends Conductor {
     constructor(pearls: PearlsClient, queue: WorkQueue, config?: any, PoolClass?: any) {
         super(pearls, queue, config, PoolClass);
-        // Mock the router agent to avoid LLM calls
-        this['routerAgent'] = {
-            run: async (prompt: string, context: any) => {
-                // Simple heuristic: if context has status verify, route to gatekeeper
-                if (context?.status === 'verify') {
-                    queue.enqueue(context.pearlId, 2, 'gatekeeper');
-                }
-                return "Mock routed";
-            }
-        } as any;
     }
 
     public async cycleRouterPublic() {
@@ -55,7 +45,6 @@ describe('Zombie Worker Ticket (Reproduction)', () => {
             worker: { min_workers: 0, max_workers: 1, load_factor: 1 },
             gatekeeper: { min_workers: 0, max_workers: 1, load_factor: 1 },
             agents: {
-                router: { provider: 'ollama', model: 'mock' },
                 worker: { provider: 'ollama', model: 'mock' },
                 gatekeeper: { provider: 'ollama', model: 'mock' }
             }
@@ -78,7 +67,6 @@ describe('Zombie Worker Ticket (Reproduction)', () => {
         await pearls.init();
 
         conductor = new TestConductor(pearls, queue, undefined, MockPool);
-        setPearlsInstance(pearls);
     });
 
     afterEach(() => {

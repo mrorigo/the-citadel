@@ -133,13 +133,13 @@ export abstract class CoreAgent {
 		name: string,
 		description: string,
 		schema: T,
-		execute: (args: z.infer<T>) => Promise<R>,
+		execute: (args: z.infer<T>, pearls?: PearlsClient, toolContext?: any) => Promise<R>,
 		server = "builtin",
 	) {
 		const options = {
 			description,
 			inputSchema: schema,
-			execute,
+			execute: (args: z.infer<T>, toolContext: any) => execute(args, this.pearlsClient, toolContext),
 		};
 		// We use unknown cast as a way to bridge the gap between our generic T and the SDK internal expectations
 		this.tools[name] = tool(
@@ -297,7 +297,7 @@ export abstract class CoreAgent {
         this.dynamicTools = await this.getDynamicTools(context);
 
         // 1. Resolve Context and Build Prompt using InstructionService
-        const instructionService = getInstructionService();
+        const instructionService = getInstructionService(this.pearlsClient);
         const baseSystem = await instructionService.buildPrompt(
             {
                 role: this.role,

@@ -10,9 +10,11 @@ export class MCPResourceProvider implements InstructionProvider {
     priority = 25; // Between Role (20) and Formula (30)
 
     private explicitMcpService?: MCPService;
+    private pearls: import("./pearls").PearlsClient;
 
-    constructor(mcpService?: MCPService) {
+    constructor(mcpService?: MCPService, pearls?: import("./pearls").PearlsClient) {
         this.explicitMcpService = mcpService;
+        this.pearls = pearls || getPearls();
     }
 
     async getInstructions(ctx: InstructionContext): Promise<string | null> {
@@ -28,7 +30,7 @@ export class MCPResourceProvider implements InstructionProvider {
         // 2. Formula-level resources
         if (ctx.pearlId) {
             try {
-                const pearl = await getPearls().get(ctx.pearlId);
+                const pearl = await this.pearls.get(ctx.pearlId);
                 const formulaLabel = pearl.labels?.find((l) => l.startsWith("formula:"));
                 if (formulaLabel) {
                     const formulaName = formulaLabel.split(":")[1];

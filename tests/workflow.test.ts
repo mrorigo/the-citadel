@@ -69,9 +69,6 @@ needs = ["prep"]
             ready: mock(async () => [])
         };
 
-        // Inject Mock
-        setPearlsInstance(pearlsClientMock);
-
         // Setup Engine
         // We need to patch the singleton getFormulaRegistry used by engine,
         // or modify engine to accept registry.
@@ -110,7 +107,7 @@ needs = ["prep"]
         // and initialize the singleton:
         getFormulaRegistry(formulasDir).loadAll(); // Re-load into singleton
 
-        engine = new WorkflowEngine(registry);
+        engine = new WorkflowEngine(registry, pearlsClientMock);
 
         // Run with Convoy Parent
         await engine.instantiateFormula('compilation', { target: 'MyApp' }, 'bd-convoy1');

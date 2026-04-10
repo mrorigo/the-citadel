@@ -32,7 +32,6 @@ describe('Deadlock Reproduction', () => {
 
         pearlsClient = new PearlsClient(TEST_PEARLS_PATH);
         await pearlsClient.init();
-        setPearlsInstance(pearlsClient);
 
         queue = new WorkQueue(TEST_QUEUE_PATH);
         setQueueInstance(queue);
@@ -41,7 +40,6 @@ describe('Deadlock Reproduction', () => {
             env: 'development',
             providers: { ollama: {} },
             agents: {
-                router: { provider: 'ollama', model: 'mock' },
                 worker: { provider: 'ollama', model: 'mock' },
                 gatekeeper: { provider: 'ollama', model: 'mock' }
             },

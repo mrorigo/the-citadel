@@ -42,14 +42,12 @@ describe("Bug Repro: Label Overwriting", () => {
             pearls: { path: ".pearls", binary: "prl" },
             agents: {
                 worker: { provider: "ollama", model: "mock" },
-                router: { provider: "ollama", model: "mock" },
                 gatekeeper: { provider: "ollama", model: "mock" }
             },
             worker: { min_workers: 1, max_workers: 5, load_factor: 1.0 }
         });
 
         mockPearls = new MockPearls();
-        setPearlsInstance(mockPearls);
 
         registry = new FormulaRegistry();
         // @ts-ignore
@@ -66,7 +64,7 @@ describe("Bug Repro: Label Overwriting", () => {
             ]
         });
 
-        engine = new WorkflowEngine(registry);
+        engine = new WorkflowEngine(registry, mockPearls);
     });
 
     it("should merge formula-defined labels with system labels", async () => {
