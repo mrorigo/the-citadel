@@ -39,9 +39,9 @@ export const createInspectResultTool = (_context: AgentContext, _pearls?: Pearls
 					"You are a specialized content inspector. You are given a large tool result and a query about it. You MUST analyze the result and provide the requested information. You have no tools, no internet access, and no autonomy beyond answering the specific query about the provided content.",
 				prompt: `
 CONTENT TO INSPECT (ID: ${resultId}):
----
+---BEGIN OFFLOADED CONTENT---
 ${content}
----
+---END OFFLOADED CONTENT---
 
 USER QUERY:
 ${query}

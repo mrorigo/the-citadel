@@ -156,6 +156,7 @@ describe('Data Flow Integration', () => {
 
         pearls = new MockPearlsClient(TEST_DIR);
         await pearls.init();
+        setPearlsInstance(pearls);
 
         queue = new WorkQueue(DB_PATH);
         setQueueInstance(queue);

@@ -49,7 +49,7 @@ const FORMULAS_DIR = resolve(TEST_DIR, '.citadel/formulas');
 class MockPearlsClient extends PearlsClient {
     public store: Map<string, any> = new Map();
 
-    protected override async runCommand(args: string[]): Promise<string> {
+    public override async runCommand(args: string[]): Promise<string> {
         const cmd = args[0];
 
         // Create
@@ -158,6 +158,7 @@ describe('Dynamic Data Piping', () => {
 
         pearls = new MockPearlsClient(TEST_DIR);
         await pearls.init();
+        setPearlsInstance(pearls);
 
         queue = new WorkQueue(DB_PATH);
         setQueueInstance(queue);

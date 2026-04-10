@@ -201,6 +201,6 @@ describe('WorkerAgent Integration Coverage', () => {
         const prompt = (agent as any).getSystemPrompt('Default');
         expect(prompt).toContain('Default');
         expect(prompt).toContain('# Guidelines');
-        expect(prompt).toContain('filesystem tools');
+        expect(prompt).toContain('filesystem:list_directory');
     });
 });

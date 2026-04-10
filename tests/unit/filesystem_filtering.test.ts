@@ -70,9 +70,9 @@ describe('Filesystem Tool Filtering', () => {
 
     it('should filter forbidden files from list_directory output', async () => {
         // We simulate a tool result that includes secret files
-        mockToolExecute.mockResolvedValueOnce({
+        mockToolExecute.mockImplementation(async () => ({
             content: [{ type: 'text', text: '[FILE] safe.txt\n[FILE] super.secret\n[DIR] node_modules\n[FILE] ok.js' }]
-        });
+        }));
 
         // Type casting to Bypass protected access
         // biome-ignore lint/suspicious/noExplicitAny: access private for testing
