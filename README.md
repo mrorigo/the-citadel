@@ -27,6 +27,7 @@ npm install the-citadel@0.8.4
 - **Provider‑agnostic** – Works with Ollama, OpenAI, Anthropic, and more.
 - **Context Aware** – Adheres to specific project rules and style guides (`AGENTS.md`) automatically. Supports [YAML Frontmatter](docs/agent/AGENTS.md.frontmatter.md) for strict `ignore`, `read_only`, and `forbidden` file constraints.
 - **Dynamic Data Piping** – Pass rich inputs (`context`) to tasks and pipe outputs between steps (`{{steps.foo.output.bar}}`).
+- **Tool Result Offloading** – Automatically offload large tool outputs to disk and use **sub-agent reasoning** (`inspect_result`) to query them, preventing context bloat.
 
 ---
 

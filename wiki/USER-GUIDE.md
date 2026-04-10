@@ -400,20 +400,54 @@ Configure the underlying state engine.
 ### 6. Context Management
 Control the amount of information passed to agents to manage costs and prevent context overflow.
 
-*   **`maxHistoryMessages`**: Maximum number of conversation turns to keep in memory (default: 20). Pruning is smart and preserves the System Prompt and tool-result pairs.
-*   **`maxToolResponseSize`**: Maximum characters for a single tool output (default: 50,000). Large outputs are automatically truncated with a warning.
-*   **`maxMessageSize`**: Saftey limit for any single message (default: 100,000).
+- **`maxHistoryMessages`**: Maximum number of conversation turns to keep in memory (default: 20). Pruning is smart and preserves the System Prompt and tool-result pairs.
+- **`maxToolResponseSize`**: Default maximum characters for a single tool output (default: 50,000). 
+- **`offloadThresholds`**: Per-server limits for offloading (e.g., `{ "filesystem": 100000 }`). Setting a threshold to `0` or a very large number effectively disables offloading for that server.
+- **`maxMessageSize`**: Safety limit for any single message (default: 100,000).
 
 ```typescript
 context: {
     maxHistoryMessages: 30,
-    maxToolResponseSize: 100000,
+    maxToolResponseSize: 50000,
+    offloadThresholds: {
+        "web_search": 10000, // Aggressive offloading for web results
+        "filesystem": 0      // Never offload filesystem results
+    },
     maxMessageSize: 200000
 }
 ```
 
+#### Tool Result Offloading (Offload-and-Inspect)
+When a tool result exceeds its configured threshold, The Citadel automatically offloads the full content to disk and provides the agent with a structured placeholder:
+
+```text
+--- TOOL RESULT OFFLOADED ---
+ID: abc-123-def
+Server: filesystem
+Tool: read_text_file
+Size: 154,230 characters
+
+The output of this tool was too large for the current context. A short excerpt is provided below:
+---
+[Excerpt of first 1000 characters...]
+---
+
+ACTION REQUIRED: To reason over the full content, use the 'inspect_result' tool with resultId 'abc-123-def'.
+```
+
+#### The `inspect_result` Tool
+Agents can use the `inspect_result` tool to query offloaded content without pulling the raw data into their main context. This invokes a **non-autonomous sub-agent** optimized for:
+- **Text Extraction**: "Find the database connection string in this log."
+- **Summarization**: "Summarize the key findings from this research paper."
+- **Analysis**: "Identify any error patterns in the last 100 lines."
+
+**Constraints**: The sub-agent has no tools, no internet access, and no autonomy beyond answering a single query about the provided content. This ensures the main agent remains in control of the high-level plan.
+
+---
+
 ### 7. Bridge Environment
 *   **`env`**: `'development'` or `'production'`.
 *   **`bridge.maxLogs`**: Number of log lines maintained in TUI memory (default: 1000).
+*   **Persistent Storage**: Offloaded tool results are stored in `.citadel/tool-results/<pearl-id>/` and are kept indefinitely for audit purposes.
 
 ---
