@@ -6,9 +6,10 @@ import {
     createRejectWorkTool,
 } from "../tools/evaluator";
 import { runCommandTool } from "../tools/shell";
+import type { PearlsClient } from "../core/pearls";
 
 export class EvaluatorAgent extends CoreAgent {
-    constructor(model?: LanguageModel, pearlsClient?: import("../core/pearls").PearlsClient) {
+    constructor(model?: LanguageModel, pearlsClient?: PearlsClient) {
         super("gatekeeper", model, pearlsClient);
         this.requiresExplicitCompletion = true;
 

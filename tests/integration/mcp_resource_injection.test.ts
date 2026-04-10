@@ -1,8 +1,7 @@
 import { describe, it, expect, mock, beforeEach, afterEach } from 'bun:test';
 import { setGlobalSingleton, clearGlobalSingleton } from '../../src/core/registry';
-import { getInstructionService } from '../../src/core/instruction';
+import { InstructionService } from '../../src/core/instruction';
 import { setConfig, resetConfig } from '../../src/config';
-import { setPearlsInstance } from '../../src/core/pearls';
 import { setFormulaRegistry } from '../../src/core/formula';
 
 // 1. Mock modules BEFORE importing the code that uses them
@@ -25,36 +24,6 @@ const getMockPearl = () => ({
 describe('MCP Resource Injection Integration', () => {
     beforeEach(() => {
         resetConfig();
-        setGlobalSingleton('mcp_service', {
-            readResource: mock(async (server: string, uri: string) => [`Injected content from ${server}:${uri}`]),
-            initialize: mock(async () => { }),
-            shutdown: mock(async () => { })
-        });
-
-        const mockPearls = {
-            get: mock(async () => getMockPearl()),
-            update: mock(async () => getMockPearl()),
-            create: mock(async () => getMockPearl()),
-            init: mock(async () => { }),
-            mapToDomain: (raw: any) => raw,
-        };
-        setPearlsInstance(mockPearls as any);
-
-        const mockRegistry = {
-            get: mock((name: string) => {
-                if (name === 'test-formula') {
-                    return {
-                        formula: 'test-formula',
-                        mcp_resources: {
-                            'formula-server': ['formula://uri']
-                        }
-                    };
-                }
-                return null;
-            })
-        };
-        setFormulaRegistry(mockRegistry as any);
-
         // Setup initial config with all required fields
         setConfig({
             env: 'development',
@@ -67,7 +36,6 @@ describe('MCP Resource Injection Integration', () => {
                         'config-server': ['config://uri']
                     }
                 },
-                router: { provider: 'ollama', model: 'llama3' },
                 gatekeeper: { provider: 'ollama', model: 'llama3' }
             },
             worker: { min_workers: 1, max_workers: 5, load_factor: 1.0 },
@@ -85,8 +53,28 @@ describe('MCP Resource Injection Integration', () => {
         resetConfig();
     });
 
-    it.skip('should aggregate resources from config, formula, and pearl context', async () => {
-        const service = getInstructionService();
+    it('should aggregate resources from config, formula, and pearl context', async () => {
+        const mockMcpService = {
+            readResource: mock(async (server: string, uri: string) => [`Injected content from ${server}:${uri}`]),
+        };
+        const mockPearls = {
+            get: mock(async () => getMockPearl()),
+        };
+        const mockRegistry = {
+            get: mock((name: string) => {
+                if (name === 'test-formula') {
+                    return {
+                        formula: 'test-formula',
+                        mcp_resources: {
+                            'formula-server': ['formula://uri']
+                        }
+                    };
+                }
+                return null;
+            })
+        };
+
+        const service = new InstructionService(mockPearls as any, mockMcpService as any, mockRegistry as any);
         const instructions = await service.buildPrompt({
             role: 'worker',
             pearlId: 'test-pearl'
@@ -114,7 +102,6 @@ describe('MCP Resource Injection Integration', () => {
             providers: { ollama: {} },
             agents: {
                 worker: { provider: 'ollama', model: 'mock' },
-                router: { provider: 'ollama', model: 'mock' },
                 gatekeeper: { provider: 'ollama', model: 'mock' }
             },
             worker: { min_workers: 1, max_workers: 5, load_factor: 1.0 },
@@ -126,17 +113,17 @@ describe('MCP Resource Injection Integration', () => {
         testPearl.labels = [];
         (testPearl.context as any) = {};
 
-        // We need to update the mock to return OUR manipulated pearl for this test
+        const mockMcpService = {
+            readResource: mock(async (server: string, uri: string) => [`Injected content from ${server}:${uri}`]),
+        };
         const mockPearls = {
             get: mock(async () => testPearl),
-            update: mock(async () => testPearl),
-            create: mock(async () => testPearl),
-            init: mock(async () => { }),
-            mapToDomain: (raw: any) => raw,
         };
-        setPearlsInstance(mockPearls as any);
+        const mockRegistry = {
+            get: mock(() => null),
+        };
 
-        const service = getInstructionService();
+        const service = new InstructionService(mockPearls as any, mockMcpService as any, mockRegistry as any);
         const instructions = await service.buildPrompt({
             role: 'worker',
             pearlId: 'test-pearl'

@@ -4,11 +4,12 @@ import type { AgentContext } from "../core/agent";
 import { getPearls } from "../core/pearls";
 import { logger } from "../core/logger";
 import { getQueue } from "../core/queue";
+import type { PearlsClient } from "../core/pearls";
 
 export const createSubmitWorkTool = (
     _context: AgentContext,
     outputSchema?: z.ZodTypeAny,
-    pearls?: import("../core/pearls").PearlsClient,
+    pearls?: PearlsClient,
 ) => {
     const parameters = z.object({
         summary: z
@@ -134,7 +135,7 @@ export const createSubmitWorkTool = (
 };
 
 // NOTE: This tool should perhaps add history to the pearl?
-export const createReportProgressTool = (_context: AgentContext, pearls?: import("../core/pearls").PearlsClient) => {
+export const createReportProgressTool = (_context: AgentContext, pearls?: PearlsClient) => {
     const parameters = z
         .object({
             message: z.string().optional().describe("Progress message"),
@@ -156,7 +157,7 @@ export const createReportProgressTool = (_context: AgentContext, pearls?: import
                     success: false,
                     message: "No pearlId found in context",
                 };
- 
+
             const msg = args.message || args.reasoning || "Working on it...";
             logger.info(`[Worker] Progress on ${pearlId}: ${msg}`);
             await (pearls || getPearls()).update(pearlId, { status: "in_progress" });
@@ -165,7 +166,7 @@ export const createReportProgressTool = (_context: AgentContext, pearls?: import
     });
 };
 
-export const createDelegateTaskTool = (_context: AgentContext, pearls?: import("../core/pearls").PearlsClient) => {
+export const createDelegateTaskTool = (_context: AgentContext, pearls?: PearlsClient) => {
     const parameters = z.object({
         parentPearlId: z
             .string()
@@ -201,7 +202,7 @@ export const createDelegateTaskTool = (_context: AgentContext, pearls?: import("
                         "Cannot delegate: No active parent pearl (missing context and argument)",
                 };
             }
- 
+
             try {
                 const client = pearls || getPearls();
                 // Fix: Call create(title, options) correctly
@@ -218,7 +219,7 @@ export const createDelegateTaskTool = (_context: AgentContext, pearls?: import("
                                     : 3,
                     parent: parentPearlId, // Note: 'parent', not 'parent_id' based on options interface
                 });
- 
+
                 // Establish parent-child dependency (parent depends on child)
                 await (pearls || getPearls()).addDependency(parentPearlId, pearl.id);
 

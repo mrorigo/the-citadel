@@ -11,9 +11,10 @@ import {
     createReportProgressTool,
     createSubmitWorkTool,
 } from "../tools/worker";
+import type { PearlsClient } from "../core/pearls";
 
 export class WorkerAgent extends CoreAgent {
-    constructor(model?: LanguageModel, pearlsClient?: import("../core/pearls").PearlsClient) {
+    constructor(model?: LanguageModel, pearlsClient?: PearlsClient) {
         super("worker", model, pearlsClient);
         this.requiresExplicitCompletion = true;
 

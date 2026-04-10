@@ -1,12 +1,13 @@
 import type { Pearl } from "../core/pearls";
-import { getPearls } from "../core/pearls";
+import { getPearls, type PearlsClient } from "../core/pearls";
 import { logger } from "../core/logger";
 import { getQueue } from "../core/queue";
+import { getGlobalSingleton } from "../core/registry";
 
 export class DataPiper {
-	private pearls: import("../core/pearls").PearlsClient;
+	private pearls: PearlsClient;
 
-	constructor(pearls?: import("../core/pearls").PearlsClient) {
+	constructor(pearls?: PearlsClient) {
 		this.pearls = pearls || getPearls();
 	}
 
@@ -188,9 +189,8 @@ export class DataPiper {
 	}
 }
 
-import { getGlobalSingleton } from "../core/registry";
 
 // Singleton
-export function getPiper(pearls?: import("../core/pearls").PearlsClient): DataPiper {
+export function getPiper(pearls?: PearlsClient): DataPiper {
 	return getGlobalSingleton("piper", () => new DataPiper(pearls));
 }

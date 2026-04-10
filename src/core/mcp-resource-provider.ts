@@ -1,6 +1,6 @@
 import { getConfig } from "../config";
-import { getPearls } from "./pearls";
-import { getFormulaRegistry } from "./formula";
+import { getPearls, type PearlsClient } from "./pearls";
+import { getFormulaRegistry, type FormulaRegistry } from "./formula";
 import type { InstructionContext, InstructionProvider } from "./instruction";
 import { logger } from "./logger";
 import { type MCPService, getMCPService } from "../services/mcp";
@@ -10,11 +10,17 @@ export class MCPResourceProvider implements InstructionProvider {
     priority = 25; // Between Role (20) and Formula (30)
 
     private explicitMcpService?: MCPService;
-    private pearls: import("./pearls").PearlsClient;
+    private pearls: PearlsClient;
+    private formulaRegistry: FormulaRegistry;
 
-    constructor(mcpService?: MCPService, pearls?: import("./pearls").PearlsClient) {
+    constructor(
+        mcpService?: MCPService,
+        pearls?: PearlsClient,
+        formulaRegistry?: FormulaRegistry
+    ) {
         this.explicitMcpService = mcpService;
         this.pearls = pearls || getPearls();
+        this.formulaRegistry = formulaRegistry || getFormulaRegistry();
     }
 
     async getInstructions(ctx: InstructionContext): Promise<string | null> {
@@ -35,7 +41,7 @@ export class MCPResourceProvider implements InstructionProvider {
                 if (formulaLabel) {
                     const formulaName = formulaLabel.split(":")[1];
                     if (formulaName) {
-                        const formula = getFormulaRegistry().get(formulaName);
+                        const formula = this.formulaRegistry.get(formulaName);
                         if (formula?.mcp_resources) {
                             this.mergeResources(resourcesToFetch, formula.mcp_resources);
                         }

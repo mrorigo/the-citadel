@@ -1,9 +1,9 @@
 import { tool } from "ai";
 import { z } from "zod";
 import type { AgentContext } from "../core/agent";
-import { getPearls } from "../core/pearls";
+import { getPearls, type PearlsClient } from "../core/pearls";
 
-export const createApproveWorkTool = (_context: AgentContext, pearls?: import("../core/pearls").PearlsClient) => {
+export const createApproveWorkTool = (_context: AgentContext, pearls?: PearlsClient) => {
     const parameters = z.object({
         acceptance_test: z
             .union([z.string(), z.array(z.string())])

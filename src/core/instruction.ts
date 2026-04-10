@@ -3,11 +3,12 @@ import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import type { AgentRole } from "../config/schema";
 import { getProjectContext } from "../services/project-context";
-import { getPearls } from "./pearls";
-import { getFormulaRegistry } from "./formula";
+import { getPearls, type PearlsClient } from "./pearls";
+import { getFormulaRegistry, type FormulaRegistry } from "./formula";
 import { logger } from "./logger";
 import { MCPResourceProvider } from "./mcp-resource-provider";
 import { getGlobalSingleton } from "./registry";
+import type { MCPService } from "../services/mcp";
 
 export interface InstructionContext {
 	role: AgentRole;
@@ -114,10 +115,15 @@ export class RoleProvider implements InstructionProvider {
 export class FormulaProvider implements InstructionProvider {
 	name = "formula";
 	priority = 30;
-	private pearls: import("./pearls").PearlsClient;
+	private pearls: PearlsClient;
+	private formulaRegistry: FormulaRegistry;
 
-	constructor(pearls?: import("./pearls").PearlsClient) {
+	constructor(
+		pearls?: PearlsClient,
+		formulaRegistry?: FormulaRegistry,
+	) {
 		this.pearls = pearls || getPearls();
+		this.formulaRegistry = formulaRegistry || getFormulaRegistry();
 	}
 
 	async getInstructions(ctx: InstructionContext): Promise<string | null> {
@@ -130,7 +136,7 @@ export class FormulaProvider implements InstructionProvider {
 
 			const formulaName = formulaLabel.split(":")[1];
 			if (!formulaName) return null;
-			const formula = getFormulaRegistry().get(formulaName);
+			const formula = this.formulaRegistry.get(formulaName);
 
 			if (formula?.prompts) {
 				const prompts = formula.prompts;
@@ -192,13 +198,17 @@ export class ContextProvider implements InstructionProvider {
 export class InstructionService {
 	private providers: InstructionProvider[] = [];
 
-	constructor(pearls?: import("./pearls").PearlsClient) {
+	constructor(
+		pearls?: PearlsClient,
+		mcpService?: MCPService,
+		formulaRegistry?: FormulaRegistry,
+	) {
 		this.providers = [
 			new GlobalProvider(),
 			new BuiltinProvider(),
 			new RoleProvider(),
-			new MCPResourceProvider(undefined, pearls),
-			new FormulaProvider(pearls),
+			new MCPResourceProvider(mcpService, pearls, formulaRegistry),
+			new FormulaProvider(pearls, formulaRegistry),
 			new TagProvider(),
 			new ContextProvider(),
 		].sort((a, b) => a.priority - b.priority);
@@ -239,6 +249,13 @@ ${additions.join("\n\n---\n\n")}
 	}
 }
 
-export function getInstructionService(pearls?: import("./pearls").PearlsClient): InstructionService {
-	return getGlobalSingleton("instruction_service", () => new InstructionService(pearls));
+export function getInstructionService(
+	pearls?: PearlsClient,
+	mcpService?: MCPService,
+	formulaRegistry?: FormulaRegistry,
+): InstructionService {
+	return getGlobalSingleton(
+		"instruction_service",
+		() => new InstructionService(pearls, mcpService, formulaRegistry),
+	);
 }
