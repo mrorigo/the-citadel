@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [0.9.0] - 2026-04-10
+
+### Added
+- **Tool Result Offloading**: Automatically offload industrial-scale tool outputs (>50k chars) to disk.
+- **Sub-Agent Reasoning (`inspect_result`)**: Use non-autonomous reasoning agents to analyze offloaded data without bloating the main context window.
+- **Deep Dependency Injection**: Fully refactored core orchestration (`Conductor`, `InstructionService`, `MCPResourceProvider`) to use constructor injection, eliminating race conditions in parallel environments.
+
+### Fixed
+- **Parallel Test Stability**: Resolved deep-seated race conditions in global singleton management.
+- **Schema Compliance**: Updated core agents and test configs to match the latest configuration schema.
+
 ## [0.5.0] - 2026-02-07
 
 ### Added

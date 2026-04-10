@@ -3,6 +3,12 @@
 **Deterministic Agent Orchestration System** – a lightweight engine that turns chaotic agent swarms into an auditable, deterministic **Knowledge Factory**.
 
 ---
+ 
+> [!IMPORTANT]
+> **🚀 NEW FOR 0.9: Context-Aware Reasoning & Tool Result Offloading**
+> The Citadel now automatically handles industrial-scale tool outputs by offloading large buffers to disk and providing sub-agent reasoning via the `inspect_result` tool. Prevent context bloat and scale your agents beyond the context window.
+ 
+---
 
 Use The Citadel for complex, multi-step objectives: **building software features**, **conducting deep research**, **synthesizing market reports**, or **managing content pipelines**. By decoupling the *process* (SOPs) from the *execution* (Agents), it ensures that even creative work follows a reliable, auditable path.
 
@@ -11,7 +17,7 @@ Use The Citadel for complex, multi-step objectives: **building software features
 ## Installation
 
 ```bash
-npm install the-citadel@0.8.4
+npm install the-citadel@0.9.0
 ```
 
 ---
@@ -27,7 +33,7 @@ npm install the-citadel@0.8.4
 - **Provider‑agnostic** – Works with Ollama, OpenAI, Anthropic, and more.
 - **Context Aware** – Adheres to specific project rules and style guides (`AGENTS.md`) automatically. Supports [YAML Frontmatter](docs/agent/AGENTS.md.frontmatter.md) for strict `ignore`, `read_only`, and `forbidden` file constraints.
 - **Dynamic Data Piping** – Pass rich inputs (`context`) to tasks and pipe outputs between steps (`{{steps.foo.output.bar}}`).
-- **Tool Result Offloading** – Automatically offload large tool outputs to disk and use **sub-agent reasoning** (`inspect_result`) to query them, preventing context bloat.
+- **Context-Aware Reasoning** – Scale beyond the context window with **Tool Result Offloading** and sub-agent inspection (`inspect_result`).
 
 ---
 
@@ -35,7 +41,7 @@ npm install the-citadel@0.8.4
 
 ```bash
 # 1️⃣ Install globally
-npm install -g the-citadel@0.8.4
+npm install -g the-citadel@0.9.0
 
 # 2️⃣ Bootstrap a new project
 citadel init   # creates .citadel/ + config + sample formula
