@@ -22,13 +22,18 @@ While the system uses singletons for runtime convenience (via `src/core/registry
 - **JSONL Source of Truth**: The system relies exclusively on `.pearls/issues.jsonl`.
 - **Integration**: `PearlsClient` wraps the CLI. Do not spawn child processes for `prl` manually; use `PearlsClient.runCommand()`.
 
-### 3. Context Management
+### 3. Pearl Output Persistence
+- **Canonical Source**: Task outputs are persisted directly to `pearl.output` (via `metadata.output`). This is the canonical source of truth for completed work.
+- **Fallback**: `queue.getOutput()` is a legacy fallback only. Always prefer `pearl.output` when reading task results.
+- **Auto-Close Epics**: When `config.gatekeeper.auto_close_epics` is `true`, the Conductor automatically closes Epic pearls once all their blocker subtasks reach `done` status.
+
+### 4. Context Management
 - **Token Counting**: `CoreAgent` automatically tracks token usage and reports it to the Pearl via comments.
 - **History Pruning**: Configurable in `citadel.config.ts`. The agent automatically prunes history but preserves:
     - System prompt
     - The most recent `tool-call` / `tool-result` pairs (to avoid hanging tool calls).
 
-### 4. Deterministic Routing
+### 5. Deterministic Routing
 The Conductor uses **deterministic routing** based on pearl status, eliminating the need for LLM-based routing decisions:
 - **`open` pearls** → Routed to `worker` queue
 - **`verify` pearls** → Routed to `gatekeeper` queue
