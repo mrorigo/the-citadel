@@ -84,7 +84,7 @@ export class Conductor {
 								}
 							}
 
-							const agent = new WorkerAgent(role);
+							const agent = new WorkerAgent(role as any, undefined, this.pearls);
 
 							try {
 								let prompt = `Process this task: ${pearl.title}`;
@@ -152,7 +152,7 @@ export class Conductor {
 						logger.info(`[Gatekeeper] Verifying ${ticket.pearl_id}`, {
 							pearlId: ticket.pearl_id,
 						});
-						const agent = new EvaluatorAgent();
+						const agent = new EvaluatorAgent(undefined, this.pearls);
 						const pearl = await this.pearls.get(ticket.pearl_id);
 
 

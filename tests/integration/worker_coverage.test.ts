@@ -58,7 +58,8 @@ describe('WorkerAgent Integration Coverage', () => {
             create: mock(async () => ({ id: 'new-pearl' })),
             addDependency: mock(async () => ({})),
             get: mock(async () => ({ id: 'test-pearl', labels: ['formula:test', 'step:prep'] })),
-            ready: mock(async () => [])
+            ready: mock(async () => []),
+            addComment: mock(async () => ({}))
         };
 
         mockQueue = {
@@ -77,7 +78,7 @@ describe('WorkerAgent Integration Coverage', () => {
         setQueueInstance(mockQueue);
         setFormulaRegistry(mockRegistry);
 
-        agent = new WorkerAgent(mockModel);
+        agent = new WorkerAgent("worker", mockModel);
     });
 
     afterEach(() => {

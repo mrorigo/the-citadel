@@ -66,7 +66,7 @@ describe('InstructionService', () => {
         expect(prompt).toContain('Custom worker rules.');
         expect(prompt).toContain('Git specific rules.');
         expect(prompt).toContain('Be extra careful.');
-        expect(prompt).toContain('# Implementation Mode'); // Builtin
+        expect(prompt).toContain('Worker Base Protocol'); // Builtin
 
         // Cleanup
         await rm(roleFile);

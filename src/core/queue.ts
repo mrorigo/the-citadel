@@ -208,13 +208,6 @@ export class WorkQueue {
 			const status = current?.status || "unknown";
 			logger.warn(`[Queue] Failed to complete ticket ${ticketId}: Expected 'processing', found '${status}'.`);
 			
-			// If it's queued, maybe someone reset it. We should probably NOT throw to avoid Hook retries 
-			// that would just keep failing if the ticket is truly misaligned.
-			if (status === "queued") {
-				logger.warn(`[Queue] Ticket ${ticketId} was reset to 'queued' while active. Ignoring completion to avoid state corruption.`);
-				return;
-			}
-
 			throw new Error(
 				`Failed to complete ticket ${ticketId}: Ticket is not in 'processing' state (current: ${status}).`,
 			);

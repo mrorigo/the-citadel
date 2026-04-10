@@ -53,7 +53,7 @@ const DB_PATH = resolve(TEST_DIR, 'queue.sqlite');
 class MockPearlsClient extends PearlsClient {
     private pearls: Map<string, any> = new Map();
 
-    protected override async runCommand(args: string[]): Promise<string> {
+    public override async runCommand(args: string[]): Promise<string> {
         const cmd = args[0];
         console.log(`[Mock] runCommand: ${args.join(" ")}`);
 
@@ -210,7 +210,7 @@ describe('Data Flow Integration', () => {
         // 4. Run Worker Agent Tool (submit_work)
         // Use cache-busting dynamic import to bypass potential mock leaks
         const { WorkerAgent } = await import('../../src/agents/worker');
-        const agent = new WorkerAgent(undefined, pearls);
+        const agent = new WorkerAgent("worker", undefined, pearls);
         // Access protected tools via any cast
         const tools = (agent as any).tools;
         const submitTool = tools['submit_work'];

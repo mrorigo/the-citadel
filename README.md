@@ -5,7 +5,7 @@
 ---
  
 > [!IMPORTANT]
-> **🚀 NEW FOR 0.9: Context-Aware Reasoning & Tool Result Offloading**
+> **🚀 NEW FOR 0.12: Context-Aware Reasoning & Tool Result Offloading**
 > The Citadel now automatically handles industrial-scale tool outputs by offloading large buffers to disk and providing sub-agent reasoning via the `inspect_result` tool. Prevent context bloat and scale your agents beyond the context window.
  
 ---
@@ -17,7 +17,7 @@ Use The Citadel for complex, multi-step objectives: **building software features
 ## Installation
 
 ```bash
-npm install the-citadel@0.9.0
+npm install the-citadel@0.12.0
 ```
 
 ---
@@ -41,7 +41,7 @@ npm install the-citadel@0.9.0
 
 ```bash
 # 1️⃣ Install globally
-npm install -g the-citadel@0.9.0
+npm install -g the-citadel@0.12.0
 
 # 2️⃣ Bootstrap a new project
 citadel init   # creates .citadel/ + config + sample formula

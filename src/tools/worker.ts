@@ -1,7 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import type { AgentContext } from "../core/agent";
-import { getPearls } from "../core/pearls";
+import { getPearls, type PearlsClient } from "../core/pearls";
 import { logger } from "../core/logger";
 import { getQueue } from "../core/queue";
 import { getConfig } from "../config";
@@ -9,6 +9,7 @@ import { getConfig } from "../config";
 export const createSubmitWorkTool = (
     _context: AgentContext,
     outputSchema?: z.ZodTypeAny,
+    pearls?: PearlsClient,
 ) => {
     const parameters = z.object({
         summary: z
@@ -72,7 +73,7 @@ export const createSubmitWorkTool = (
             const ticket = getQueue().getActiveTicket(pearlId);
             if (!ticket) {
                 try {
-                    const pearl = await getPearls().get(pearlId);
+                    const pearl = await (pearls || getPearls()).get(pearlId);
                     if (pearl.status === "verify" || pearl.status === "done") {
                         logger.info(
                             `[Worker] Idempotency: Work for ${pearlId} already submitted. Returning success.`,
@@ -89,7 +90,7 @@ export const createSubmitWorkTool = (
                         logger.warn(
                             `[Worker] Recovery: Pearl ${pearlId} stuck in '${pearl.status}' despite completed ticket. Forcing transition to 'verify'.`,
                         );
-                        await getPearls().update(pearlId, { status: "verify" });
+                        await (pearls || getPearls()).update(pearlId, { status: "verify" });
                         const recoveredSummary =
                             (savedOutput as Record<string, unknown>)?.summary ||
                             "Recovered summary";
@@ -133,7 +134,7 @@ export const createSubmitWorkTool = (
 };
 
 // NOTE: This tool should perhaps add history to the pearl?
-export const createReportProgressTool = (_context: AgentContext) => {
+export const createReportProgressTool = (_context: AgentContext, pearls?: PearlsClient) => {
     const parameters = z
         .object({
             message: z.string().optional().describe("Progress message"),
@@ -158,8 +159,8 @@ export const createReportProgressTool = (_context: AgentContext) => {
 
             const msg = args.message || args.reasoning || "Working on it...";
             logger.info(`[Worker] Progress on ${pearlId}: ${msg}`);
-            await getPearls().update(pearlId, { status: "in_progress" });
-            await getPearls().addComment(pearlId, msg);
+            await (pearls || getPearls()).update(pearlId, { status: "in_progress" });
+            await (pearls || getPearls()).addComment(pearlId, msg);
 
             return { success: true, message: msg };
         },
@@ -167,7 +168,7 @@ export const createReportProgressTool = (_context: AgentContext) => {
 };
 
 
-export const createDelegateTaskTool = (_context: AgentContext) => {
+export const createDelegateTaskTool = (_context: AgentContext, pearls?: PearlsClient) => {
     let roles: string[] = ["worker", "author", "editor", "research"];
     try {
         const config = getConfig();
@@ -222,7 +223,7 @@ export const createDelegateTaskTool = (_context: AgentContext) => {
 
             try {
                 // Fix: Call create(title, options) correctly
-                const pearl = await getPearls().create(title, {
+                const pearl = await (pearls || getPearls()).create(title, {
                     description: description,
                     labels: [...(tags || []), "delegated"],
                     priority:
@@ -240,7 +241,7 @@ export const createDelegateTaskTool = (_context: AgentContext) => {
                 const metadata: Record<string, unknown> = {};
                 if (args.role) {
                     metadata.role = args.role;
-                    await getPearls().runCommand([
+                    await (pearls || getPearls()).runCommand([
                         "meta",
                         "set",
                         pearl.id,
@@ -253,7 +254,7 @@ export const createDelegateTaskTool = (_context: AgentContext) => {
 
                 try {
                     // Establish parent-child dependency (parent depends on child)
-                    await getPearls().addDependency(parentPearlId, pearl.id);
+                    await (pearls || getPearls()).addDependency(parentPearlId, pearl.id);
 
                     // Enqueue the child task
                     getQueue().enqueue(pearl.id, 2, "worker");
@@ -274,7 +275,7 @@ export const createDelegateTaskTool = (_context: AgentContext) => {
                     );
                     // Rollback: try to cancel/delete the orphan pearl
                     try {
-                        await getPearls().runCommand(["delete", pearl.id, "--yes"]);
+                        await (pearls || getPearls()).runCommand(["delete", pearl.id, "--yes"]);
                     } catch (delErr) {
                         logger.error(`[Worker] Failed to rollback orphan pearl ${pearl.id}`, delErr);
                     }

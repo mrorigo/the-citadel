@@ -160,9 +160,9 @@ describe('Filesystem Tool Filtering', () => {
         // Check the args passed to the tool execute function
         const toolCallArgs = mockToolExecute.mock.calls[0][0]; // First arg is validatedInput
 
-        expect(toolCallArgs.exclude).toBeDefined();
-        expect(toolCallArgs.exclude).toContain('*.secret');
-        expect(toolCallArgs.exclude).toContain('*.ignored');
-        expect(toolCallArgs.exclude).toContain('node_modules');
+        expect(toolCallArgs.excludePatterns).toBeDefined();
+        expect(toolCallArgs.excludePatterns).toContain('*.secret');
+        expect(toolCallArgs.excludePatterns).toContain('*.ignored');
+        expect(toolCallArgs.excludePatterns).toContain('node_modules');
     });
 });

@@ -250,6 +250,50 @@ export class TagProvider implements InstructionProvider {
 }
 
 /**
+ * Loads status of blocking sub-tasks for the current pearl.
+ */
+export class SubTaskProvider implements InstructionProvider {
+	name = "sub-task";
+	priority = 45;
+	private pearls: PearlsClient;
+
+	constructor(pearls?: PearlsClient) {
+		this.pearls = pearls || getPearls();
+	}
+
+	async getInstructions(ctx: InstructionContext): Promise<string | null> {
+		if (!ctx.pearlId) return null;
+
+		try {
+			// Find all sub-tasks (pearls that BLOCK this one)
+			const subTasks = await this.pearls.runCommand(["list", "--json"]);
+			const allPearls = JSON.parse(subTasks);
+			const blockers = allPearls.filter((p: any) => p.successors?.includes(ctx.pearlId));
+
+			if (blockers.length === 0) return null;
+
+			const parts = blockers.map((p: any) => {
+				const status = p.status.toUpperCase();
+				let outputNote = "";
+				if (p.output) {
+					outputNote = `\nOutput: ${typeof p.output === "string" ? p.output : JSON.stringify(p.output)}`;
+				}
+				return `#### SUBTASK: ${p.title} (ID: ${p.id})
+Status: ${status}${outputNote}`;
+			});
+
+			return `## SUBTASK STATUS (BLOCKERS)
+The following tasks were delegated and must be considered in your reasoning:
+
+${parts.join("\n\n")}`;
+		} catch (err) {
+			logger.warn(`[SubTaskProvider] Error fetching subtasks for ${ctx.pearlId}: ${err}`);
+			return null;
+		}
+	}
+}
+
+/**
  * Loads custom instructions from pearl context.
  */
 export class ContextProvider implements InstructionProvider {
@@ -298,6 +342,7 @@ export class InstructionService {
 			new MCPResourceProvider(mcpService, pearls, formulaRegistry),
 			new FormulaProvider(pearls, formulaRegistry),
 			new TagProvider(),
+			new SubTaskProvider(pearls),
 			new ContextProvider(),
 			new EnforcementProvider(),
 		].sort((a, b) => a.priority - b.priority);

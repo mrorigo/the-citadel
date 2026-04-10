@@ -14,6 +14,7 @@ describe('Report Progress Tolerance', () => {
             get: mock(async () => ({ id: 'test-123', labels: [] })),
             create: mock(async () => ({ id: 'new-pearl' })),
             addDependency: mock(async () => ({ success: true })),
+            addComment: mock(async () => ({ success: true })),
         };
         setPearlsInstance(mockPearls);
     });

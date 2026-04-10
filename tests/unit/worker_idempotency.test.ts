@@ -17,7 +17,6 @@ import { setFormulaRegistry, type FormulaRegistry } from '../../src/core/formula
 import { clearGlobalSingleton } from '../../src/core/registry';
 import { loadConfig, resetConfig } from '../../src/config';
 import type { LanguageModel } from 'ai';
-import type { CoreTool } from '../../src/core/tool';
 
 const mockModel = {
     specificationVersion: 'v1',
@@ -53,7 +52,8 @@ describe('WorkerAgent Idempotency', () => {
         mockPearls = {
             update: mock(async () => ({})),
             get: mock(async () => ({ id: 'test-pearl', status: 'verify', title: 'test', created_at: '', updated_at: '' })),
-            ready: mock(async () => [])
+            ready: mock(async () => []),
+            addComment: mock(async () => ({}))
         } as unknown as Partial<PearlsClient>;
 
         mockQueue = {
@@ -66,11 +66,11 @@ describe('WorkerAgent Idempotency', () => {
         setQueueInstance(mockQueue as WorkQueue);
         setFormulaRegistry({ get: () => null } as unknown as FormulaRegistry);
 
-        agent = new WorkerAgent(mockModel);
+        agent = new WorkerAgent("worker", mockModel);
     });
 
     it('should handle Double Submit gracefully (Scenario A: Already Verified)', async () => {
-        const submitWork = (agent as unknown as { tools: Record<string, CoreTool> }).tools.submit_work;
+        const submitWork = (agent as any).tools.submit_work;
 
         // Scenario A: Ticket is null, Pearl status is ALREADY 'verify'
         mockPearls.get = mock(async () => ({
@@ -91,7 +91,7 @@ describe('WorkerAgent Idempotency', () => {
     });
 
     it('should RECOVER from partial failure (Scenario B: Ticket closed, Pearl not updated)', async () => {
-        const submitWork = (agent as unknown as { tools: Record<string, CoreTool> }).tools.submit_work;
+        const submitWork = (agent as any).tools.submit_work;
 
         // Scenario B:
         // 1. Ticket is GONE (ActiveTicket = null)

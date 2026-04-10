@@ -61,9 +61,10 @@ class MockPearlsClient extends PearlsClient {
                 description: '', labels: [], metadata: {}, links: [],
                 created_at: new Date().toISOString(), updated_at: new Date().toISOString()
             };
-            const descIdx = args.indexOf('--description');
-            if (descIdx !== -1 && args[descIdx + 1]) {
-                pearl.description = args[descIdx + 1];
+            for (let i = 0; i < args.length; i++) {
+                if (args[i] === '--description' && args[i + 1]) pearl.description = args[i + 1];
+                if (args[i] === '--label' && args[i + 1]) pearl.labels.push(args[i + 1]);
+                if (args[i] === '--type' && args[i + 1]) (pearl as any).type = args[i + 1];
             }
             this.store.set(id, pearl);
             return JSON.stringify(pearl);
@@ -236,7 +237,7 @@ context = { input_num = "{{steps.producer.output.magic_number}}" }
 
         // Use cache-busting dynamic import to bypass potential mock leaks
         const { WorkerAgent } = await import('../../src/agents/worker');
-        const worker = new WorkerAgent(undefined, pearls);
+        const worker = new WorkerAgent("worker", undefined, pearls);
 
         // Mock Model to return a Tool Call
         const mockModel = {

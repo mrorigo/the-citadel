@@ -21,8 +21,13 @@ describe('Evaluator Agent Awareness', () => {
         // but we can test the system prompt logic indirectly or via unit tests of the agent itself.
 
         // Let's test if the agent's prototype has the updated prompt logic
-        const systemPrompt = (agent as any).getSystemPrompt('Default');
-        expect(systemPrompt).toContain('submitted_work');
-        expect(systemPrompt).toContain('step:plan');
+        const systemPrompt = (agent as any).getSystemPrompt('Default', {
+            context: {
+                submitted_work: 'Step 1: Save the world',
+                pearl: { labels: ['step:plan'] }
+            }
+        });
+        expect(systemPrompt).toContain('SUBMITTED WORK');
+        expect(systemPrompt).toContain('Step 1: Save the world');
     });
 });

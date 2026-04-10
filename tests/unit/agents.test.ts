@@ -19,7 +19,7 @@ import { WorkerAgent } from '../../src/agents/worker';
 describe('Agents Unit Tests', () => {
 
     it('WorkerAgent should have report_progress and submit_work tools', async () => {
-        const agent = new WorkerAgent(mockModel);
+        const agent = new WorkerAgent("worker", mockModel);
         // biome-ignore lint/suspicious/noExplicitAny: Accessing private property for testing
         const tools = (agent as any).tools;
         expect(tools).toHaveProperty('report_progress');

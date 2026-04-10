@@ -9,7 +9,7 @@ import { clearGlobalSingleton } from "../../src/core/registry";
 import type { WorkerPool } from "../../src/core/pool";
 
 type TestConductor = {
-    workerPool: WorkerPool;
+    pools: Map<string, WorkerPool>;
     scalePools: () => Promise<void>;
 };
 
@@ -135,7 +135,7 @@ describe("Concurrency Integration", () => {
         conductor = new Conductor(pearls as unknown as PearlsClient, queue);
 
         // Initial state: 0 tasks, should be min_workers = 1 (initialized in constructor)
-        expect((conductor as unknown as TestConductor).workerPool.size).toBe(1);
+        expect((conductor as unknown as TestConductor).pools.get('worker')?.size).toBe(1);
 
         // 1. Enqueue 10 tasks
         for (let i = 0; i < 10; i++) {
@@ -161,7 +161,7 @@ describe("Concurrency Integration", () => {
         await (conductor as unknown as TestConductor).scalePools();
 
         // Target = ceil(10 * 0.5) = 5
-        expect((conductor as unknown as TestConductor).workerPool.size).toBe(5);
+        expect((conductor as unknown as TestConductor).pools.get('worker')?.size).toBe(5);
 
         // 3. Complete some tasks
         // Mock processing (dequeuing)
@@ -178,7 +178,7 @@ describe("Concurrency Integration", () => {
         // Target = ceil(2 * 0.5) = 1
         // But pool might take time to shrink if we implemented graceful shutdown?
         // Our pool implementation stops immediately if shrink is called.
-        expect((conductor as unknown as TestConductor).workerPool.size).toBe(1);
+        expect((conductor as unknown as TestConductor).pools.get('worker')?.size).toBe(1);
     });
 
     test("should respect min and max workers", async () => {
@@ -196,7 +196,7 @@ describe("Concurrency Integration", () => {
         });
 
         conductor = new Conductor(pearls as unknown as PearlsClient, queue);
-        expect((conductor as unknown as TestConductor).workerPool.size).toBe(2); // Min
+        expect((conductor as unknown as TestConductor).pools.get("worker")?.size).toBe(2); // Min
 
         // Enqueue 100 tasks
         for (let i = 0; i < 100; i++) {
@@ -216,6 +216,6 @@ describe("Concurrency Integration", () => {
         }
 
         await (conductor as unknown as TestConductor).scalePools();
-        expect((conductor as unknown as TestConductor).workerPool.size).toBe(4); // Max
+        expect((conductor as unknown as TestConductor).pools.get('worker')?.size).toBe(4); // Max
     });
 });

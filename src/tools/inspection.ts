@@ -1,5 +1,7 @@
 import { generateText, tool } from "ai";
 import { z } from "zod";
+import type { AgentContext } from "../core/agent";
+import type { PearlsClient } from "../core/pearls";
 import { getAgentModel } from "../core/llm";
 import { getToolResultMemory } from "../core/memory";
 import { logger } from "../core/logger";
@@ -8,7 +10,7 @@ import { logger } from "../core/logger";
  * Creates the inspect_result tool.
  * This tool invokes a non-autonomous sub-agent to reason over large tool results stored in memory.
  */
-export const createInspectResultTool = () => {
+export const createInspectResultTool = (_context: AgentContext, _pearls?: PearlsClient) => {
 	return tool({
 		description:
 			"Invokes a non-autonomous sub-agent to reason over a large tool result. Use this for text extraction, summarization, or analysis of offloaded content. The sub-agent has no tools, no autonomy, and cannot perform further tool calls.",

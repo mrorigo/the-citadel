@@ -19,7 +19,7 @@ import { resetConfig } from '../../src/config';
 mock.module('../../src/agents/worker', () => ({
     WorkerAgent: class MockWorker {
         pearlsClient: any;
-        constructor(_model: any, pearlsClient: any) {
+        constructor(_role: any, _model: any, pearlsClient: any) {
             this.pearlsClient = pearlsClient;
         }
         // biome-ignore lint/suspicious/noExplicitAny: Mocking context

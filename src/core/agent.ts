@@ -20,6 +20,7 @@ import { getInstructionService } from "./instruction";
 import { getAgentModel } from "./llm";
 import { logger } from "./logger";
 import { getPearls, type PearlsClient } from "./pearls";
+import { getToolResultMemory } from "./memory";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -139,7 +140,7 @@ export abstract class CoreAgent {
         name: string,
         description: string,
         schema: T,
-        execute: (args: z.infer<T>) => Promise<R>,
+        execute: (args: z.infer<T>, pearlsClient?: PearlsClient, toolContext?: ToolContext) => Promise<R>,
     ) {
         const options = {
             description,
@@ -335,7 +336,7 @@ export abstract class CoreAgent {
 
 
         let completionRetryCount = 0;
-        const maxCompletionRetries = 5;
+        const maxCompletionRetries = 1;
         let completionToolCalled = false;
 
         const totalUsage = {
@@ -448,8 +449,6 @@ export abstract class CoreAgent {
 
                 throw new Error(`LLM Error (${error.name}: ${detailedMessage}${error.statusCode ? ` | Status: ${error.statusCode}` : ''}). Trace: ${tracePath}`);
             }
-
-            console.log('DEBUG: result.usage', JSON.stringify(result.usage));
 
             // Accumulate Usage
             if (result.usage) {
@@ -670,7 +669,7 @@ ${JSON.stringify(this.schemas[primaryTool], null, 2)}
                     // -------------------------
 
                     // biome-ignore lint/suspicious/noExplicitAny: Context and tool mapping is dynamic
-                    const output = await toolItem.execute(validatedInput, toolContext as any);
+                    const output = await (toolItem as any).execute(validatedInput, this.pearlsClient, toolContext as any);
 
                     // --- ENFORCEMENT POINT (Output) ---
                     if (
@@ -695,11 +694,12 @@ ${JSON.stringify(this.schemas[primaryTool], null, 2)}
                                         // Or just standard ls output.
                                         // We check if the line contains any forbidden pattern
                                         for (const pattern of forbidden) {
+                                            // Strip prefixes like "[FILE] " or "[DIR] " before matching
+                                            const cleanLine = line.replace(/^\[(FILE|DIR)\]\s+/, "").trim();
                                             if (
-                                                minimatch(line, pattern, { dot: true, matchBase: true })
+                                                minimatch(cleanLine, pattern, { dot: true, matchBase: true })
                                             )
                                                 return false;
-                                            if (line.includes(pattern)) return false;
                                         }
                                         return true;
                                     });
@@ -736,10 +736,17 @@ ${JSON.stringify(this.schemas[primaryTool], null, 2)}
                     }
                     // ---------------------
 
-                    // --- TRUNCATION LOGIC ---
+                    // --- TRUNCATION & OFFLOADING LOGIC ---
                     let toolOutputValue = typeof output === "string" ? output : JSON.stringify(output);
 
-                    if (toolOutputValue.length > maxToolResponseSize) {
+                    // We check if we should offload to memory instead of truncating
+                    const offloadThreshold = config.context?.offloadThresholds?.[toolName] || maxToolResponseSize;
+
+                    if (toolOutputValue.length > offloadThreshold) {
+                        logger.info(`[${this.role}] Tool ${toolName} output (${toolOutputValue.length} chars) exceeds threshold (${offloadThreshold}). Offloading to memory.`);
+                        const memoryId = await getToolResultMemory().store(context?.pearlId || "default", toolOutputValue);
+                        toolOutputValue = `--- TOOL RESULT OFFLOADED ---\nThe result from '${toolName}' was too large and has been offloaded to Citadel Memory.\nResult ID: ${memoryId}\n\nYou MUST use the 'inspect_result' tool with this ID to query or analyze the content.`;
+                    } else if (toolOutputValue.length > maxToolResponseSize) {
                         const truncated = toolOutputValue.substring(0, maxToolResponseSize);
                         toolOutputValue = `${truncated}\n... [Output truncated. Total size: ${toolOutputValue.length} characters (Limit: ${maxToolResponseSize})]`;
                         logger.warn(`[${this.role}] Tool ${toolName} output truncated from ${toolOutputValue.length} to ${maxToolResponseSize}`);

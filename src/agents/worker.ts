@@ -2,7 +2,7 @@ import type { LanguageModel } from "ai";
 import type { z } from "zod";
 import { type AgentContext, CoreAgent } from "../core/agent";
 import { type AgentRole } from "../config/schema";
-import { getPearls } from "../core/pearls";
+import { getPearls, type PearlsClient } from "../core/pearls";
 import { getFormulaRegistry } from "../core/formula";
 import { logger } from "../core/logger";
 import { jsonSchemaToZod } from "../core/schema-utils";
@@ -12,10 +12,11 @@ import {
     createReportProgressTool,
     createSubmitWorkTool,
 } from "../tools/worker";
+import { createInspectResultTool } from "../tools/inspection";
 
 export class WorkerAgent extends CoreAgent {
-    constructor(role: AgentRole = "worker", model?: LanguageModel) {
-        super(role, model);
+    constructor(role: AgentRole = "worker", model?: LanguageModel, pearlsClient?: PearlsClient) {
+        super(role, model, pearlsClient);
         this.requiresExplicitCompletion = true;
 
         // --- Shell Execution (Static) ---
@@ -27,9 +28,10 @@ export class WorkerAgent extends CoreAgent {
         );
 
         // Register default tools for easy access/discovery
-        this.registerSdkTool("submit_work", createSubmitWorkTool({}));
-        this.registerSdkTool("report_progress", createReportProgressTool({}));
-        this.registerSdkTool("delegate_task", createDelegateTaskTool({}));
+        this.registerSdkTool("submit_work", createSubmitWorkTool({}, undefined, this.pearlsClient));
+        this.registerSdkTool("report_progress", createReportProgressTool({}, this.pearlsClient));
+        this.registerSdkTool("delegate_task", createDelegateTaskTool({}, this.pearlsClient));
+        this.registerSdkTool("inspect_result", createInspectResultTool({}, this.pearlsClient));
     }
 
     protected override async getDynamicTools(
@@ -66,9 +68,10 @@ export class WorkerAgent extends CoreAgent {
         }
 
         return {
-            submit_work: createSubmitWorkTool(ctx, outputSchema),
-            report_progress: createReportProgressTool(ctx),
-            delegate_task: createDelegateTaskTool(ctx),
+            submit_work: createSubmitWorkTool(ctx, outputSchema, this.pearlsClient),
+            report_progress: createReportProgressTool(ctx, this.pearlsClient),
+            delegate_task: createDelegateTaskTool(ctx, this.pearlsClient),
+            inspect_result: createInspectResultTool(ctx, this.pearlsClient),
         };
     }
 
@@ -80,6 +83,15 @@ export class WorkerAgent extends CoreAgent {
     }
 
     protected override getSystemPrompt(defaultPrompt: string): string {
-        return defaultPrompt;
+        return `${defaultPrompt}
+
+# Guidelines
+1. **Tool-First**: Always prefer tools over manual reasoning if a tool exists.
+2. **Persistence**: Use \`report_progress\` for long-running tasks.
+3. **Completion**: You MUST call \`submit_work\` to finish. Include a concise \`summary\` of changes.
+4. **Filesystem**: 
+   - Before editing, use \`filesystem:list_directory\` or \`filesystem:directory_tree\` to understand the project structure.
+   - Use atomic edits. Avoid overwriting entire files unless necessary.
+   - Respect the exclusion patterns (node_modules, .git, etc.) automatically enforced by your tools.`;
     }
 }

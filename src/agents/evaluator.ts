@@ -37,7 +37,12 @@ export class EvaluatorAgent extends CoreAgent {
             fail_work: createFailWorkTool(ctx, this.pearlsClient),
         };
     }
-    protected override getSystemPrompt(defaultPrompt: string): string {
-        return defaultPrompt;
+    protected override getSystemPrompt(defaultPrompt: string, context?: AgentContext): string {
+        let prompt = defaultPrompt;
+        const ctxObj = (context?.context || {}) as any;
+        if (ctxObj.submitted_work) {
+            prompt += `\n\n# SUBMITTED WORK FOR VERIFICATION\n${ctxObj.submitted_work}`;
+        }
+        return prompt;
     }
 }

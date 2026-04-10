@@ -53,6 +53,7 @@ describe('WorkerAgent Summary Conflation Fix', () => {
             update: mock(async () => ({})),
             get: mock(async () => ({ id: 'test-pearl', status: 'open', title: 'test', created_at: '', updated_at: '' })),
             ready: mock(async () => []),
+            addComment: mock(async () => ({})),
             addComment: mock(async () => "comment-id")
         } as unknown as Partial<PearlsClient>;
 
@@ -65,7 +66,7 @@ describe('WorkerAgent Summary Conflation Fix', () => {
         setQueueInstance(mockQueue as WorkQueue);
         setFormulaRegistry({ get: () => null } as unknown as FormulaRegistry);
 
-        agent = new WorkerAgent(mockModel);
+        agent = new WorkerAgent("worker", mockModel);
     });
 
     it('should successfully PARSE missing top-level summary (fix verified)', async () => {
