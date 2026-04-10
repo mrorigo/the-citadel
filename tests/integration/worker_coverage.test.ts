@@ -136,7 +136,7 @@ describe('WorkerAgent Integration Coverage', () => {
         const result = await submitWork.execute({ summary: 'Done', output: { foo: 'bar' } }, { toolCallId: 'call-4', messages: [], pearlId: 'b1' } as any);
 
         expect(result.success).toBe(true);
-        expect(mockPearls.update).toHaveBeenCalledWith('b1', { status: 'verify' });
+        expect(mockPearls.update).toHaveBeenCalledWith('b1', { status: 'verify', output: { foo: 'bar' } });
         expect(mockQueue.complete).toHaveBeenCalledWith('ticket-1', { foo: 'bar' });
     });
 
@@ -167,7 +167,7 @@ describe('WorkerAgent Integration Coverage', () => {
         }, { toolCallId: 'call-6', messages: [], pearlId: 'b1' } as any);
 
         expect(result.success).toBe(true);
-        expect(mockPearls.update).toHaveBeenCalledWith('b1', { status: 'verify' });
+        expect(mockPearls.update).toHaveBeenCalledWith('b1', { status: 'verify', output: planOutput });
         expect(mockQueue.complete).toHaveBeenCalledWith('ticket-1', planOutput);
     });
 

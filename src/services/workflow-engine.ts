@@ -1,11 +1,13 @@
-import { getPearls } from "../core/pearls";
+import { getPearls, type PearlsClient } from "../core/pearls";
 import { type FormulaRegistry, getFormulaRegistry } from "../core/formula";
 
 export class WorkflowEngine {
 	private registry: FormulaRegistry;
+	private pearls: PearlsClient;
 
-	constructor(registry?: FormulaRegistry) {
+	constructor(registry?: FormulaRegistry, pearls?: PearlsClient) {
 		this.registry = registry || getFormulaRegistry();
+		this.pearls = pearls || getPearls();
 	}
 
 	async init() {
@@ -27,18 +29,6 @@ export class WorkflowEngine {
 		const formula = this.registry.get(formulaName);
 		if (!formula) {
 			throw new Error(`Formula not found: ${formulaName}`);
-		}
-
-		// Validate variables
-		if (formula.vars) {
-			for (const [key, config] of Object.entries(formula.vars)) {
-				if (config.required && !variables[key] && !config.default) {
-					throw new Error(`Missing required variable: ${key}`);
-				}
-				if (!variables[key] && config.default) {
-					variables[key] = config.default;
-				}
-			}
 		}
 
 		const resolveTemplate = (
@@ -84,7 +74,7 @@ export class WorkflowEngine {
 			return false;
 		};
 
-		const pearls = getPearls();
+		const pearls = this.pearls;
 
 		console.log(`[WorkflowEngine] Cooking formula '${formulaName}'...`);
 

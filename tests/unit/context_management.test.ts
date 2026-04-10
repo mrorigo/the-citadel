@@ -130,8 +130,6 @@ describe('Context Management', () => {
             },
             agents: {
                 worker: { provider: 'openai', model: 'gpt-4' },
-                router: { provider: 'openai', model: 'gpt-4' },
-                supervisor: { provider: 'openai', model: 'gpt-4' },
                 gatekeeper: { provider: 'openai', model: 'gpt-4' }
             },
             context: {
@@ -142,35 +140,18 @@ describe('Context Management', () => {
         });
     });
 
-    it('should truncate tool outputs', async () => {
+    it('should offload large tool results', async () => {
         const agent = new TestAgent();
-        const massiveOutput = "This is a very long string that should be truncated because it exceeds the limit.".repeat(10);
-
+        const massiveOutput = "This is a very long string that should be offloaded because it exceeds the limit.".repeat(100);
+ 
         const messages = await agent.testToolTruncation(massiveOutput);
         const toolMsg = messages.find(m => m.role === 'tool');
         expect(toolMsg).toBeDefined();
-
-        // Limit is 20. 
-        const content = toolMsg!.content as any;
-        const text = content[0].result /* SDK v5? */ || content[0].text /* our adapter */ || (toolMsg as any).content[0].result;
-
-        // In Agent.ts we push `{ type: "tool-result", ..., output: { type: "text", value: ... } }` (AI SDK Core format?)
-        // Agent.ts line 555: output: toolOutput
-        // toolOutput = { type: "text", value: ... }
-        // The standard is `content: [ { type: 'tool-result', toolCallId, toolName, result: ... } ]`?
-        // Agent.ts uses `toolResults.push({ type: "tool-result", ... output: ... })`
-        // So checking `content[0].output.value`?
-
-        // Wait, AI SDK `tool-result` part has `result` field usually?
-        // Let's check `agent.ts` again.
-        // It pushes `output: toolOutput`.
-
+ 
         const resultPart = (toolMsg!.content as any)[0];
-        // resultPart.output.value
-
         const val = resultPart.output.value || resultPart.result;
-
-        expect(val).toContain('... [Output truncated');
+ 
+        expect(val).toContain('--- TOOL RESULT OFFLOADED ---');
         expect(val.length).toBeLessThan(massiveOutput.length);
     });
 });

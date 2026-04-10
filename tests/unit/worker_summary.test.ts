@@ -97,7 +97,13 @@ describe('WorkerAgent Summary Conflation Fix', () => {
         expect(result.success).toBe(true);
         expect((result as Record<string, unknown>).summary).toBe('Extracted Summary');
         expect((result as Record<string, unknown>).message).toBe('Work submitted successfully.');
-        expect(mockPearls.update).toHaveBeenCalledWith('b1', { status: 'verify' });
+        expect(mockPearls.update).toHaveBeenCalledWith('b1', {
+            status: 'verify',
+            output: {
+                summary: 'Extracted Summary',
+                data: 'test'
+            }
+        });
     });
 
     it('should extract summary from output.analysis', async () => {

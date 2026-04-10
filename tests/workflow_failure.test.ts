@@ -49,9 +49,7 @@ describe('Workflow Failure Handling', () => {
                 ollama: { baseURL: 'http://localhost:11434/v1', apiKey: 'ollama' }
             },
             agents: {
-                router: { provider: 'ollama', model: 'llama3' },
                 worker: { provider: 'ollama', model: 'llama3' },
-                supervisor: { provider: 'ollama', model: 'llama3' },
                 gatekeeper: { provider: 'ollama', model: 'llama3' }
             },
             worker: { timeout: 300, maxRetries: 3, costLimit: 1.0 },
@@ -76,10 +74,6 @@ title = "Recovery Task"
 description = "Cleaning up after main failure"
 `;
         await writeFile(join(formulasDir, 'recovery_flow.toml'), formulaContent);
-
-        registry = new FormulaRegistry(formulasDir);
-        await registry.loadAll();
-        engine = new WorkflowEngine(registry);
 
         // biome-ignore lint/suspicious/noExplicitAny: mock
         store = new Map<string, any>();
@@ -127,6 +121,10 @@ description = "Cleaning up after main failure"
             })
         };
         setPearlsInstance(pearlsMock);
+
+        registry = new FormulaRegistry(formulasDir);
+        await registry.loadAll();
+        engine = new WorkflowEngine(registry, pearlsMock);
     });
 
     afterEach(async () => {

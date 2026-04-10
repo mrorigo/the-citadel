@@ -645,7 +645,21 @@ If you are still working, continue with your next step.`,
 						: undefined;
 					const threshold = serverLimit !== undefined ? serverLimit : maxToolResponseSize;
 
-					if (threshold > 0 && toolOutputValue.length > threshold) {
+					const criticalTools = [
+						"submit_work",
+						"report_progress",
+						"approve_work",
+						"reject_work",
+						"fail_work",
+						"delegate_task",
+						"inspect_result",
+					];
+
+					if (
+						threshold > 0 &&
+						toolOutputValue.length > threshold &&
+						!criticalTools.includes(toolName)
+					) {
 						const memory = getToolResultMemory();
 						const pearlId = context?.pearlId || "default";
 						const resultId = await memory.store(pearlId, toolOutputValue);
