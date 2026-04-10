@@ -58,7 +58,7 @@ A **Convoy** is a long-lived context (Meta-Epic) used to group unrelated Molecul
 ### 3. Agents (The Workforce)
 - **RouterAgent**: The foreman. Analyzes requests, instantiates Formulas, and assigns tasks.
 - **WorkerAgent**: The executor. Picks up `Open` Pearls, executes tasks (research, writing, coding, analysis) and can **recursively breakdown work** (Dynamic Bonding).
-- **EvaluatorAgent**: The editor/verifier. Verifies `verify` Pearls against acceptance criteria (accuracy, style, functionality) before closing them. **Requires explicit `acceptance_test` details for every approval.**
+- **EvaluatorAgent**: The editor/verifier. Verifies `verify` Pearls against acceptance criteria (accuracy, style, functionality) before closing them. Its prompt is automatically enriched with the Pearl's `acceptance_test` and `step` context.
 
 ---
 
@@ -141,19 +141,57 @@ The system automatically manages the parent-child relationships based on the exe
 The Citadel provides a "Context-Aware" runtime for all agents.
 
 **Automatic Context Injection:**
-When an agent executes a tool (like `submit_work` or `report_progress`), the system automatically injects the current `pearlId` and execution environment. Operations are always strictly scoped to the active Pearl, preventing cross-task interference.
+When an agent executes a tool (like `submit_work` or `report_progress`), the system automatically injects the current `pearlId` and execution environment. For **EvaluatorAgents**, the base prompt is structured to prominently surface the **Acceptance Test** criteria and the **Step Type** (e.g., `step:impl`).
 
-### 7. Project Awareness & Custom Instructions
+### 7. Agent Permissions & Visibility (AGENTS.md)
+The Citadel provides a granular permission system controlled via YAML frontmatter in your project's `AGENTS.md` file. This allows you to restrict agent access to sensitive files and commands without modifying core code.
+
+Patterns are matched using `minimatch` (glob) and checked before any file-system or command tool is executed.
+
+#### Configuration Schema
+```yaml
+---
+# Patterns to hide from agents (treated as non-existent)
+# Hidden from search_files, directory_tree, list_directory, etc.
+ignore:
+  - ".pearls/**"
+  - ".qmd/**"
+
+# Patterns to block entirely (explicit error if accessed)
+forbidden:
+  - ".git/**"
+  - "node_modules/**"
+  - ".env"
+
+# Patterns that can be read but NOT modified (write_file, edit_file, etc. blocked)
+read_only:
+  - "company/personas.firm"
+---
+```
+
+#### Enforcement Behaviors
+- **Ignore**: Files matching these patterns are filtered out of directory listings and search results. If an agent attempts to read them directly, it receives a "File Ignored (hidden)" error.
+- **Forbidden**: Any attempt to read, write, or mention these patterns in a command string results in an immediate "Access Forbidden" error.
+- **Read Only**: Agents can read these files but attempts to modify, delete, or overwrite them are blocked with a "Modification Read-Only" error.
+- **Command Filtering**: For `run_command` tools, the system scans the command string for any `forbidden` or `read_only` (write) patterns and blocks execution if a violation is detected.
+
+#### Backward Compatibility
+If a project lacks `AGENTS.md` frontmatter, The Citadel falls back to **Sensible Defaults**:
+- **Ignore**: `.git/**`, `node_modules/**`, `.env`, `.DS_Store`
+- **Forbidden**: `.git/**`, `node_modules/**`
+
+### 8. Project Awareness & Custom Instructions
 You can "teach" agents about your specific project by placing rules in your repository. The Citadel uses a tiered **Instruction Discovery Service** to build agent prompts dynamically.
 
 #### The Instruction Hierarchy (Priority order)
-1.  **Global Rules**: Loaded from `AGENTS.md` in the project root.
-2.  **Builtin Defaults**: Hardcoded core safety and persistence rules for each role.
-3.  **Role Overrides**: Files in `.citadel/instructions/role-${role}.md` (e.g., `role-worker.md`).
-4.  **MCP Resources (Automatic)**: Automatically injected context from MCP servers (e.g., CodeFlow memory).
-5.  **Formula Prompts**: Task-specific instructions defined in a workflow's TOML.
-6.  **Tag-based Instructions**: Triggered by pearl labels (e.g., `tag:git` loads `tag-git.md`).
-7.  **Context (Dynamic)**: Instructions passed directly in the pearl's JSON context.
+1.  **Agent-Specific Conventions**: Loaded dynamically from `agents/<assignee>.md` in the project root if the Pearl is explicitly assigned to a role.
+2.  **Global Rules**: Loaded from `AGENTS.md` in the project root.
+3.  **Builtin Defaults**: Hardcoded core safety and persistence rules for each role.
+4.  **Role Overrides**: Files in `.citadel/instructions/role-${role}.md` (e.g., `role-worker.md`).
+5.  **MCP Resources (Automatic)**: Automatically injected context from MCP servers (e.g., CodeFlow memory).
+6.  **Formula Prompts**: Task-specific instructions defined in a workflow's TOML.
+7.  **Tag-based Instructions**: Triggered by pearl labels (e.g., `tag:git` loads `tag-git.md`).
+8.  **Context (Dynamic)**: Instructions passed directly in the pearl's JSON context.
 
 #### Automatic Resource Injection
 The Citadel supports automatic injection of MCP resources into the agent context. This allows agents to leverage rich context sources like CodeFlow's Cortex memory system (`memory://top`) or other MCP-exposed knowledge bases automatically.
@@ -162,6 +200,9 @@ Resources are aggregated from three levels:
 1.  **Agent Level**: Configured in `citadel.config.ts`.
 2.  **Formula Level**: Declared in `.toml` formula files via `mcp_resources`.
 3.  **Pearl Level**: Specified dynamically in the pearl's JSON context.
+
+> [!TIP]
+> Use this to auto-inject **Business Context** from the `firm` MCP server (e.g., `firm://source/company/company_info.firm`) so agents have read-only access to company state without needing to call `firm:query`.
 
 **Example Formula Property:**
 ```toml
@@ -178,7 +219,11 @@ To customize a specific agent role project-wide, create a file in `.citadel/inst
 ```
 
 #### Tag-based Specialization
-If you have specific tools or domains (like Git, Research, or SQL), you can create tag-based instruction files. Any pearl with a `tag:NAME` label will automatically pull in `.citadel/instructions/tag-NAME.md`.
+Any pearl with a `tag:NAME` label will automatically pull in `.citadel/instructions/tag-NAME.md`.
+
+#### Normalization & Scoping
+1.  **Label Normalization**: Labels containing colons (e.g., `step:impl`) are sanitized to dashes (e.g., `tag-step-impl.md`) for safe filenaming.
+2.  **Role Scoping**: You can target specific roles with `tag-NAME--ROLE.md`. For example, `tag-step-impl--gatekeeper.md` provides verification playbooks only to the Evaluator, without polluting the Worker's context.
 
 **Example 1: Specialized Git Instructions**
 ```markdown
@@ -202,7 +247,20 @@ When submitting your plan (via `submit_work`), you **MUST** include a `verificat
 
 Workers handling `tag:planning` tasks are thus "primed" to provide the structured output the Gatekeeper demands.
 
-### 8. Audit Logging & Observability
+### 8. MCP Integrations
+
+The Citadel is extended via **Model Context Protocol (MCP)** servers, which provide agents with specialized tools:
+
+#### `skills` — Domain expertise
+Agents call `list_skills` to discover available playbooks (e.g., SEO, DevOps, Coding) and `get_skill` to load domain-specific instructions on demand.
+
+#### `citadel` — Orchestration & HITL
+The "Command Center" MCP, used primarily by leadership agents:
+- **`list_formulas` / `get_formula`**: Tool-based discovery of the formula library.
+- **`escalate_to_human`**: Creates a tracked HITL Pearl for the operator.
+- **`get_hitl_response`**: Retrieves human feedback/comments from a Pearl.
+
+### 9. Audit Logging & Observability
 The Citadel ensures transparency by automatically logging critical agent actions directly to the Pearl's history.
 
 **What gets logged?**
@@ -375,10 +433,13 @@ mcpServers: {
     },
     weather: {
         url: 'https://api.weather-mcp.com/sse',
-        headers: { 'Authorization': 'Bearer ...' }
+        headers: { 'Authorization': `Bearer ${process.env.WEATHER_API_KEY}` }
     }
 }
 ```
+
+> [!TIP]
+> Since `citadel.config.ts` is a native TypeScript file, you can use **template literals** (backticks) and `process.env` to securely inject environment variables into your headers or arguments. The system does not perform automatic string interpolation on plain strings.
 
 ### 5. Pearls Integration
 Configure the underlying state engine.
@@ -449,5 +510,17 @@ Agents can use the `inspect_result` tool to query offloaded content without pull
 *   **`env`**: `'development'` or `'production'`.
 *   **`bridge.maxLogs`**: Number of log lines maintained in TUI memory (default: 1000).
 *   **Persistent Storage**: Offloaded tool results are stored in `.citadel/tool-results/<pearl-id>/` and are kept indefinitely for audit purposes.
+
+### 8. Lifecycle Hooks
+Connect your application to the Citadel state orchestration engine by providing JavaScript closures to react to graph state transitions.
+
+```typescript
+hooks: {
+    // Fired immediately when a pearl successfully transitions into `done` (closed)
+    onPearlDone: async (pearl) => {
+        // e.g. update external database, notify webhook
+    }
+}
+```
 
 ---

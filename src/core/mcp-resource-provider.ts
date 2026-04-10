@@ -64,13 +64,19 @@ export class MCPResourceProvider implements InstructionProvider {
 
         for (const [serverName, uris] of Object.entries(resourcesToFetch)) {
             for (const uri of uris) {
+                // Parameter expansion
+                let expandedUri = uri;
+                if (ctx.pearlId) {
+                    expandedUri = expandedUri.replace(/{pearlId}/g, ctx.pearlId);
+                }
+
                 try {
-                    const contents = await mcpService.readResource(serverName, uri);
+                    const contents = await mcpService.readResource(serverName, expandedUri);
                     if (contents.length > 0) {
-                        results.push(`## RESOURCE: ${serverName}:${uri}\n${contents.join("\n\n")}`);
+                        results.push(`## RESOURCE: ${serverName}:${expandedUri}\n${contents.join("\n\n")}`);
                     }
                 } catch (err) {
-                    logger.warn(`[MCPResourceProvider] Failed to fetch resource ${serverName}:${uri}: ${err}`);
+                    logger.warn(`[MCPResourceProvider] Failed to fetch resource ${serverName}:${expandedUri}: ${err}`);
                 }
             }
         }

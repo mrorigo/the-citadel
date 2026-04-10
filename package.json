@@ -1,9 +1,12 @@
 {
   "name": "the-citadel",
-  "version": "0.9.0",
+  "version": "0.12.0",
   "description": "A deterministic agent orchestration system for Knowledge Work",
-  "module": "src/index.ts",
+  "module": "dist/index.js",
   "type": "module",
+  "exports": {
+    ".": "./dist/index.js"
+  },
   "author": "The Citadel Team",
   "license": "MIT",
   "homepage": "https://github.com/mrorigo/the-citadel#readme",
@@ -17,14 +20,14 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "citadel": "./dist/index.js"
+    "citadel": "dist/cli.js"
   },
   "files": [
     "dist",
     ".citadel/instructions"
   ],
   "scripts": {
-    "build": "bun build ./src/index.ts --outdir ./dist --target node && tsc --emitDeclarationOnly --declaration --outDir ./dist --noEmit false",
+    "build": "bun build ./src/index.ts ./src/cli.ts --outdir ./dist --target node && tsc --emitDeclarationOnly --declaration --outDir ./dist --noEmit false",
     "test": "bun test tests/",
     "prepublishOnly": "bun run build"
   },

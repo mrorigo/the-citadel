@@ -31,6 +31,7 @@ export const FormulaStepSchema = z.object({
 	output_schema: z.any().optional(), // Zod definition or JSON schema
 	context: z.record(z.string(), z.string()).optional(), // Input context with {{ref}} support
 	labels: z.array(z.string()).optional(), // Custom labels for the pearl
+	agent: z.string().optional(), // Agent role assigned to perform this step
 });
 
 export const FormulaSchema = z.object({

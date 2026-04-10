@@ -23,11 +23,13 @@ default = "dev"
 id = "build"
 title = "Build Application"
 description = "Run build script for {{env}}"
+agent = "builder"  # Optional: Assign a specific role for this step
 
 [[steps]]
 id = "deploy"
 title = "Deploy to {{env}}"
 description = "Upload artifacts"
+agent = "deployer" # The Router maps to these roles via dynamically resolved files
 needs = ["build"]  # Dependency: 'deploy' waits for 'build'
 ```
 
@@ -153,6 +155,18 @@ title = "Write Report"
 context = { topic = "AI Trends", depth = "deep" }
 ```
 
+### Automatic Resource Injection (`mcp_resources`)
+Automatically inject context from MCP servers into all steps of a formula.
+
+```toml
+[mcp_resources]
+firm = [
+    "firm://source/company/company_info.firm",
+    "firm://source/company/strategy.firm"
+]
+```
+This is the preferred way to provide **Business Context** (authoritative company state) to agents without requiring explicit `firm:query` tool calls.
+
 ### Piping (`{{steps...}}`)
 Reference outputs from previous steps in the `context` of downstream steps.
 
@@ -162,6 +176,16 @@ id = "decision"
 title = "Make Decision"
 needs = ["analyze"] # Must rely on the source step
 context = { score = "{{steps.analyze.output.score}}" }
+
+### Agent Role Assignment (`agent`)
+Explicitly assign a step to a specific agent role by name. When the Pearl is created, the system applies this as the `assignee`. The engine will subsequently try to load a custom system prompt for this agent from `agents/<role>.md` in the project root.
+
+```toml
+[[steps]]
+id = "security_audit"
+title = "Run Security Audit"
+agent = "security_auditor" # Dynamically maps to agents/security_auditor.md
+```
 ```
 
 ## 5. Formula Prompts (`prompts`)

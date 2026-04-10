@@ -22,21 +22,15 @@ export const ConfigSchema = z.object({
 			.optional(),
 	}),
 
-	agents: z.object({
-		worker: z.object({
+	agents: z.record(
+		z.string(),
+		z.object({
 			provider: z.enum(["openai", "anthropic", "ollama"]),
 			model: z.string(),
 			mcpTools: z.array(z.string()).optional(),
 			mcpResources: z.record(z.string(), z.array(z.string())).optional(),
 		}),
-
-		gatekeeper: z.object({
-			provider: z.enum(["openai", "anthropic", "ollama"]),
-			model: z.string(),
-			mcpTools: z.array(z.string()).optional(),
-			mcpResources: z.record(z.string(), z.array(z.string())).optional(),
-		}),
-	}),
+	),
 
 	mcpServers: z
 		.record(
@@ -102,11 +96,25 @@ export const ConfigSchema = z.object({
 		offloadThresholds: {},
 		maxMessageSize: 100000,
 	}),
+
+	hooks: z.object({
+		onPearlStart: z.any().optional(),
+		onPearlDone: z.any().optional(),
+		onMoleculeStart: z.any().optional(),
+		onMoleculeDone: z.any().optional(),
+	}).optional(),
+
+	logging: z.object({
+		path: z.string().optional(),
+		level: z.enum(["debug", "info", "warn", "error"]).default("info"),
+		fileEnabled: z.boolean().default(false),
+		rotation: z.enum(["daily", "none"]).default("none"),
+	}).optional(),
 });
 
 export type CitadelConfig = z.infer<typeof ConfigSchema>;
 export type CitadelConfigInput = z.input<typeof ConfigSchema>;
-export type AgentRole = keyof CitadelConfig["agents"];
+export type AgentRole = string;
 
 export function defineConfig(config: CitadelConfigInput): CitadelConfigInput {
 	return config;

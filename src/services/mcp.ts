@@ -4,8 +4,6 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import {
 	ListRootsRequestSchema,
-	ReadResourceRequestSchema,
-	ListResourcesRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { getConfig } from "../config";
 import { logger } from "../core/logger";
@@ -141,13 +139,7 @@ export class MCPService {
 
 		try {
 			logger.info(`[MCP] Reading resource ${serverName}:${uri}`);
-			const result = (await client.request(
-				{
-					method: "resources/read",
-					params: { uri },
-				},
-				ReadResourceRequestSchema,
-			)) as unknown as { contents: Array<{ text?: string; blob?: string }> };
+			const result = await client.readResource({ uri });
 
 			return result.contents
 				.map((content) => {
@@ -174,12 +166,7 @@ export class MCPService {
 		}
 
 		try {
-			const result = (await client.request(
-				{
-					method: "resources/list",
-				},
-				ListResourcesRequestSchema,
-			)) as unknown as { resources: unknown[] };
+			const result = await client.listResources();
 			return result.resources;
 		} catch (error) {
 			logger.error(`[MCP] Failed to list resources for ${serverName}:`, error);
