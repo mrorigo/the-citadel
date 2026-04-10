@@ -5,6 +5,7 @@ import type { PearlsClient } from "../core/pearls";
 import { getAgentModel } from "../core/llm";
 import { getToolResultMemory } from "../core/memory";
 import { logger } from "../core/logger";
+import { getConfig } from "../config";
 
 /**
  * Creates the inspect_result tool.
@@ -18,12 +19,22 @@ export const createInspectResultTool = (_context: AgentContext, _pearls?: Pearls
 		execute: async ({ resultId, query }, toolContext: any) => {
 			const targetPearlId = toolContext?.pearlId || "default";
 			const memory = getToolResultMemory();
-			const content = await memory.get(targetPearlId, resultId);
+			let content = await memory.get(targetPearlId, resultId);
 
 			if (!content) {
 				return {
 					error: `Tool result with ID ${resultId} not found for pearl ${targetPearlId}.`,
 				};
+			}
+
+			const config = getConfig();
+			const limit = config.context.maxInspectContextSize;
+
+			if (content.length > limit) {
+				logger.info(
+					`[Inspection] Truncating content for ${resultId} from ${content.length} to ${limit} characters.`,
+				);
+				content = `${content.slice(0, limit)}\n\n[TRUNCATED: Content exceeds maxInspectContextSize of ${limit} characters. The above is only the beginning of the result.]`;
 			}
 
 			logger.info(

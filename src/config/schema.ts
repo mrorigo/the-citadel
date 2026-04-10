@@ -88,11 +88,13 @@ export const ConfigSchema = z.object({
 	context: z.object({
 		maxHistoryMessages: z.number().default(50),
 		maxToolResponseSize: z.number().default(50000), // Default character limit
+		maxInspectContextSize: z.number().default(250000), // Max chars for inspect_result sub-agent
 		offloadThresholds: z.record(z.string(), z.number()).default({}), // Per-server limits (e.g. { "web": 10000 })
 		maxMessageSize: z.number().default(100000), // Max assistant message size
 	}).default({
 		maxHistoryMessages: 20,
 		maxToolResponseSize: 50000,
+		maxInspectContextSize: 250000,
 		offloadThresholds: {},
 		maxMessageSize: 100000,
 	}),

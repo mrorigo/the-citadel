@@ -6,7 +6,7 @@
  
 > [!IMPORTANT]
 > **🚀 NEW FOR 0.12: Context-Aware Reasoning & Tool Result Offloading**
-> The Citadel now automatically handles industrial-scale tool outputs by offloading large buffers to disk and providing sub-agent reasoning via the `inspect_result` tool. Prevent context bloat and scale your agents beyond the context window.
+> The Citadel now automatically handles industrial-scale tool outputs by offloading large buffers to disk and providing sub-agent reasoning via the `inspect_result` tool. Prevents context bloat and scale your agents beyond the context window.
  
 ---
 
