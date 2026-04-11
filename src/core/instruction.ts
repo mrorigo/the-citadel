@@ -266,17 +266,22 @@ export class SubTaskProvider implements InstructionProvider {
 
 		try {
 			// Find all sub-tasks (pearls that BLOCK this one)
-			const subTasks = await this.pearls.runCommand(["list", "--json"]);
-			const allPearls = JSON.parse(subTasks);
-			const blockers = allPearls.filter((p: any) => p.successors?.includes(ctx.pearlId));
+			const allPearls = await this.pearls.getAll();
+			const currentPearl = allPearls.find((p) => p.id === ctx.pearlId);
+			if (!currentPearl) return null;
+
+			const blockers = allPearls.filter((p) => 
+				currentPearl.blockers?.includes(p.id)
+			);
 
 			if (blockers.length === 0) return null;
 
 			const parts = blockers.map((p: any) => {
 				const status = p.status.toUpperCase();
 				let outputNote = "";
-				if (p.output) {
-					outputNote = `\nOutput: ${typeof p.output === "string" ? p.output : JSON.stringify(p.output)}`;
+				const outputData = p.output || p.metadata?.output;
+				if (outputData) {
+					outputNote = `\nOutput: ${typeof outputData === "string" ? outputData : JSON.stringify(outputData)}`;
 				}
 				return `#### SUBTASK: ${p.title} (ID: ${p.id})
 Status: ${status}${outputNote}`;
