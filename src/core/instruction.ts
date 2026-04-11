@@ -301,11 +301,27 @@ export class ContextProvider implements InstructionProvider {
 	priority = 50;
 
 	async getInstructions(ctx: InstructionContext): Promise<string | null> {
-		if (ctx.context?.custom_instructions) {
-			return `## DYNAMIC INSTRUCTIONS\n${ctx.context.custom_instructions}`;
+		if (!ctx.context || Object.keys(ctx.context).length === 0) return null;
+
+		const parts: string[] = [];
+
+		// Surface all context vars as structured data
+		const { custom_instructions, ...vars } = ctx.context;
+
+		if (Object.keys(vars).length > 0) {
+			const varLines = Object.entries(vars)
+				.map(([k, v]) => `- **${k}**: ${typeof v === 'string' ? v : JSON.stringify(v)}`)
+				.join('\n');
+			parts.push(`## TASK CONTEXT\nThe following context variables were provided for this task:\n${varLines}`);
 		}
-		return null;
+
+		if (custom_instructions) {
+			parts.push(`## DYNAMIC INSTRUCTIONS\n${custom_instructions}`);
+		}
+
+		return parts.length > 0 ? parts.join('\n\n') : null;
 	}
+
 }
 
 /**

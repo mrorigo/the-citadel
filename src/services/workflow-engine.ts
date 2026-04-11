@@ -138,7 +138,11 @@ export class WorkflowEngine {
 				const title = resolveTemplate(step.title, iterContext);
 				const description = resolveTemplate(step.description, iterContext);
 
-				const finalContext = { ...variables, ...(step.context || {}), ...iterContext };
+				const finalContext: Record<string, any> = { ...variables, ...(step.context || {}), ...iterContext };
+
+				if (formula.context_files?.length) {
+					finalContext.context_files = formula.context_files.join(', ');
+				}
 
 				const pearl = await pearls.create(title, {
 					parent: rootPearl.id,
