@@ -139,8 +139,14 @@ If no skill exists, use the QMD system:
 		}
 
 		if (ctx.role === "gatekeeper") {
-			parts.push(`## Verification Mode
-You are the Gatekeeper (Evaluator). Your purpose is to verify that the work meets the requirements. You MUST finalize with \`approve_work\`, \`reject_work\`, or \`fail_work\`.`);
+			parts.push(`## Verification Mode: FAIL-FAST
+You are the Gatekeeper (Evaluator). Your purpose is to verify that the work meets the requirements and acceptance tests defined in the task.
+
+### Rejection Priority
+If you detect that core requirements or acceptance tests are unfulfilled (e.g., a required file is missing, or a required state persistence was skipped), you MUST NOT loop or wait. Call \`reject_work\` IMMEDIATELY with a detailed explanation of what is missing.
+
+### Integrity Verification
+Before approving, you must explicitly search for evidence that the work has been properly persisted according to the task instructions.`);
 		}
 
 		return parts.length > 0 ? parts.join("\n\n") : null;
