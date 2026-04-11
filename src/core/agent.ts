@@ -427,7 +427,7 @@ export abstract class CoreAgent {
                     error: errorMetadata,
                     messages: messages.map(m => ({
                         role: m.role,
-                        content: typeof m.content === 'string' ? m.content : '[Object Content]'
+                        content: smartTruncate(m.content, 5000)
                     })),
                     tools: Object.keys(this.tools).map(t => {
                         const toolObj = this.tools[t] as any;
