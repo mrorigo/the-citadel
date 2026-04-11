@@ -85,7 +85,7 @@ describe('Parameter Auto-Injection', () => {
         const callArgs = mockExecute.mock.calls[0];
         // In the new architecture, the tool's execute() method receives (args, toolContext)
         // where toolContext contains pearlId.
-        expect(callArgs[2]).toHaveProperty('pearlId', 'test-123');
+        expect(callArgs[1]).toHaveProperty('pearlId', 'test-123');
         expect(callArgs[0]).toHaveProperty('message', 'Executing tool');
     });
 
@@ -97,7 +97,7 @@ describe('Parameter Auto-Injection', () => {
 
         expect(mockDelegate).toHaveBeenCalled();
         const callArgs = mockDelegate.mock.calls[0];
-        expect(callArgs[2]).toHaveProperty('pearlId', 'parent-456');
+        expect(callArgs[1]).toHaveProperty('pearlId', 'parent-456');
         expect(callArgs[0]).toHaveProperty('title', 'Subtask');
     });
 });

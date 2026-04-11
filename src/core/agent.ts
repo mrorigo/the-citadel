@@ -56,6 +56,7 @@ export class AgentStepLimitReachedError extends Error {
 export interface ToolContext extends AgentContext {
     toolCallId: string;
     messages: ModelMessage[];
+    pearlsClient?: PearlsClient;
 }
 
 export abstract class CoreAgent {
@@ -126,7 +127,7 @@ export abstract class CoreAgent {
                     // biome-ignore lint/suspicious/noExplicitAny: AI SDK tool registration bridge
                     jsonSchema(tool.inputSchema) as any,
                     // biome-ignore lint/suspicious/noExplicitAny: arguments are generic for MCP
-                    async (args: any) => {
+                    async (args: any, toolContext: any) => {
                         const result = await mcp.callTool(tool.serverName, tool.name, args);
                         return result;
                     },
@@ -140,7 +141,7 @@ export abstract class CoreAgent {
         name: string,
         description: string,
         schema: T,
-        execute: (args: z.infer<T>, pearlsClient?: PearlsClient, toolContext?: ToolContext) => Promise<R>,
+        execute: (args: z.infer<T>, toolContext?: ToolContext) => Promise<R>,
     ) {
         const options = {
             description,
@@ -669,7 +670,10 @@ ${JSON.stringify(this.schemas[primaryTool], null, 2)}
                     // -------------------------
 
                     // biome-ignore lint/suspicious/noExplicitAny: Context and tool mapping is dynamic
-                    const output = await (toolItem as any).execute(validatedInput, this.pearlsClient, toolContext as any);
+                    const output = await (toolItem as any).execute(validatedInput, {
+                        ...toolContext,
+                        pearlsClient: this.pearlsClient,
+                    } as any);
 
                     // --- ENFORCEMENT POINT (Output) ---
                     if (
